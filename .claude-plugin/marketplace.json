@@ -1,0 +1,25 @@
+{
+  "$schema": "https://code.claude.com/schemas/marketplace.json",
+  "name": "yoanbernabeu",
+  "owner": {
+    "name": "Yoan Bernabeu",
+    "url": "https://github.com/yoanbernabeu"
+  },
+  "description": "Opinionated Symfony skills, installable as a Claude Code plugin.",
+  "plugins": [
+    {
+      "name": "symfony-yoandev-skills",
+      "source": "./",
+      "displayName": "Symfony Skills",
+      "description": "Sixteen opinionated skills for writing Symfony applications: strict TDD, a Controller/Service/Repository contract enforced by deptrac, DTOs at both edges, AssetMapper with no bundler. Verified against a real Symfony 8.1 install rather than against documentation.",
+      "author": {
+        "name": "Yoan Bernabeu",
+        "url": "https://github.com/yoanbernabeu"
+      },
+      "repository": "https://github.com/yoanbernabeu/symfony-yoandev-skills",
+      "license": "MIT",
+      "category": "engineering",
+      "keywords": ["symfony", "php", "tdd", "coding-standards", "doctrine", "agent-skills"]
+    }
+  ]
+}
