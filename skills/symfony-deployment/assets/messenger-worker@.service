@@ -1,0 +1,53 @@
+; systemd template unit for Messenger workers.
+;
+; Install as /etc/systemd/system/messenger-worker@.service, then:
+;
+;   systemctl daemon-reload
+;   systemctl enable --now messenger-worker@1 messenger-worker@2
+;
+; The "@" makes it a template: one unit file, N independent processes, each with
+; its own logs and its own restart counter. Scale by enabling more instances.
+;
+; ADAPT BEFORE USE:
+;   User / Group        the user that owns var/ — never root
+;   WorkingDirectory    where the application lives
+;   ExecStart           the transport names, in priority order
+;   Environment         APP_ENV, and anything not already in .env.local.php
+
+[Unit]
+Description=Symfony Messenger worker %i
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/app
+Environment=APP_ENV=prod
+Environment=APP_DEBUG=0
+
+; --time-limit and --memory-limit are not tuning, they are protection. A
+; long-lived PHP process accumulates memory and holds stale connections; both
+; options make it exit cleanly *between* messages, which is the only moment at
+; which exiting is safe. Restart=always brings it straight back.
+ExecStart=/usr/local/bin/php /app/bin/console messenger:consume async --time-limit=3600 --memory-limit=128M
+
+; A worker that stops after --time-limit exits 0. Restarting on success is
+; therefore required, not optional: "on-failure" would leave the queue unattended
+; after the first hour.
+Restart=always
+RestartSec=5
+
+; SIGTERM lets the worker finish its current message. Give it room: a handler
+; that is killed mid-run leaves the message neither acknowledged nor rejected,
+; and what happens next is decided by the transport, not by you.
+KillSignal=SIGTERM
+TimeoutStopSec=120
+
+; Logs to journald, which a log shipper can collect. Do not add a log file.
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=messenger-worker
+
+[Install]
+WantedBy=multi-user.target

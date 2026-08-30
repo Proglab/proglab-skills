@@ -1,0 +1,22 @@
+# Development-only overrides: exposed ports and the mail catcher.
+#
+# The ports are written without a host port on purpose. Docker picks a free one,
+# and the Symfony CLI discovers it — so two projects can run side by side without
+# anyone editing a file to dodge a port collision.
+#
+# This is also what lets `symfony server:start` inject DATABASE_URL and
+# MAILER_DSN for you: the CLI reads the running containers, matches the exposed
+# container port against its table of known services, and exports the variables.
+services:
+  database:
+    ports:
+      - "5432"
+
+  mailer:
+    image: axllent/mailpit
+    ports:
+      - "1025"   # SMTP  → detected by the CLI, exported as MAILER_DSN
+      - "8025"   # web UI → symfony open:local:webmail
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1

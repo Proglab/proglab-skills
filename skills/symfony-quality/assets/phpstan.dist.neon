@@ -1,0 +1,51 @@
+# Static analysis. Copy to the project root and commit it.
+#
+#   castor qa:stan      (or: make stan)
+#
+# ── The include paths are NOT a mistake ─────────────────────────────────────
+# PHPStan and its extensions run from the jakzal/phpqa image, not from the
+# project's vendor/. Inside that image the extensions live under
+# /tools/.composer/vendor-bin/phpstan/vendor/, and they are NOT auto-registered.
+#
+# Pointing these includes at `vendor/phpstan/...` — which is what every tutorial
+# shows — has two failure modes, both verified:
+#   • the run dies with "File 'vendor/phpstan/...' is missing", or
+#   • worse, with no includes at all it exits 0 and reports nothing, so the gate
+#     looks green while checking a fraction of what it claims to.
+#
+# If you ever move PHPStan into composer.json, swap these for vendor/ paths.
+includes:
+    - /tools/.composer/vendor-bin/phpstan/vendor/phpstan/phpstan-symfony/extension.neon
+    - /tools/.composer/vendor-bin/phpstan/vendor/phpstan/phpstan-doctrine/extension.neon
+    - /tools/.composer/vendor-bin/phpstan/vendor/phpstan/phpstan-strict-rules/rules.neon
+    - /tools/.composer/vendor-bin/phpstan/vendor/phpstan/phpstan-deprecation-rules/rules.neon
+    - /tools/.composer/vendor-bin/phpstan/vendor/phpstan/phpstan-phpunit/rules.neon
+
+parameters:
+    level: max
+
+    paths:
+        - src
+        - tests
+
+    symfony:
+        # Must match the real filename in var/cache/dev/ — it embeds the kernel
+        # class name, which embeds the project namespace. Check it:
+        #   ls var/cache/dev/*KernelDevDebugContainer.xml
+        # If this path is wrong PHPStan does not fail, it goes quiet: service ids
+        # and route names stop being checked and the rules silently pass.
+        containerXmlPath: var/cache/dev/App_KernelDevDebugContainer.xml
+
+    doctrine:
+        # Needs tests/object-manager.php returning the entity manager.
+        # Drop this block on a project with no Doctrine.
+        objectManagerLoader: tests/object-manager.php
+
+    # Entities are hydrated by Doctrine, so PHPStan cannot see that these
+    # properties are initialised by the time anything reads them.
+    checkUninitializedProperties: false
+
+    # A baseline is only for adopting the standard on an existing codebase.
+    # New code is written at level max; the baseline may shrink, never grow.
+    # includes:
+    #     - phpstan-baseline.neon

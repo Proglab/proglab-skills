@@ -1,0 +1,115 @@
+# The layer contract, made enforceable.
+#
+#   castor deptrac      (or: make deptrac)
+#
+# This is the mechanical version of the rule that matters most in this
+# standard: a controller translates HTTP, a service holds the rule, a
+# repository owns the queries. Reviewing that by hand works until the day
+# someone is in a hurry.
+#
+# Adapt the directory names to the project — the boundaries are what matter,
+# not the folder names.
+deptrac:
+    paths:
+        - ./src
+
+    layers:
+        - name: Controller
+          collectors:
+              - type: directory
+                value: src/Controller/.*
+
+        - name: Service
+          collectors:
+              - type: directory
+                value: src/Service/.*
+
+        - name: Repository
+          collectors:
+              - type: directory
+                value: src/Repository/.*
+
+        - name: Entity
+          collectors:
+              - type: directory
+                value: src/Entity/.*
+
+        - name: Dto
+          collectors:
+              - type: directory
+                value: src/Dto/.*
+
+        - name: Form
+          collectors:
+              - type: directory
+                value: src/Form/.*
+
+        - name: Message
+          collectors:
+              - type: directory
+                value: src/(Message|MessageHandler)/.*
+
+        # Everything of Doctrine's *except* the two interfaces below. The
+        # negative lookahead is what keeps this file consistent with the layer
+        # contract: the service owns the transaction boundary and calls
+        # flush(), so it must be able to type-hint the entity manager — while
+        # still being unable to touch QueryBuilder, DQL or DBAL.
+        - name: Doctrine
+          collectors:
+              - type: className
+                value: ^Doctrine\\(?!ORM\\EntityManagerInterface$|Persistence\\ObjectManager$).*
+
+        # flush() only. Deliberately narrow: widening this to the whole
+        # Doctrine layer would silently re-open queries in services, which is
+        # the one rule this file exists to enforce.
+        - name: EntityManager
+          collectors:
+              - type: className
+                value: ^Doctrine\\(ORM\\EntityManagerInterface|Persistence\\ObjectManager)$
+
+        - name: Http
+          collectors:
+              - type: className
+                value: ^Symfony\\Component\\HttpFoundation\\.*
+
+    ruleset:
+        # A controller may only reach the layers it translates between.
+        # Doctrine is deliberately absent: no persistence in controllers.
+        Controller:
+            - Service
+            - Dto
+            - Entity
+            - Form
+            - Message
+
+        # A service holds the rule. It may ask a repository for data and it
+        # calls flush() once per use case, but it may not build queries
+        # (Doctrine) and it may not know about HTTP.
+        Service:
+            - Repository
+            - Dto
+            - Entity
+            - Message
+            - EntityManager
+
+        # A repository is the only place allowed to touch Doctrine.
+        Repository:
+            - Entity
+            - Dto
+            - Doctrine
+            - EntityManager
+
+        # Message handlers translate a message into a service call, exactly
+        # like a controller translates a request.
+        Message:
+            - Service
+            - Dto
+            - Entity
+
+        # Forms map onto input DTOs, never onto entities.
+        Form:
+            - Dto
+
+        # Entities and DTOs depend on nothing of ours.
+        Entity: ~
+        Dto: ~
