@@ -15,18 +15,18 @@ npx skills add yoanbernabeu/symfony-yoandev-skills
 Install a single skill instead:
 
 ```bash
-npx skills add https://github.com/yoanbernabeu/symfony-yoandev-skills/tree/main/skills/symfony-testing
+npx skills add https://github.com/yoanbernabeu/symfony-yoandev-skills/tree/main/skills/symfony-yoandev-testing
 ```
 
 Or try one without installing anything:
 
 ```bash
-npx skills use yoanbernabeu/symfony-yoandev-skills@symfony-architecture
+npx skills use yoanbernabeu/symfony-yoandev-skills@symfony-yoandev-architecture
 ```
 
 ## The skills
 
-Start with `symfony-standards`. It is deliberately short: it detects the project,
+Start with `symfony-yoandev-standards`. It is deliberately short: it detects the project,
 states the non-negotiable rules, draws the line between the core and what a project
 has to earn, and points at whichever skill below is relevant. The others stand on
 their own and trigger directly when a task is clearly in their domain, and each says
@@ -34,22 +34,22 @@ under its title which tier it belongs to.
 
 | Skill | Covers |
 |---|---|
-| **symfony-standards** | Entry point: project detection, the five rules, routing to the rest |
-| **symfony-architecture** | Layer contract, DTOs, services, events, configuration, patterns |
-| **symfony-testing** | TDD loop, unit vs integration vs functional, fixtures, test doubles |
-| **symfony-http** | Controllers, routing, request payloads, responses, forms, errors |
-| **symfony-doctrine** | Entities, repositories, queries, relations, migrations |
-| **symfony-security** | Authentication, authorisation, voters, CSRF, hardening |
-| **symfony-frontend** | AssetMapper, Stimulus, Turbo, Twig and Live Components, Tailwind |
-| **symfony-async** | Messenger, Scheduler, Mailer, retries and failure handling |
-| **symfony-console** | Command families and invokable commands, destructive operations, locking |
-| **symfony-performance** | N+1 queries, HTTP and application caching, profiling |
-| **symfony-quality** | PHPStan and php-cs-fixer as the core, deptrac on demand, the CI pipeline — with ready-to-commit config |
-| **symfony-local-dev** | Docker services, the Symfony CLI dev server, Mailpit, production-like checks |
-| **symfony-deployment** | Deployment sequence, migrations, production settings |
-| **symfony-observability** | Monolog channels, correlation ids, what never to log, alerting, health checks |
-| **symfony-storage** | Where uploaded files go, public vs protected, serving them, orphans |
-| **symfony-upgrade** | Deprecations, Flex recipe drift, Rector, moving to a new major |
+| **symfony-yoandev-standards** | Entry point: project detection, the five rules, routing to the rest |
+| **symfony-yoandev-architecture** | Layer contract, DTOs, services, events, configuration, patterns |
+| **symfony-yoandev-testing** | TDD loop, unit vs integration vs functional, fixtures, test doubles |
+| **symfony-yoandev-http** | Controllers, routing, request payloads, responses, forms, errors |
+| **symfony-yoandev-doctrine** | Entities, repositories, queries, relations, migrations |
+| **symfony-yoandev-security** | Authentication, authorisation, voters, CSRF, hardening |
+| **symfony-yoandev-frontend** | AssetMapper, Stimulus, Turbo, Twig and Live Components, Tailwind |
+| **symfony-yoandev-async** | Messenger, Scheduler, Mailer, retries and failure handling |
+| **symfony-yoandev-console** | Command families and invokable commands, destructive operations, locking |
+| **symfony-yoandev-performance** | N+1 queries, HTTP and application caching, profiling |
+| **symfony-yoandev-quality** | PHPStan and php-cs-fixer as the core, deptrac on demand, the CI pipeline — with ready-to-commit config |
+| **symfony-yoandev-local-dev** | Docker services, the Symfony CLI dev server, Mailpit, production-like checks |
+| **symfony-yoandev-deployment** | Deployment sequence, migrations, production settings |
+| **symfony-yoandev-observability** | Monolog channels, correlation ids, what never to log, alerting, health checks |
+| **symfony-yoandev-storage** | Where uploaded files go, public vs protected, serving them, orphans |
+| **symfony-yoandev-upgrade** | Deprecations, Flex recipe drift, Rector, moving to a new major |
 
 ## What these skills decide
 
@@ -67,14 +67,14 @@ at a glance whether this suite matches how you work:
 - **Messenger for asynchronous work only.** Not as an in-process command bus.
 - **Two tiers.** Five core rules that remove decisions and cost nothing per feature;
   everything else — deptrac, query-count tests, Messenger, caches, health checks — is
-  switched on by a real need, never pre-emptively. `symfony-standards` draws the line.
+  switched on by a real need, never pre-emptively. `symfony-yoandev-standards` draws the line.
 - **A hand-written JSON API, up to a point.** Past a handful of resources — or the moment
   you need a documented OpenAPI contract — the suite tells you to use API Platform
   instead, and does not cover it.
 - **Services in Docker, PHP on the host.** The Symfony CLI wires them together and
   injects the variables; containers are for verifying production, not for daily work.
 
-Full reasoning lives in each skill; `symfony-architecture` carries the summary of
+Full reasoning lives in each skill; `symfony-yoandev-architecture` carries the summary of
 every deliberate rejection and why.
 
 ## Versions
