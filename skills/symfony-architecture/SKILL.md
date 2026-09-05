@@ -21,6 +21,8 @@ description: >-
 
 # Architecture
 
+> **Tier: core** — the layer contract and the five rules live here, and none of them is optional. The one on-demand item is the deptrac configuration that enforces it mechanically (`symfony-quality`).
+
 Where code goes, and why the boundary is where it is.
 
 One rule generates most of the others: **the entity holds no rule, so the service holds
@@ -36,20 +38,39 @@ every rule.** Everything below follows from that.
 | **DTO** | Carry data across a boundary, hold validation constraints | Depend on Doctrine, contain logic beyond normalisation |
 | **Entity** | Mapped state, getters, setters, value constants | Invariants, `publish()`-style domain methods |
 
-This is not enforced by good intentions: `symfony-quality` ships a deptrac
-configuration that fails the build on a violation. If a class does not fit a layer, the
-class is in the wrong place — do not widen the rule.
+The contract holds by being followed; `symfony-quality` ships a deptrac configuration
+that verifies it mechanically, for the day a second developer or an unsupervised agent
+makes review insufficient. If a class does not fit a layer, the class is in the wrong
+place — do not widen the rule.
 
 ### Why entities are anemic, and what it costs
 
 Entities are generated in maker format: private properties, getters, setters. That is a
-deliberate choice for tooling and migration comfort, and it has one direct consequence
-that must be stated rather than discovered.
+deliberate trade, not a law of nature, and its terms must be stated rather than
+discovered.
 
-**An entity with a public setter for every property cannot hold an invariant.** Nothing
-stops `$book->setRating(9)`. So a rule guarded inside the entity is guarded nowhere: it
-protects one path and leaves the others open, which is worse than no guard at all
-because it reads like safety.
+**What it buys.** One rule with no exceptions — every rule lives in a service — which is
+easy to teach, easy to review, and checkable by deptrac. And zero friction with the
+tooling: `make:entity`, the Form component, fixtures and EasyAdmin all expect setters and
+a no-argument constructor, and all keep working untouched.
+
+**What it costs.** A setter enforces nothing, so nothing technical stops
+`$book->setRating(9)` outside `BookRater`. The guarantee rests on every write path going
+through the service. That is a real weakness; it is bounded rather than eliminated:
+
+- The HTTP edge — the one path you did not write — is covered by the Input DTO's
+  constraints (`symfony-http`).
+- Commands, fixtures and other services are code you write and test; a rule they need is
+  a service they call.
+- A surface that writes without a service, EasyAdmin above all, applies no rule at all.
+  It is a trusted surface. When a local rule must still hold there, duplicate it as an
+  `#[Assert]` constraint on the entity, reading the same constants — that is the one
+  case where a constraint belongs on an entity (`symfony-doctrine`).
+
+Rich entities — a constructor for the mandatory fields, `rate()` instead of
+`setRating()` — would close that gap for local rules. They are rejected here because they
+pay for it in every tool listed above, and because most rules outgrow the entity the day
+they need a query. The reasoning is in `references/rejections.md`.
 
 Therefore every rule lives in a service, and the entity is a typed row.
 
@@ -113,6 +134,14 @@ rule does not change, only the means — `references/dtos.md`.)
   invisible and turns two writes into two transactions.
 - **A service never returns an entity to a controller.** It returns an Output DTO. An
   entity that escapes the service layer is a lazy-loading N+1 waiting for a template.
+- **A service takes identifiers and loads the entity itself.** `rate(int $bookId, …)`,
+  then `$this->books->find($bookId) ?? throw new BookNotFound($bookId)`. The service
+  owns the "not found" because it must work the same from a controller, a command and a
+  message handler, and all three carry an id. The controller resolves the entity
+  (`Book $book`, the EntityValueResolver) in exactly one case: an attribute needs the
+  object *before* the action runs — `#[IsGranted(…, subject: 'book')]` on a voter. It
+  still passes `$book->getId()` to the service, and the service's `find()` costs no
+  query: the identity map already holds the row. Two paths to a 404, one rule for which.
 - **Repositories are the exception to `final`** — they are doubled in service unit
   tests. Everything else is `final`.
 
@@ -213,12 +242,17 @@ public function __construct(
 `#[Autowire]` accepts exactly one of `value`, `service`, `expression`, `env` or `param` —
 passing two throws at compile time.
 
-**Secrets live in `.env.local` and in server environment variables. The Symfony secrets
-vault is not used here.** State the price honestly rather than implying safety that is not
-there: nothing is encrypted at rest, `.env.local` must stay out of Git, and sharing a new
-key with a colleague happens outside the repository. The vault is a defensible
-alternative; it was rejected because key management and the decrypt-at-deploy step cost
-more than they return on a project of this size.
+**Secrets: `.env.local` in development, the platform's secret store in production, and
+the Symfony secrets vault the moment neither covers the case.** The suite deploys a
+container image (`symfony-deployment`), and every container platform already has a
+secret store that injects environment variables. There, the vault would be a second
+store whose own decryption key still has to come from the first; one store is enough.
+The vault is **not** rejected on its merits — its decryption key is one environment
+variable, no harder to deploy than a DSN, and it is the only mechanism that lets a
+secret be versioned and reviewed. It is the answer as soon as there is no platform store
+(a bare server, an rsync deploy), or as soon as secrets must travel through the
+repository. What is rejected is `.env.local` on a production host, and two mechanisms
+on one project.
 
 ## Dependency injection and patterns
 

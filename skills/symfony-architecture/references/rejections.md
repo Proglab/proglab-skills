@@ -26,9 +26,10 @@ standard, and if a project keeps only these it still recognisably follows it:
 
 1. **No domain events for business consequences.** Consequences are direct calls, so a
    use case is readable in one method and testable with one assertion.
-2. **No rules on entities.** Maker-format entities have setters, setters make invariants
-   unenforceable, so rules live in services — which is also why services are where the
-   tests point.
+2. **No rules on entities.** One rule with no exceptions is easy to hold, and
+   maker-format entities keep every tool working; so rules live in services — which is
+   also why services are where the tests point. The price is stated, not hidden: the
+   guarantee rests on every write going through the service.
 3. **No queries outside repositories.** Named after intent, so the same query exists once
    and can be optimised once.
 4. **No entities crossing the service boundary.** Output DTOs, so a mapping change is not
@@ -42,9 +43,9 @@ standard, and if a project keeps only these it still recognisably follows it:
 |---|---|---|
 | Domain events dispatched for business consequences | The service calls its collaborator directly | "What happens when X?" becomes a project-wide search, and the order depends on invisible listener priorities |
 | `EventSubscriberInterface` | `#[AsEventListener]` on the class | A static `getSubscribedEvents()` to keep in sync, for no gain |
-| Rich entities with `publish()`-style methods | Rules in services, entities in maker format | An entity with a public setter per property cannot enforce an invariant, so a method that pretends to is worse than none |
+| Rich entities with `publish()`-style methods | Rules in services, entities in maker format | Simplicity and tooling: one rule with no exceptions, and `make:entity`, Form, fixtures and EasyAdmin keep working. The price is that the guarantee rests on going through the service — bounded by the Input DTO at the HTTP edge, and by `#[Assert]` on the entity where an admin surface bypasses services |
 | Kernel event listeners as a first reflex | The dedicated mechanism: `#[WithHttpStatus]`, a ValueResolver, `#[Cache]`, a Voter | A kernel listener runs on everything, far from the code it affects, and debugs badly |
-| The Symfony secrets vault | `.env.local` and server environment variables | Key management and the decrypt-at-deploy step cost more than they return at this size. The price is stated honestly: nothing is encrypted at rest |
+| The Symfony secrets vault on top of a container platform's secret store | The platform store alone, as environment variables | The vault's decryption key would itself be a platform secret: a second store fed by the first. The vault is not rejected on its merits — it is the standard wherever there is no platform store or secrets must be versioned (`symfony-deployment`). What is rejected outright is `.env.local` on a production host |
 | `#[Required]` setter injection | Constructor injection | Makes a dependency look optional and the service mutable |
 | `ServiceSubscriberInterface` / `#[SubscribedService]` | `#[AutowireLocator]` | Same laziness, dependency visible in the constructor, no static method |
 | `#[AutowireInline]` | A normal service definition | A service defined inside another class's attribute is unfindable |
@@ -71,7 +72,7 @@ standard, and if a project keeps only these it still recognisably follows it:
 | A bare array with pagination in HTTP headers | `items` + `meta` envelope | Headers are invisible in most clients and lost through proxies |
 | Cursor pagination | Page / perPage / total / pages | Real cost only pays off at a scale this standard does not assume; it forbids "jump to page 7" |
 | Pagerfanta | The envelope above, built in the service | A dependency to expose four integers |
-| `#[UniqueEntity]` on the entity | On the Input DTO with `entityClass:` | The entity is not what gets validated, so on the entity the constraint never fires |
+| `#[UniqueEntity]` on the entity | On the Input DTO with `entityClass:` | The entity is not what the HTTP edge validates, so there the constraint never fires. Add it on the entity as well only when an admin surface edits that field (`symfony-doctrine`) |
 | Custom exception listeners for API errors | `#[WithHttpStatus]` plus RFC 7807 Problem Details | The status belongs next to the exception's meaning |
 | API Platform, for a small hand-written API | Input/Output DTOs, `#[Serialize]`, the envelope above | Full control over a contract you own end to end. **This is a scoping decision, not a judgement** — past a handful of resources, or as soon as a documented OpenAPI contract is needed, redirect to API Platform instead of reimplementing it. The suite does not cover it (`symfony-http`) |
 
@@ -87,6 +88,7 @@ standard, and if a project keeps only these it still recognisably follows it:
 | `schema:update` in production | Generated migrations, read and corrected by hand | The generator does not know about existing data and emits DROP/ADD where a RENAME was needed |
 | `\DateTime` | `\DateTimeImmutable` | A mutable date passed to two services is one shared bug |
 | String constants for closed value sets | Native enums with `enumType:` | The database and PHP agree, and the IDE knows the cases |
+| `#[Assert]` constraints on entities as the general rule | Constraints on the Input DTO; on the entity only for a local rule that must hold on an admin surface such as EasyAdmin, reading the same constants | The entity is not what the HTTP edge validates. An admin that writes without a service is a trusted surface, and an entity constraint is the one guard it applies |
 
 ## Security
 
@@ -147,11 +149,11 @@ standard, and if a project keeps only these it still recognisably follows it:
 | PHP_CodeSniffer alongside php-cs-fixer | php-cs-fixer as the only style tool | Two formatters that disagree correct each other in a loop |
 | `local-php-security-checker` | `composer audit` | Archived; its own repository points at the replacement |
 | `symfony check:security` | `composer audit` | Works, but duplicates a check built into Composer since 2.4 |
-| Quality tools in `composer.json` | The `jakzal/phpqa` Docker image | Their dependency ranges conflict with the application's on the day you need a real upgrade |
-| Both a Makefile and a `castor.php` | One entry point — offer the choice, do not decide silently | Two task runners drift apart |
+| Quality tools installed per project | The `jakzal/phpqa` Docker image | One pinned version of every tool, identical locally and in CI, extensions included. Not because of dependency conflicts: only php-cs-fixer has any, PHPStan and deptrac are self-contained phars and are acceptable in `require-dev` (`symfony-quality`) |
+| Both a Makefile and a `castor.php` | `castor.php`, and the Makefile only where Castor genuinely cannot be installed — one of the two, never both | Two task runners drift apart, and then nobody knows which one CI runs. Castor is the default because tasks are real PHP; the Makefile is a fallback, not an equal option (`symfony-quality`) |
 | PHPStan level 5 while writing fully typed code | Level max, with the Symfony and Doctrine extensions | Paying the annotation cost without collecting the benefit |
 | Testing on SQLite, shipping on PostgreSQL | A CI database service matching production | The differences then surface in production instead of in CI |
-| Backward-compatible migrations as a hard constraint | Migrations run automatically at deploy | A short interruption is cheaper than designing every schema change for two code versions at once |
+| Backward-compatible migrations as a hard constraint | Migrations run automatically at deploy | A short interruption is cheaper than designing every schema change for two code versions at once. The one consequence to own: a release whose migration drops data has no rollback, and `symfony-deployment` says so before deploying rather than splitting every change |
 | Daily development inside the production-like container | Services in Docker, PHP on the host | You lose instant reload and step debugging and pay a rebuild per change |
 | Pinning host ports in `compose.override.yaml` | Publish the container port only | Docker picks a free port, the Symfony CLI discovers it, and two projects run side by side |
 
@@ -167,7 +169,7 @@ honest triggers for revisiting one:
 | No HTTP cache | A public page's slowness has been measured, and the response contains nothing personal |
 | Page/perPage pagination | A list grows past the point where `OFFSET` is cheap, and deep pages are actually requested |
 | No bundler | The product genuinely needs a JS framework with a build step — at which point say it is out of scope for this suite rather than smuggling one in |
-| The secrets vault | Secrets must be shared through the repository, or a compliance requirement asks for encryption at rest |
+| The platform store instead of the vault | There is no platform store (bare server, rsync deploy), or secrets must be versioned and reviewed in the repository — then the vault, wholesale |
 
 Three that do not have a trigger, because the reason does not weaken with scale: rules on
 entities, queries outside repositories, and entities crossing the service boundary. Those

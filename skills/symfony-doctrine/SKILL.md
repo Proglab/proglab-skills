@@ -16,6 +16,8 @@ description: >-
 
 # Doctrine
 
+> **Tier: core** — an entity, a repository and a reviewed migration are not optional. `SELECT NEW` projections are the on-demand part: reach for one when a list hydrates more than it shows.
+
 Entities, relations, repositories, and migrations that survive contact with real data.
 
 Everything here follows from one decision: **entities are dumb**. They are the maker
@@ -60,12 +62,22 @@ flush — a bug with no visible cause. Use `Types::DATE_IMMUTABLE` or
 Native enums with `enumType:` for closed value sets, so the property is genuinely typed
 and PHPStan can reason about it.
 
-**The consequence, stated plainly: an entity with a setter for every property cannot
-hold an invariant.** Anything `setStatus()` was supposed to guarantee is bypassed by the
-next caller. So do not write `publish()`, `rate()` or `archive()` on an entity: a method
-that enforces nothing, next to a setter that enforces nothing either, is decoration.
-Every business rule lives in a service — the entity is a typed row, the service owns the
-behaviour, the repository owns the SQL.
+**The consequence, stated plainly: an entity with a setter for every property enforces
+nothing by itself.** The maker shape is kept because one rule with no exceptions is easy
+to hold and because `make:entity`, Form, fixtures and EasyAdmin all rely on it; the price
+is that the guarantee rests on every write going through a service. So do not write
+`publish()`, `rate()` or `archive()` on an entity: a method that guards one path next to
+a setter that guards none is decoration. Every business rule lives in a service — the
+entity is a typed row, the service owns the behaviour, the repository owns the SQL.
+
+**The one exception: an admin surface that bypasses services.** EasyAdmin writes to the
+entity directly, so no service rule applies there. Treat it as a trusted surface, and
+when a local rule must still hold in the admin, duplicate it as an `#[Assert]` constraint
+on the entity property, reading the same constants the service and the Input DTO read
+(`Book::MAX_RATING`). EasyAdmin validates the entity, so the constraint produces a form
+error there; it stays inert on the HTTP edge, where the Input DTO is what gets validated
+(`symfony-http`). The same goes for `#[UniqueEntity]`: on the Input DTO for the API, on
+the entity too only if the admin edits that field.
 
 Mapping details, relation ownership, cascade and `orphanRemoval`:
 `references/entities-and-relations.md`.
@@ -187,7 +199,7 @@ columns arrive with platform-dependent PHP types. Details and the full pattern:
 stops there.
 
 ```php
-$book = new Book(/* … */);
+$book = (new Book())->setTitle($input->title);   // maker shape: no constructor arguments
 $this->books->add($book);          // repository: persist() only
 $this->entityManager->flush();     // service: one flush, one use case
 $this->notifier->notifyShelfOwner($book);

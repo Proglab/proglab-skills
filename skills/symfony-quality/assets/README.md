@@ -7,7 +7,7 @@ history.
 | File | Goes to | Purpose |
 |---|---|---|
 | `phpstan.dist.neon` | project root | Static analysis at level max, with the Symfony and Doctrine extensions |
-| `deptrac.yaml` | project root | The layer contract, enforced |
+| `deptrac.yaml` | project root | The layer contract, enforced — **on demand**: copy it only when adopting deptrac; every task skips it while it is absent |
 | `.php-cs-fixer.dist.php` | project root | Code style |
 | `phpunit.dist.xml` | project root | The recipe's file plus `failOnPhpunitNotice` and the DAMA extension |
 | `castor.php` | project root | Task entry point (default) |
@@ -43,10 +43,10 @@ language the application runs on.
 
 Either way, the tools themselves run from the
 [`jakzal/phpqa`](https://github.com/jakzal/phpqa) image. That is a deliberate
-choice: PHPStan, php-cs-fixer and deptrac pull dependency ranges that regularly
-conflict with the application's own, and the conflict always surfaces at the
-worst possible moment. Keeping them out of `composer.json` removes the problem
-rather than managing it.
+choice: one pinned version of every tool, identical locally and in CI, with the
+PHPStan extensions preinstalled. (The dependency-conflict argument only ever held
+for php-cs-fixer; PHPStan and deptrac are self-contained phars and are fine in
+`require-dev` if a project prefers Composer — see `symfony-quality`.)
 
 ## What to adapt
 
@@ -99,6 +99,9 @@ written at level max; the existing debt is frozen. The rule that makes this work
 is adding debt on purpose, and that should be an explicit conversation rather
 than a silent commit.
 
-The same applies to deptrac: start with `--report-uncovered` without
-`--fail-on-uncovered`, fix the violations domain by domain, then make it
-blocking.
+The same applies to deptrac: read the report as a map of the real architecture,
+fix the violations domain by domain, and only then add the task to CI. It ships
+with `--report-uncovered`, which lists dependencies on classes outside every
+layer; a `src/` directory in that list is one nobody collected. It does **not**
+ship `--fail-on-uncovered`: vendor classes are uncovered too, and the flag would
+fail on the first `AbstractController`.

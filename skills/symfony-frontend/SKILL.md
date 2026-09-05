@@ -17,6 +17,8 @@ description: >-
 
 # Frontend
 
+> **Tier: core the moment there is a front end** — AssetMapper, Stimulus and the no-bundler rule. Live Components, Mercure and every UX package are on demand — add them when the need appears, as the tables below say.
+
 Twig, Stimulus, Turbo and Symfony UX, served by AssetMapper. No bundler.
 
 ```bash

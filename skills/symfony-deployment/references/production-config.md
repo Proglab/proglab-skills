@@ -193,22 +193,24 @@ debug:dotenv` shows which file each value actually came from; run it when a vari
 
 ## Secrets
 
-**Secrets live in `.env.local` or in the server's environment. Symfony's secrets vault
-(`secrets:set`, `config/secrets/`) is deliberately not used here.**
+**On the container target, secrets come from the platform's secret store as environment
+variables, and Symfony's vault is not layered on top.** The reason is narrow and worth
+stating exactly: the vault's decryption key would itself have to be a platform secret,
+so the vault would be a second store fed by the first, with nothing gained but a
+`secrets:decrypt-to-local` step to forget.
 
-Stated honestly, because a rule about secrets that oversells itself is worse than no
-rule: **nothing is encrypted at rest.** Anyone with a shell on the host, read access to
-the orchestrator's configuration, or a copy of a backup can read them. Sharing a secret
-with a colleague happens outside the repository — a password manager, not a commit.
+**Off that target, the vault is the standard.** A bare server, a deploy by rsync, a host
+with no secret store: there, `.env.local` is a plaintext file that nobody rotates and
+that a backup copies, and the vault is what Symfony built for exactly that case.
+`secrets:set`, `config/secrets/prod/` committed, the decryption key injected as
+`SYMFONY_DECRYPTION_SECRET` on the host and nowhere else. Its decryption key is one
+environment variable — no harder to deploy than the DSN — and it is the only mechanism
+that lets a secret be versioned, reviewed in a pull request and rotated in a commit.
+That is also why a project on a platform may still choose it: when secrets must travel
+through the repository, adopt it.
 
-What the choice buys: one mechanism instead of two, no decryption key that itself has to
-be deployed, rotated and eventually lost, and no class of bug where the vault is correct
-and the application still reads a stale `.env.local`.
-
-The vault's real advantage — encrypted values committable to git — is genuine. A project
-that needs it is making a documented deviation, not a mistake; adopt it wholesale rather
-than half, because two secret mechanisms in one project is how a secret ends up in
-neither.
+Whichever store is in use, **one, not two.** A value in the vault and the same key in the
+platform is how a rotation updates one of them and the application reads the other.
 
 ## The filesystem
 

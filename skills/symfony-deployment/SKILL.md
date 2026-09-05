@@ -17,6 +17,8 @@ description: >-
 
 # Deployment
 
+> **Tier: on demand, then not optional** — nothing here applies before there is a production target. Once there is one, the sequence and its order are not negotiable.
+
 One artefact, one sequence, one way to undo it.
 
 The target is a **Docker image running FrankenPHP**, deployed by replacing containers.
@@ -152,13 +154,17 @@ caveats, in `references/production-config.md`.
 environment variables still win over it — that is how you inject a DSN per environment
 without rebuilding.
 
-**Secrets live in `.env.local` or in the server's environment. The secrets vault is not
-used here.** Say the price out loud rather than implying safety that does not exist:
-**nothing is encrypted at rest**, anyone with a shell on the host or a look at the
-orchestrator's config can read them, and sharing a secret with a colleague happens
-outside the repository — a password manager, not a commit. What you get in exchange is
-one mechanism instead of two, no decryption key to deploy and lose, and `.env.local`
-being unreadable by design because it is never committed.
+**Secrets come from the platform's secret store, injected as environment variables.**
+Every orchestrator has one, it is where the DSN already lives, and it is the one place
+an operator looks. The Symfony secrets vault is not layered on top of it here, for one
+reason only: its decryption key would itself be a platform secret, so the vault would be
+a second store fed by the first. **It is the right tool, not a rejected one, the moment
+the platform store is missing** — a bare server, an rsync deploy — or the moment
+secrets must be versioned and reviewed in the repository; then adopt it wholesale
+(`secrets:set`, `config/secrets/prod/`, the key injected as `SYMFONY_DECRYPTION_SECRET`)
+and drop the platform variables for those values. Two mechanisms on one project is how a
+secret ends up in neither. What is never acceptable: a `.env.local` on a production
+host, which is a plaintext file nobody rotates.
 
 `.env.local` is not committed, so it is not in the image either. On a container platform,
 inject through the platform. `references/production-config.md` has the precedence rules
@@ -187,12 +193,25 @@ Rollback works when two things are true, and they are decided *before* the incid
 
 - **Image tags are immutable.** Deploy `app:a1b2c3d`, never `app:latest`. You cannot
   roll back to a tag that has been overwritten.
-- **Migrations do not destroy data.** A migration that dropped a column can be rolled
-  back in code and not in reality. Splitting a destructive change over two releases —
-  stop writing to the column now, drop it next week — is what keeps rollback available.
+- **The release's migrations did not destroy data.** A migration that dropped a column
+  can be rolled back in code and not in reality.
 
-What makes it impossible: a mutable tag, a `down()` method nobody has ever run, and
-building the image on the production host so there is no previous artefact to return to.
+The second point is **not** a backward-compatibility rule, and it does not reopen the
+one this standard rejects. Migrations still run at deploy, still rename a column in one
+statement, and old containers still meet the new schema for a few seconds. What it says
+is narrower: **a release that carries a destructive migration has no rollback, and that
+is stated before deploying**, not discovered during the incident. Most releases carry
+none — an added column, a new table, a new index — and roll back for free.
+
+When a particular release must stay reversible *and* drops something, split that one
+change: stop writing to the column in this release, drop it in a later one. That is a
+choice made per release, for a checkout or a payment table, and the price of it is one
+extra deploy for that change — not expand/contract as a standing policy for every
+schema edit.
+
+What makes rollback impossible: a mutable tag, a `down()` method nobody has ever run,
+and building the image on the production host so there is no previous artefact to
+return to.
 
 ## When production misbehaves
 

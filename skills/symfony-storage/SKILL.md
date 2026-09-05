@@ -16,6 +16,8 @@ description: >-
 
 # File storage
 
+> **Tier: on demand** — applies the moment the application accepts a file. From then on, the public-versus-protected decision is core; Flysystem and object storage are the price of the suite's container deployment.
+
 Where an uploaded file goes, how it comes back out, and what the database holds.
 
 `symfony-http` covers receiving the upload — `#[MapUploadedFile]`, files inside a

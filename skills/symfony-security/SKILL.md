@@ -19,6 +19,8 @@ description: >-
 
 # Security
 
+> **Tier: core the moment the application has users** — the wiring check, one firewall, roles for zones and voters for objects. The hardening table is core too; `#[RateLimit]` beyond login is on demand.
+
 Who the request is, and what that lets them do. Two questions, two mechanisms — and the
 first is the one people skip.
 
@@ -124,7 +126,11 @@ actions, never roles:** `#[IsGranted(ReviewVoter::EDIT, subject: 'review')]`, no
 controller that checks a role.
 
 `subject: 'review'` names the **controller argument**; the resolved object is what the
-voter receives. Omit it and the voter is called with `null`, `supports()` returns false,
+voter receives. This is the one case where a controller resolves an entity
+(`Review $review`, the EntityValueResolver) instead of handing an id to the service: the
+voter runs before the action, so the object has to exist before the service is called.
+The action still passes `$review->getId()` to the service, which reloads for free from
+the identity map (`symfony-architecture`). Omit it and the voter is called with `null`, `supports()` returns false,
 every voter abstains — and an all-abstain decision is **denied**, because
 `allow_if_all_abstain` defaults to `false` (verified by execution). So the symptom is a
 403 on an action that should have been allowed, and the cause is an attribute that looks

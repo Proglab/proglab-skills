@@ -11,10 +11,9 @@ declare(strict_types=1);
  *   castor qa:cs
  *
  * Same contract as the Makefile alternative: every tool runs from the
- * jakzal/phpqa image, so PHPStan, php-cs-fixer and deptrac never land in
- * composer.json. Those packages pull dependency ranges that regularly clash
- * with the application's own, and the clash always surfaces at the worst
- * possible moment.
+ * jakzal/phpqa image — one pinned version of each, identical locally and in
+ * CI, extensions preinstalled. (Only php-cs-fixer has dependencies that can
+ * clash with the application's; PHPStan and deptrac are self-contained phars.)
  *
  * Pick Castor over Make when you want tasks that are real PHP — typed
  * arguments, IDE completion, conditionals that stay readable. Pick Make when
@@ -169,11 +168,21 @@ function csCheck(): int
 #[AsTask(description: 'Verify the layer contract', aliases: ['deptrac'])]
 function deptrac(): int
 {
+    // deptrac is on demand: no deptrac.yaml, nothing to verify, and `qa`
+    // stays green. Copy the file from the skill's assets/ to adopt it.
+    if (!file_exists('deptrac.yaml')) {
+        io()->note('No deptrac.yaml — layer contract not enforced on this project.');
+
+        return 0;
+    }
+
     return exit_code(phpqa([
         'deptrac', 'analyse',
         '--config-file=deptrac.yaml',
-        // Uncovered code is a gap in the contract, not a pass.
-        '--fail-on-uncovered',
+        // Lists dependencies on classes outside every layer, so a src/
+        // directory nobody collected stays visible. Not --fail-on-uncovered:
+        // vendor classes are uncovered too, and it would fail on the first
+        // AbstractController.
         '--report-uncovered',
     ]));
 }

@@ -20,6 +20,8 @@ description: >-
 
 # Testing
 
+> **Tier: core** — the loop, the pyramid and DAMA apply to every project. The mutation check applies to every declarative behaviour you claim to have tested. Query-count tests are `symfony-performance`'s and on demand.
+
 The test is written first, run first, and seen failing first. Everything else in this
 skill exists to make that possible on a real Symfony application.
 

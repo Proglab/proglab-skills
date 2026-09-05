@@ -17,6 +17,8 @@ description: >-
 
 # Observability
 
+> **Tier: on demand** — channels and redaction matter from the first production deploy; correlation ids, the worker heartbeat and health probes are switched on by a real worker, a real orchestrator, a real incident.
+
 An application that reaches production and then goes silent is not finished. This skill
 covers **what the application emits and how it is structured**: channels, levels,
 processors, redaction, alerts, health. **Where logs go is infrastructure and out of
@@ -150,6 +152,7 @@ after N retries` the moment retries are exhausted, before
 guarded on `willRetry()` so the three retries stay quiet:
 
 ```php
+// The canonical copy is references/alerting.md; this one is identical to it.
 #[AsEventListener]
 #[WithMonologChannel('alert')]
 final readonly class AlertOnMessageSentToFailureTransport
@@ -162,9 +165,12 @@ final readonly class AlertOnMessageSentToFailureTransport
             return;
         }
 
+        $envelope = $event->getEnvelope();
+
         $this->logger->critical('Message moved to the failure transport', [
-            'message_class' => $event->getEnvelope()->getMessage()::class,
+            'message_class' => $envelope->getMessage()::class,
             'transport' => $event->getReceiverName(),
+            'retries' => RedeliveryStamp::getRetryCountFromEnvelope($envelope),
             'exception' => $event->getThrowable(),
         ]);
     }

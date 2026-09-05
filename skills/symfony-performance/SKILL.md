@@ -20,6 +20,8 @@ description: >-
 
 # Performance
 
+> **Tier: on demand** — every rule here follows a measurement. Nothing in this skill is done pre-emptively, including the query-count test, which is written for a list that has been seen to grow.
+
 Measure, fix the query, then write the test that stops it coming back.
 
 Everything in this skill assumes the ordering. A cache added before a measurement does
@@ -57,9 +59,10 @@ type-hints `Stopwatch` therefore fails to compile the container on
 ## The query-count test
 
 Every list endpoint gets an integration test that counts the SQL queries it executes.
-This suite uses bidirectional Doctrine relations, which makes N+1 easy to reintroduce
-by accident — a template that touches `book.reviews` is enough. An untested rule is a
-wish, so the rule gets a test.
+`symfony-doctrine` makes a relation bidirectional only where the inverse side is
+genuinely read — and wherever one exists, N+1 is one dot away: a template that touches
+`book.reviews` is enough to reintroduce it by accident. An untested rule is a wish, so
+the rule gets a test.
 
 ```php
 $this->seed(1);

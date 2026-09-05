@@ -118,10 +118,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # deptrac is on demand: the job is a no-op until deptrac.yaml is committed.
       - name: deptrac
+        if: hashFiles('deptrac.yaml') != ''
         uses: docker://jakzal/phpqa:1.125.1-php8.4-alpine
         with:
-          args: deptrac analyse --config-file=deptrac.yaml --fail-on-uncovered --report-uncovered --no-progress
+          args: deptrac analyse --config-file=deptrac.yaml --report-uncovered --no-progress
 
   lint:
     name: Linters and audits

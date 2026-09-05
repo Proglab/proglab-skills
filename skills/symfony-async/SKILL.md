@@ -15,6 +15,8 @@ description: >-
 
 # Asynchronous work
 
+> **Tier: on demand** — nothing in this skill applies until an operation genuinely leaves the request. The first section decides whether it does; if not, close this file.
+
 Messenger, Mailer and Scheduler. One transport, three rules.
 
 ## First: does this need to be asynchronous at all?
@@ -157,35 +159,13 @@ persistent, surviving a restart, still there tomorrow morning.
 **The rule that matters: a message reaching the failure transport must raise an alert.**
 A failure queue nobody reads is a data-loss mechanism with extra steps.
 
-```php
-#[AsEventListener]
-final readonly class AlertOnMessageSentToFailureTransport
-{
-    public function __construct(private LoggerInterface $logger) {}
-
-    public function __invoke(WorkerMessageFailedEvent $event): void
-    {
-        if ($event->willRetry()) {
-            return;   // still in the retry loop, not lost yet
-        }
-
-        $this->logger->critical('Message sent to the failure transport', [
-            'message' => $event->getEnvelope()->getMessage()::class,
-            'exception' => $event->getThrowable(),
-        ]);
-    }
-}
-```
-
-`critical` is the level an alert handler filters on. Wire one — a `critical` that only
-reaches `var/log/prod.log` is not an alert. **Not `symfony_mailer`:** this standard routes
-`SendEmailMessage` to `async`, so that handler queues the alert about the broken queue *on
-the broken queue* (measured). `slackwebhook`, `error_log`, a stream on `php://stderr` with
-the platform's own alert rule, or an error tracker as a `service` handler — anything that
-does not re-enter Messenger. (`native_mailer` uses PHP's `mail()` and so does not, but it
-is a poor alert channel for its own reasons.) The sink, the `fallbackgroup` that stops an
-unreachable webhook turning a log call into a 500, the worker heartbeat and the health
-check all belong to `symfony-observability`, which owns them.
+This skill states the rule; **`symfony-observability` owns the mechanism** and the code
+is written once, in its `references/alerting.md`: a listener on `WorkerMessageFailedEvent`
+guarded by `willRetry()`, logging at `critical` on an `alert` channel, and — the part that
+decides whether it is an alert at all — a sink that does not re-enter Messenger. The one
+fact worth carrying from here: **not `symfony_mailer`.** This standard routes
+`SendEmailMessage` to `async`, so an email alert about the broken queue is queued on the
+broken queue (measured). Do not copy the listener from memory; read that file.
 
 ## Prioritised queues
 

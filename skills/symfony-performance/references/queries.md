@@ -2,7 +2,7 @@
 
 Verified against **doctrine/orm 3.6.8 / doctrine/dbal 4.4.4 / Symfony 8.1.5 / PHP 8.4**.
 All DQL and QueryBuilder code below belongs in a repository — that is the layer contract,
-and `deptrac` enforces it.
+and `deptrac` enforces it once adopted (`symfony-quality`).
 
 ## Recognising an N+1
 
@@ -21,10 +21,11 @@ site, the profiler's Doctrine panel is the only honest way to see them: it print
 backtrace for each query when `profiling_collect_backtrace` is on, which points at the
 exact template line.
 
-This suite uses **bidirectional relations**, which is a deliberate trade: navigation
-reads well (`$book->getReviews()`), and the price is that lazy loading is one dot away.
-The mitigation is not "avoid bidirectional relations", it is the mechanical query-count
-test in `references/query-counting.md`.
+`symfony-doctrine` allows a **bidirectional relation** where the inverse side is
+genuinely read, and keeps it unidirectional otherwise. Where one exists it is a
+deliberate trade: navigation reads well (`$book->getReviews()`), and the price is that
+lazy loading is one dot away. The mitigation is not "avoid bidirectional relations", it
+is the mechanical query-count test in `references/query-counting.md`.
 
 ## Fix 1 — the fetch join
 

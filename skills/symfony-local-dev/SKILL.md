@@ -14,6 +14,8 @@ description: >-
 
 # Local development
 
+> **Tier: core** — a project that cannot be booted cannot be tested. The production-like container is the on-demand part: run it before shipping, not daily.
+
 Services in Docker, PHP on the host, the Symfony CLI wiring the two together.
 
 ```bash

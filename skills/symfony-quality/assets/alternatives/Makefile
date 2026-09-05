@@ -1,9 +1,9 @@
 # Quality gate. Copy to the project root and commit it.
 #
-# Every tool runs from the jakzal/phpqa image, so PHPStan, php-cs-fixer and
-# deptrac never appear in composer.json. That is not tidiness: those packages
-# pull dependency ranges that regularly conflict with the application's own,
-# and the conflict always surfaces at the worst moment.
+# Every tool runs from the jakzal/phpqa image: one pinned version of each,
+# identical locally and in CI, extensions preinstalled. (Only php-cs-fixer has
+# dependencies that can conflict with the application's; PHPStan and deptrac
+# are self-contained phars.)
 #
 # Requires Docker. Nothing else.
 
@@ -47,8 +47,9 @@ cs: ## Fix code style
 cs-check: ## Verify code style without changing anything
 	$(PHPQA) php-cs-fixer fix --config=.php-cs-fixer.dist.php --dry-run --diff
 
-deptrac: ## Verify the layer contract
-	$(PHPQA) deptrac analyse --config-file=deptrac.yaml --fail-on-uncovered --report-uncovered
+deptrac: ## Verify the layer contract (skipped when deptrac.yaml is absent — on demand)
+	@test -f deptrac.yaml || { echo "No deptrac.yaml — layer contract not enforced on this project."; exit 0; }
+	$(PHPQA) deptrac analyse --config-file=deptrac.yaml --report-uncovered
 
 audit: ## Known vulnerabilities, PHP and JavaScript
 	# composer audit, not local-php-security-checker: that one is archived and

@@ -17,6 +17,8 @@ description: >-
 
 # Upgrading
 
+> **Tier: on demand** — read when a deprecation, a recipe update or a new major is on the table. The one standing rule is the last-minor-first order.
+
 The recurring cost nobody budgets, and it is invisible until you pay it.
 
 A team that ignores deprecations for two years feels nothing. Then 7.4 → 8.0 becomes a

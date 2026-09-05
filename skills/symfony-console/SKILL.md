@@ -16,6 +16,8 @@ description: >-
 
 # Console commands
 
+> **Tier: core when writing a command** — and within it, dry-run by default and the lock are not optional on a destructive or scheduled command. Everything else is a command like any other.
+
 A command is a translation layer, exactly like a controller. It parses input, calls **one**
 service, formats output. That is the whole job.
 

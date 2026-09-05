@@ -16,22 +16,37 @@ description: >-
 
 # Quality gate
 
+> **Tier: core for PHPStan and php-cs-fixer, on demand for deptrac** — the layer contract holds by itself; deptrac verifies it mechanically and is worth adopting when more than one person, or one agent, writes to the codebase. The shipped tasks skip it when `deptrac.yaml` is absent.
+
 Static analysis, code style, layer enforcement and the CI pipeline.
 
 Everything here is about making rules *verifiable*. A standard that lives only in a
-document is a standard people follow until they are in a hurry. The layer contract in
-`symfony-architecture` matters more than any other rule in this suite — which is
-exactly why it gets a tool rather than a paragraph.
+document is a standard people follow until they are in a hurry. PHPStan and php-cs-fixer
+are the core of that: cheap, silent when nothing is wrong, and they run on every
+project. deptrac is the on-demand part — the layer contract in `symfony-architecture`
+holds by itself, and the tool that checks it mechanically earns its place when more
+than one person, or one agent, writes to the codebase. **Adopt it deliberately:** copy
+`deptrac.yaml` when you do, and until then the shipped tasks skip it.
 
 ## The tools do not go in composer.json
 
 Run every tool from the [`jakzal/phpqa`](https://github.com/jakzal/phpqa) image.
 
-This is not tidiness. PHPStan, php-cs-fixer and deptrac pull dependency ranges that
-regularly conflict with the application's own — and the conflict surfaces the day
-someone needs to upgrade a real dependency and Composer refuses because the linter
-disagrees. Keeping them out of `composer.json` removes the problem instead of
-managing it.
+Two reasons, and the honest one first. **One pinned version of every tool, identical on
+every machine and in CI**, with the PHPStan extensions already installed, and nothing to
+add to the project but a Docker daemon. A tool that runs from the image cannot be at
+one version on a laptop and another in the pipeline, which is where "it passes locally"
+comes from.
+
+The second reason applies to one tool only, and the suite used to overstate it.
+**php-cs-fixer** depends on `symfony/console`, `symfony/finder` and friends, and its
+constraint on them can hold the application back on the day of a Symfony upgrade.
+**PHPStan and deptrac do not have that problem**: both ship as self-contained,
+prefixed phars with no dependency surface, and installing `phpstan/phpstan` through
+Composer conflicts with nothing. If a project prefers Composer-managed tools, PHPStan
+and deptrac in `require-dev` are fine, and php-cs-fixer through `phive` or
+`php-cs-fixer/shim` sidesteps its dependencies. The image is the default here for the
+first reason, not the second.
 
 The image already contains `phpstan-symfony`, `phpstan-doctrine`,
 `phpstan-strict-rules`, `phpstan-deprecation-rules`, `php-cs-fixer`, `deptrac`,
@@ -113,19 +128,39 @@ run PHPStan by hand, do it yourself.
 
 Common errors and how to fix them properly: `references/phpstan.md`.
 
-## deptrac: the layer contract, enforced
+## deptrac: the layer contract, enforced (on demand)
 
-This is the piece that makes the whole standard hold. `deptrac.yaml` declares which
-layer may depend on which:
+The contract is a rule people can follow without a tool. deptrac is for the day that
+stops being true — a second developer, an agent working unsupervised, a codebase large
+enough that a `QueryBuilder` in a service goes unnoticed in review. Until then, do not
+copy `deptrac.yaml`: the `qa` task, the Makefile target and the CI job all skip deptrac
+when the file is absent. When you do adopt it, the file declares which layer may depend
+on which:
 
-- a **controller** may reach services, DTOs and forms — never Doctrine;
-- a **service** may reach repositories, DTOs and entities, plus
+- a **controller** may reach HttpFoundation, services, DTOs, forms, entities (for the
+  EntityValueResolver and `#[IsGranted(subject:)]`) and voter constants — never
+  Doctrine;
+- a **service** may reach repositories, DTOs, entities and exceptions, plus
   `EntityManagerInterface` for the `flush()` it owns — never DBAL, never `QueryBuilder`,
   never `HttpFoundation`;
-- a **repository** is the only place allowed to touch Doctrine.
+- a **repository** is the only place allowed to touch Doctrine;
+- an **entity** may reach the `#[ORM\…]` mapping attributes, the `Collection` classes
+  and `Types` — and nothing else of Doctrine's, and nothing of ours but enums;
+- a **message handler** is a controller for messages: services and repositories, since
+  a message carries identifiers and the handler reloads.
 
-Run it with `--fail-on-uncovered`. Code that belongs to no layer is a gap in the
-contract, not a pass — and it is exactly where violations hide.
+The shipped file is verified against the deptrac in the `jakzal/phpqa` image (4.7.1 at
+the time of writing): clean on a sample of every layer above, exit code 1 the moment a
+`QueryBuilder` enters a service. Its collectors are `classNameRegex` with delimited
+patterns; the `className` type that older examples use no longer exists.
+
+Run it with `--report-uncovered`, and read the report. An *uncovered* dependency is one
+on a class outside every layer — `AbstractController`, `LoggerInterface`, most of
+`vendor/` — so the list is long by nature. What matters in it is a class under `src/`:
+that is a directory nobody collected, and it is not being checked. **`--fail-on-uncovered`
+is not used**, deliberately: it would fail on the first vendor class a controller extends.
+Directories the shipped file leaves out on purpose — `src/Command`, `src/EventListener`,
+`src/Serializer` — are listed in its header comment.
 
 Adapting the layers to a project that groups code by domain rather than by technical
 role: `references/deptrac.md`.
@@ -145,8 +180,9 @@ Commit `phpstan-baseline.neon`, uncomment the `includes` line, and hold one rule
 request that adds entries to the baseline is adding debt deliberately, which deserves
 a conversation rather than a silent commit.
 
-Same approach for deptrac: start with `--report-uncovered` but without
-`--fail-on-uncovered`, fix violations domain by domain, then make it blocking.
+Same approach for deptrac: run it, read the report as a map of the real architecture,
+fix violations domain by domain, then add the task to CI. It is blocking on violations
+from day one; there is no baseline to freeze, and it should not need one.
 
 ## When a check fails
 

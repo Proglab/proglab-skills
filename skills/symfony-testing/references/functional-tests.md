@@ -222,23 +222,33 @@ leaves the default behaviour — the one that protects production — unverified
 
 ## Voters
 
-A voter is a pure function of (token, subject, attribute). It needs no kernel.
+A voter is a pure function of (token, subject, attribute). It needs no kernel. The
+`ReviewVoter` under test is the one `symfony-security` defines: it takes an
+`AuthorizationCheckerInterface` for the moderator check, so the test hands it a stub.
 
 ```php
 #[Test]
 public function only_the_author_may_edit_their_review(): void
 {
-    $author = new User('reader@example.com');
-    $review = new Review($author, 'Excellent.');
-    $voter = new ReviewVoter();
+    $author = (new User())->setEmail('reader@example.com');
+    $review = (new Review())->setAuthor($author)->setContent('Excellent.');
 
-    $token = new UsernamePasswordToken($author, 'main', ['ROLE_USER']);
-    self::assertSame(VoterInterface::ACCESS_GRANTED, $voter->vote($token, $review, ['REVIEW_EDIT']));
+    $checker = $this->createStub(AuthorizationCheckerInterface::class);
+    $checker->method('isGranted')->willReturn(false);   // nobody here is a moderator
+    $voter = new ReviewVoter($checker);
 
-    $other = new UsernamePasswordToken(new User('other@example.com'), 'main', ['ROLE_USER']);
-    self::assertSame(VoterInterface::ACCESS_DENIED, $voter->vote($other, $review, ['REVIEW_EDIT']));
+    $token = new UsernamePasswordToken($author, 'main', $author->getRoles());
+    self::assertSame(VoterInterface::ACCESS_GRANTED, $voter->vote($token, $review, [ReviewVoter::EDIT]));
+
+    $other = (new User())->setEmail('other@example.com');
+    $otherToken = new UsernamePasswordToken($other, 'main', $other->getRoles());
+    self::assertSame(VoterInterface::ACCESS_DENIED, $voter->vote($otherToken, $review, [ReviewVoter::EDIT]));
 }
 ```
+
+Entities are built the way the rest of the suite builds them — maker shape, `new` then
+setters, no constructor arguments — so the test does not depend on a constructor the
+entity does not have.
 
 Three cases: **granted** for the user who may, **denied** for a user who may not, and —
 the one people forget — **abstained** (`ACCESS_ABSTAIN`) for an attribute the voter does

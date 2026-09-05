@@ -72,6 +72,44 @@ deliberate.
 If a change seems too small to deserve a test, it is still covered by rule 1. If a rule
 seems wrong for the case at hand, say so and explain why rather than quietly bending it.
 
+## Two tiers: the core, and what the project has to earn
+
+The five rules above are the whole **core**. They remove decisions and add no artefact:
+a project that keeps only them still follows this standard. Everything else in the suite
+is **on demand** — it adds a file, a tool or a ritual per feature, and it is switched on
+by a real need, never pre-emptively. Each skill says which tier it is in, right under
+its title.
+
+| Tier | What is in it | Switched on by |
+|---|---|---|
+| **Core** | The five rules; the layer contract; Input and Output DTOs; `dama/doctrine-test-bundle`; PHPStan and php-cs-fixer; the local dev loop | Nothing — it applies to every Symfony project this suite touches |
+| **On demand** | Query-count tests; deptrac; Messenger, Scheduler and prioritised queues; application and HTTP caches; correlation ids, health checks, alert sinks; signed URLs and object storage; Live Components and Mercure | A measured slowness, a second worker, a real queue, a real deploy target, a real upload, a real second developer |
+
+The test for any rule you are about to apply or add: **does it remove a decision, or
+does it add an artefact?** The first kind is free and there can be a hundred of them.
+The second kind is paid on every feature, and it needs the trigger in the right-hand
+column before it is worth paying.
+
+## What the rules do not require
+
+The five rules are read strictly on the boundaries and generously on the ceremony. None
+of the following bends a rule; each is the rule applied with judgement:
+
+- **A GET with nothing but route parameters needs no Input DTO.** `#[MapQueryString]`
+  is for a query string that must be validated, not for `show(int $id)`.
+- **A `SELECT NEW` projection that already matches the contract *is* the Output DTO.**
+  The Read layer exists for the case where the query's shape and the API's shape
+  differ; when they do not, there is one class, in `src/Dto/Output/`.
+- **One Output DTO per shape, not per endpoint.** A list row and a detail view share
+  the class when their fields are the same.
+- **A business exception exists only for a failure a caller can actually hit.** An
+  invalid input is a 422 produced by the DTO's constraints, not an exception class.
+- **A class with no rule gets no unit test of its own.** A DTO without normalisation,
+  a controller, a command, a getter: the functional or smoke test that proves the wiring
+  is the whole coverage they need. Rule 1 is about behaviour, not about files.
+- **A read service may hold every read of one resource.** `ShelfReader::shelf()` and
+  `ShelfReader::book()` in one class is the intent; one class per query is not.
+
 ## Where to go next
 
 | The work is about | Load |

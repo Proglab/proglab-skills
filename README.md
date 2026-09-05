@@ -27,9 +27,10 @@ npx skills use yoanbernabeu/symfony-yoandev-skills@symfony-architecture
 ## The skills
 
 Start with `symfony-standards`. It is deliberately short: it detects the project,
-states the non-negotiable rules, and points at whichever skill below is relevant.
-The others stand on their own and trigger directly when a task is clearly in their
-domain.
+states the non-negotiable rules, draws the line between the core and what a project
+has to earn, and points at whichever skill below is relevant. The others stand on
+their own and trigger directly when a task is clearly in their domain, and each says
+under its title which tier it belongs to.
 
 | Skill | Covers |
 |---|---|
@@ -43,7 +44,7 @@ domain.
 | **symfony-async** | Messenger, Scheduler, Mailer, retries and failure handling |
 | **symfony-console** | Command families and invokable commands, destructive operations, locking |
 | **symfony-performance** | N+1 queries, HTTP and application caching, profiling |
-| **symfony-quality** | PHPStan, deptrac, php-cs-fixer, the CI pipeline — with ready-to-commit config |
+| **symfony-quality** | PHPStan and php-cs-fixer as the core, deptrac on demand, the CI pipeline — with ready-to-commit config |
 | **symfony-local-dev** | Docker services, the Symfony CLI dev server, Mailpit, production-like checks |
 | **symfony-deployment** | Deployment sequence, migrations, production settings |
 | **symfony-observability** | Monolog channels, correlation ids, what never to log, alerting, health checks |
@@ -64,7 +65,9 @@ at a glance whether this suite matches how you work:
 - **AssetMapper, no bundler.** Which means the front end stays Twig, Stimulus and
   Symfony UX — no JSX, no single-file components.
 - **Messenger for asynchronous work only.** Not as an in-process command bus.
-- **The layer contract is enforced by deptrac**, not by review alone.
+- **Two tiers.** Five core rules that remove decisions and cost nothing per feature;
+  everything else — deptrac, query-count tests, Messenger, caches, health checks — is
+  switched on by a real need, never pre-emptively. `symfony-standards` draws the line.
 - **A hand-written JSON API, up to a point.** Past a handful of resources — or the moment
   you need a documented OpenAPI contract — the suite tells you to use API Platform
   instead, and does not cover it.

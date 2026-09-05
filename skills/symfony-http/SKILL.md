@@ -17,6 +17,8 @@ description: >-
 
 # HTTP layer
 
+> **Tier: core** — with the simplifications `symfony-standards` lists under *What the rules do not require* — no Input DTO for a plain GET, one Output DTO per shape.
+
 Controllers, routing, request input, responses, forms, templates.
 
 A controller is a translation layer: HTTP in, a service call, a representation out. It
@@ -63,9 +65,13 @@ final class BookController extends AbstractController
 }
 ```
 
-**The template receives an output DTO, never the entity.** The EntityValueResolver
-(`Book $book`) is for handing an entity to a *service*; letting one reach Twig is how
-`book.author.name` in a loop becomes an N+1 that appears in no PHP file.
+**The template receives an output DTO, never the entity.** And the controller does not
+load entities as a habit: the service takes an id and owns the 404 (`BookNotFound`,
+`symfony-architecture`). The EntityValueResolver (`Book $book`) has one job — resolving
+the subject a `#[IsGranted]` voter needs before the action runs — and even then the
+action passes `$book->getId()` on; the service's `find()` is answered by the identity
+map. Letting a resolved entity reach Twig is how `book.author.name` in a loop becomes an
+N+1 that appears in no PHP file.
 
 `#[Route('/books', name: 'book_')]` on the class plus `name: 'index'` on the action
 gives the route name `book_index`. Rejected alternative: one invokable class per action.
@@ -79,7 +85,7 @@ surface is no longer visible in one place.
 |---|---|---|
 | `if` on a business condition | a service | The rule needs a unit test, not an HTTP request |
 | `EntityManagerInterface`, `flush()` | a service (which calls the repository) | `flush()` is one call per use case, owned by the service |
-| `QueryBuilder`, DQL, `findBy` with criteria | a repository method named after the intent | deptrac enforces this; see `symfony-doctrine` |
+| `QueryBuilder`, DQL, `findBy` with criteria | a repository method named after the intent | Rule 3; deptrac enforces it when adopted. See `symfony-doctrine` |
 | An entity in a JSON response **or a template** | an output DTO in `src/Dto/Output/` | An entity is a mapping, not an API contract; it leaks on every column you add, and lazy-loads from inside rendering |
 | `$request->request->get('title')` | an input DTO + `#[MapRequestPayload]` | Untyped, unvalidated, invisible to PHPStan |
 | `try { … } catch (\Throwable)` around a service call | `#[WithHttpStatus]` on the exception | The status belongs to the exception, once, not to every caller |
@@ -132,7 +138,10 @@ The 404 defaults surprise people: an invalid `?page=abc` reads as "no such page"
 is defensible for an HTML listing and wrong for an API. Pass
 `validationFailedStatusCode: 422` on API routes.
 
-Input DTOs live in `src/Dto/Input/` and carry the validation constraints. Details,
+Input DTOs live in `src/Dto/Input/` and carry the validation constraints. **Not every
+action has one:** a GET whose only input is a route parameter takes `int $id` and stops
+there — the DTO exists for a payload or a query string that must be validated, and
+`symfony-standards` lists the other simplifications the rules allow. Details,
 version fallbacks, uploaded files inside a DTO, variadic payloads, dynamic validation
 groups, and why `#[MapEntity(expr:)]` is rejected: `references/input-mapping.md`.
 
