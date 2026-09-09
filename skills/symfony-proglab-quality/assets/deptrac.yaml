@@ -1,6 +1,6 @@
 # Le contrat de couches, rendu vérifiable.
 #
-#   castor deptrac      (ou : make deptrac)
+#   make deptrac        (ou : castor deptrac)
 #
 # C'est la version mécanique de la règle la plus importante de ce standard :
 # un contrôleur traduit HTTP, un service porte la règle, un repository possède

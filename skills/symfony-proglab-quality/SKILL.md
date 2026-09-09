@@ -69,26 +69,27 @@ phpstan.dist.neon          niveau max, extensions Symfony + Doctrine
 deptrac.yaml               le contrat de couches
 .php-cs-fixer.dist.php     style
 phpunit.dist.xml           le fichier de la recette plus les deux éléments qui lui manquent
-castor.php                 point d'entrée des tâches — celui par défaut
-alternatives/Makefile      le repli, seulement si Castor ne peut pas être installé
+Makefile                   point d'entrée des tâches — celui par défaut
+alternatives/castor.php    l'alternative, pour qui préfère des tâches en PHP réel
 github-workflow-ci.yml  →  .github/workflows/ci.yml
 ```
 
 Puis :
 
 ```bash
-castor qa        # ou : make qa
+make qa        # ou : castor qa
 ```
 
-**`castor.php` est le point d'entrée ; le Makefile est le repli, et un projet en
+**Le Makefile est le point d'entrée ; `castor.php` est l'alternative, et un projet en
 commite un, jamais les deux.** Ils exposent les mêmes noms de tâches — `qa`, `test`,
 `stan`, `stan-baseline`, `cs`, `cs-check`, `deptrac`, `audit`, `lint`,
-`container-cache` — pour qu'un runbook écrit pour l'un reste vrai pour l'autre. Castor
-est le choix par défaut car les tâches y sont du PHP réel : arguments typés,
-conditions qui restent lisibles au-delà de la dixième cible. Make est la réponse
-quand Castor ne peut vraiment pas être installé, puisqu'il ne demande rien d'autre
-que `make` lui-même. Commiter les deux laisse un projet avec deux points d'entrée qui
-finissent par diverger, et alors plus personne ne sait lequel la CI exécute réellement.
+`container-cache` — pour qu'un runbook écrit pour l'un reste vrai pour l'autre. Make
+est le choix par défaut car il ne demande rien d'autre que `make` lui-même, déjà
+présent sur la plupart des hôtes. Castor est la réponse pour qui veut des tâches en
+PHP réel — arguments typés, conditions qui restent lisibles au-delà de la dixième
+cible — au prix d'une dépendance de plus à installer. Commiter les deux laisse un
+projet avec deux points d'entrée qui finissent par diverger, et alors plus personne
+ne sait lequel la CI exécute réellement.
 
 ## À quoi sert chaque outil
 
@@ -181,7 +182,7 @@ milliers d'erreurs, et l'issue habituelle est que quelqu'un retire l'outil une
 semaine plus tard. Gèle plutôt la dette :
 
 ```bash
-castor stan-baseline    # ou : make stan-baseline
+make stan-baseline    # ou : castor stan-baseline
 ```
 
 Commite `phpstan-baseline.neon`, décommente la ligne `includes`, et tiens une seule

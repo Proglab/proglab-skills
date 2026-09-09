@@ -1,6 +1,6 @@
 # Analyse statique. Copier à la racine du projet et committer.
 #
-#   castor qa:stan      (ou : make stan)
+#   make stan           (ou : castor qa:stan)
 #
 # Nécessite les extensions en require-dev — elles ne sont pas auto-enregistrées :
 #   composer require --dev phpstan/phpstan phpstan/phpstan-symfony phpstan/phpstan-doctrine \

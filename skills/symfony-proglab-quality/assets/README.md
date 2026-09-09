@@ -10,27 +10,28 @@ version, pas dans l'historique du shell de quelqu'un.
 | `deptrac.yaml` | racine du projet | Le contrat de couches, imposé — **à la demande** : ne le copie que si tu adoptes deptrac ; chaque tâche l'ignore tant qu'il est absent |
 | `.php-cs-fixer.dist.php` | racine du projet | Style de code |
 | `phpunit.dist.xml` | racine du projet | Le fichier de la recette plus `failOnPhpunitNotice` et l'extension DAMA |
-| `castor.php` | racine du projet | Point d'entrée des tâches (par défaut) |
-| `alternatives/Makefile` | racine du projet | Point d'entrée des tâches, seulement si Castor n'est pas une option |
+| `Makefile` | racine du projet | Point d'entrée des tâches (par défaut) |
+| `alternatives/castor.php` | racine du projet | Point d'entrée des tâches, pour qui préfère des tâches en PHP réel à Make |
 | `github-workflow-ci.yml` | `.github/workflows/ci.yml` | Le pipeline |
 
-## Castor par défaut
+## Make par défaut
 
-`castor.php` est le point d'entrée. Les tâches y sont du PHP réel — arguments typés,
-complétion IDE, conditions qui restent lisibles à mesure que la liste des tâches
-grandit — ce qu'un Makefile cesse d'offrir quelque part autour de la dixième cible.
+`Makefile` est le point d'entrée. Il ne nécessite rien de plus que `make`
+lui-même, déjà présent sur la plupart des hôtes.
 
 ```bash
-castor          # liste toutes les tâches
-castor qa       # la porte complète
+make          # liste toutes les cibles
+make qa       # la porte complète
 ```
 
-Installe-le depuis [castor.jolicode.com](https://castor.jolicode.com).
-
-`alternatives/Makefile` expose les mêmes noms de tâches, pour le cas où Castor ne
-peut vraiment pas être installé. **Commite l'un ou l'autre, jamais les deux** — deux
-points d'entrée finissent toujours par diverger, et alors plus personne ne sait
-lequel la CI exécute réellement.
+`alternatives/castor.php` expose les mêmes noms de tâches, pour qui préfère des
+tâches en PHP réel — arguments typés, complétion IDE, conditions qui restent
+lisibles à mesure que la liste des tâches grandit, ce qu'un Makefile cesse
+d'offrir quelque part autour de la dixième cible. Installe Castor depuis
+[castor.jolicode.com](https://castor.jolicode.com) si tu choisis cette voie.
+**Commite l'un ou l'autre, jamais les deux** — deux points d'entrée finissent
+toujours par diverger, et alors plus personne ne sait lequel la CI exécute
+réellement.
 
 ### Les outils sont épinglés par composer.lock
 
@@ -94,7 +95,7 @@ Le niveau max sur une base de code qui n'a jamais vu PHPStan produit des millier
 d'erreurs, et l'issue habituelle est que l'outil est retiré une semaine plus tard.
 
 ```bash
-castor stan-baseline    # ou : make stan-baseline
+make stan-baseline    # ou : castor stan-baseline
 ```
 
 Commite `phpstan-baseline.neon` et décommente la ligne `includes`. Le nouveau code

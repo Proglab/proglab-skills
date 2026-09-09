@@ -3,22 +3,22 @@
 declare(strict_types=1);
 
 /*
- * Porte de qualité, sous forme de tâches Castor. Copier à la racine du projet et
- * la committer.
+ * Porte de qualité, sous forme de tâches Castor — alternative au Makefile par
+ * défaut, pour qui préfère des tâches en PHP réel (arguments typés,
+ * complétion IDE, conditions qui restent lisibles) à zéro outillage
+ * supplémentaire. Copier à la racine du projet et la committer.
  *
  *   castor                 liste toutes les tâches
  *   castor qa              exécute la porte complète, exactement comme la CI
  *   castor qa:stan
  *   castor qa:cs
  *
- * Même contrat que l'alternative Makefile : chaque outil est une dépendance
+ * Même contrat que le Makefile par défaut : chaque outil est une dépendance
  * require-dev, exécutée via vendor/bin/ — une version épinglée de chacun,
  * résolue par composer.lock, identique en local et en CI.
  *
- * Préférer Castor à Make quand on veut des tâches en PHP réel — arguments
- * typés, complétion IDE, conditions qui restent lisibles. Préférer Make quand
- * on veut zéro outillage supplémentaire. Ne pas committer les deux : deux
- * points d'entrée qui divergent, c'est pire que l'un ou l'autre.
+ * Ne pas committer les deux : deux points d'entrée qui divergent, c'est pire
+ * que l'un ou l'autre.
  *
  * Chaque tâche porte un alias correspondant à la cible Makefile du même nom, si
  * bien que `castor stan` et `make stan` sont la même commande et qu'une
