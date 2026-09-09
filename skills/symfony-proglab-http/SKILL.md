@@ -3,19 +3,22 @@ name: symfony-proglab-http
 description: >-
   Écrire la couche HTTP d'une application Symfony : contrôleurs, routes, mapping des
   entrées de requête, réponses JSON et HTML, formulaires et templates Twig. Une classe
-  de contrôleur par ressource, un préfixe de route au niveau de la classe, des DTO
+  de contrôleur par ressource, un préfixe de route au niveau de la classe, des URLs et
+  des verbes HTTP conformes aux conventions REST (ressources au pluriel, GET/POST/PUT/
+  PATCH/DELETE mappés à leur opération et à leur statut de succès, idempotence), des DTO
   d'entrée hydratés par #[MapRequestPayload] ou un FormType, une sortie via #[Serialize]
   pour le JSON et #[Template] pour le HTML, des Problem Details RFC 7807 pour les erreurs
   d'API, et une enveloppe items + meta pour les listes. Utilise ce skill dès qu'il s'agit
   d'ajouter une page, d'ajouter une route ou un endpoint, d'exposer quelque chose en
-  JSON, de construire une API, de faire un CRUD, de construire ou câbler un formulaire,
-  de mapper un fichier uploadé depuis la requête, de lire un paramètre de requête, de
-  paginer une liste, de retourner un 404 ou un 422, de protéger une action avec un
-  jeton CSRF, de rendre ou restructurer un template Twig, ou quand quelqu'un dit que son
-  endpoint retourne un 500, que son formulaire ne se valide jamais, que son JSON a la
-  mauvaise forme, ou que sa route matche la mauvaise action. Pour ce qui arrive ensuite
-  au fichier uploadé — où il est stocké, comment il est resservi, qui peut le lire —
-  utilise plutôt `symfony-proglab-storage`.
+  JSON, de construire une API REST, de faire un CRUD, de construire ou câbler un
+  formulaire, de mapper un fichier uploadé depuis la requête, de lire un paramètre de
+  requête, de paginer une liste, de retourner un 404 ou un 422, de choisir entre PUT et
+  PATCH, de protéger une action avec un jeton CSRF, de rendre ou restructurer un
+  template Twig, ou quand quelqu'un dit que son endpoint retourne un 500, que son
+  formulaire ne se valide jamais, que son JSON a la mauvaise forme, que sa route matche
+  la mauvaise action, ou qu'un retry côté client crée des doublons. Pour ce qui arrive
+  ensuite au fichier uploadé — où il est stocké, comment il est resservi, qui peut le
+  lire — utilise plutôt `symfony-proglab-storage`.
 ---
 
 # Couche HTTP
@@ -120,6 +123,71 @@ service, deux traductions. Ils divergent sur tout ce que le framework traite
 différemment — format de réponse, rendu des erreurs, absence d'état, authentification,
 mise en cache — et les fusionner finit en `if ($request->getPreferredFormat() ===
 'json')` dans chaque action.
+
+## Ressources et verbes : la forme REST
+
+L'URL nomme une ressource, jamais une action. `/books`, `/books/{id}` — pas
+`/books/create` ni `/books/{id}/delete`. Le nom est au pluriel même pour un item
+unique (`GET /books/{id}`, pas `GET /book/{id}`) : c'est le verbe HTTP qui porte
+l'opération, l'URL ne change pas selon ce qu'on en fait.
+
+| Verbe | Opération | Sûr / idempotent | Statut de succès |
+|---|---|---|---|
+| `GET` | Lire (collection ou item) | Les deux | `200` |
+| `POST` | Créer | Ni l'un ni l'autre | `201` + header `Location` vers la ressource créée |
+| `PUT` | Remplacer intégralement | Idempotent, pas sûr | `200` (ou `204` si rien à renvoyer) |
+| `PATCH` | Modifier partiellement | Traité comme idempotent ici, par choix de simplicité | `200` (ou `204`) |
+| `DELETE` | Supprimer | Idempotent | `204` |
+
+**Idempotent** veut dire : répéter la requête à l'identique ne change rien de plus
+qu'un seul appel n'aurait changé. Un second `DELETE` sur une ressource déjà supprimée
+reste un succès (ou un 404 propre) — jamais un 500 — précisément parce qu'un client
+qui retente après un timeout réseau ne doit pas transformer une incertitude en erreur.
+`POST` est le seul verbe du tableau qui n'a pas cette garantie : le retenter peut créer
+un doublon, ce qui est la vraie raison pour laquelle un formulaire de création affiche
+un état de soumission plutôt que de laisser cliquer deux fois.
+
+**`PUT` et `PATCH` ne prennent pas le même DTO d'entrée, et les confondre est le bug
+le plus fréquent ici.** Un DTO `PUT` a des propriétés **obligatoires** : la requête doit
+fournir la ressource complète, et un champ absent doit être rejeté par la validation,
+pas silencieusement conservé. Un DTO `PATCH` a des propriétés **nullable par
+construction**, où `null` distingue « le client n'a pas touché ce champ » de « le
+client veut le vider » — ce qui, avec `#[MapRequestPayload]`, veut dire vérifier
+`array_key_exists` sur le payload décodé plutôt que de faire confiance à la valeur
+par défaut du DTO. La plupart des API écrites à la main sur cette suite n'implémentent
+que `PATCH` et sautent `PUT` : c'est une simplification légitime, pas une règle
+contournée — un vrai remplacement complet est rarement ce dont un client a besoin, et
+maintenir deux DTO par ressource pour une opération que personne n'appelle ne vaut pas
+la peine.
+
+```php
+#[Route('/reviews', name: 'create', methods: ['POST'])]
+public function create(#[MapRequestPayload] CreateReviewInput $input): JsonResponse
+{
+    $review = $this->reviewCreator->create($input);
+
+    return $this->json($review, Response::HTTP_CREATED, [
+        'Location' => $this->generateUrl('api_review_show', ['id' => $review->id]),
+    ]);
+}
+
+#[Route('/reviews/{id}', name: 'delete', methods: ['DELETE'], requirements: ['id' => '\d+'])]
+public function delete(int $id): Response
+{
+    $this->reviewRemover->remove($id);
+
+    return new Response(status: Response::HTTP_NO_CONTENT);
+}
+```
+
+**Ressources imbriquées seulement quand l'enfant n'existe pas sans le parent.**
+`/books/{id}/reviews` est défendable — une review appartient à un livre et n'a pas de
+sens ailleurs. `/authors/{id}/books` l'est moins : un livre existe indépendamment de
+son auteur consulté, donc `/books?authorId={id}` — une ressource de premier niveau
+filtrée — évite d'avoir deux chemins vers le même contrôleur d'action `show`/`update`/
+`delete`. Le test : si la ressource enfant a besoin de son propre id pour qu'on lui
+parle directement (`GET /reviews/{id}`, pas seulement `GET
+/books/{id}/reviews/{id}`), elle mérite sa propre racine.
 
 ## Faire entrer la requête
 
@@ -293,6 +361,8 @@ Component ou un stream poussé.
 
 | Symptôme | Cause |
 |---|---|
+| Un double-clic sur "Créer" crée deux ressources | `POST` n'est pas idempotent par nature ; c'est un état de soumission désactivé côté client qu'il faut ajouter, pas un bug serveur |
+| Un `PATCH` efface un champ que le client n'a jamais envoyé | Le DTO PATCH n'est pas nullable, ou le contrôleur ne distingue pas « absent » de « `null` explicite » — vérifie `array_key_exists` sur le payload |
 | 500 au lieu de 404 sur un `{id}` invalide | `requirements: ['id' => '\d+']` manquant (et Symfony < 8.1) |
 | 404 sur un paramètre de query invalide | La valeur par défaut de `#[MapQueryString]` / `#[MapQueryParameter]` ; passe `validationFailedStatusCode: 422` |
 | 415 Unsupported Media Type sur un POST | Pas de `Content-Type` sur la requête, donc `#[MapRequestPayload]` ne peut pas choisir de format |
