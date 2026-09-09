@@ -43,6 +43,7 @@ indique sous son titre à quel niveau il appartient.
 | **symfony-proglab-security** | Authentification, autorisation, voters, CSRF, durcissement |
 | **symfony-proglab-frontend** | AssetMapper, Stimulus, Turbo, Twig et Live Components, Tailwind |
 | **symfony-proglab-ui** | symfony/ux-toolkit et le kit Shadcn : composants Twig prêts à l'emploi, installation, thème |
+| **symfony-proglab-accessibility** | Conception universelle WCAG 2.1 : couleur, contraste, labels, focus, alt, titres, survol |
 | **symfony-proglab-async** | Messenger, Scheduler, Mailer, retries et gestion des échecs |
 | **symfony-proglab-console** | Familles de commandes et commandes invocables, opérations destructives, verrouillage |
 | **symfony-proglab-performance** | Requêtes N+1, cache HTTP et applicatif, profiling |

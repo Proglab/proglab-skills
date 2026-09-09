@@ -11,7 +11,8 @@ description: >-
   fois, ou le tout premier changement sur un projet inconnu. Le charger aussi avant de
   commencer quoi que ce soit en cas de doute sur l'applicabilité de
   symfony-proglab-architecture, symfony-proglab-http, symfony-proglab-doctrine, symfony-proglab-testing,
-  symfony-proglab-security, symfony-proglab-frontend, symfony-proglab-ui, symfony-proglab-async, symfony-proglab-console,
+  symfony-proglab-security, symfony-proglab-frontend, symfony-proglab-ui, symfony-proglab-accessibility,
+  symfony-proglab-async, symfony-proglab-console,
   symfony-proglab-performance, symfony-proglab-quality, symfony-proglab-local-dev, symfony-proglab-deployment,
   symfony-proglab-observability, symfony-proglab-storage ou symfony-proglab-upgrade.
   Quand la tâche relève clairement de l'un d'eux, charger directement celui-là.
@@ -131,6 +132,7 @@ appliquée avec discernement :
 | Connexion, permissions, voters, CSRF, tokens, durcissement | `symfony-proglab-security` |
 | JavaScript, CSS, Stimulus, Turbo, composants, AssetMapper | `symfony-proglab-frontend` |
 | Composants Shadcn, symfony/ux-toolkit, design system, thème | `symfony-proglab-ui` |
+| Accessibilité, WCAG, contraste, focus, labels, lecteur d'écran | `symfony-proglab-accessibility` |
 | Traitement en arrière-plan, emails, files, jobs planifiés | `symfony-proglab-async` |
 | Commandes console, imports, scripts de nettoyage | `symfony-proglab-console` |
 | Quelque chose est lent, trop de requêtes, cache | `symfony-proglab-performance` |
