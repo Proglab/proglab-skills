@@ -1,22 +1,22 @@
 {
   "$schema": "https://code.claude.com/schemas/marketplace.json",
-  "name": "yoanbernabeu",
+  "name": "proglab",
   "owner": {
-    "name": "Yoan Bernabeu",
-    "url": "https://github.com/yoanbernabeu"
+    "name": "Proglab",
+    "url": "https://github.com/Proglab"
   },
   "description": "Opinionated Symfony skills, installable as a Claude Code plugin.",
   "plugins": [
     {
-      "name": "symfony-yoandev-skills",
+      "name": "symfony-proglab-skills",
       "source": "./",
       "displayName": "Symfony Skills",
       "description": "Sixteen opinionated skills for writing Symfony applications, in two tiers: five core rules (test first, a Controller/Service/Repository contract, DTOs at both edges, rules in services) that cost nothing per feature, and on-demand practices (deptrac, query-count tests, Messenger, caches, health checks) switched on by a real need. AssetMapper with no bundler. Verified against a real Symfony 8.1 install and a running deptrac rather than against documentation.",
       "author": {
-        "name": "Yoan Bernabeu",
-        "url": "https://github.com/yoanbernabeu"
+        "name": "Proglab",
+        "url": "https://github.com/Proglab"
       },
-      "repository": "https://github.com/yoanbernabeu/symfony-yoandev-skills",
+      "repository": "https://github.com/Proglab/proglab-skills",
       "license": "MIT",
       "category": "engineering",
       "keywords": ["symfony", "php", "tdd", "coding-standards", "doctrine", "agent-skills"]

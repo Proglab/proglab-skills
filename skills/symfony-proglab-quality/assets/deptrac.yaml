@@ -1,0 +1,195 @@
+# Le contrat de couches, rendu vérifiable.
+#
+#   castor deptrac      (ou : make deptrac)
+#
+# C'est la version mécanique de la règle la plus importante de ce standard :
+# un contrôleur traduit HTTP, un service porte la règle, un repository possède
+# les requêtes. Vérifier cela à la main fonctionne jusqu'au jour où quelqu'un
+# est pressé.
+#
+# Adapter les noms de répertoires au projet — ce sont les frontières qui
+# comptent, pas les noms de dossiers.
+#
+# Deux choses à savoir avant de lire le ruleset :
+#
+# - Une couche ne peut dépendre que des couches listées sous elle. Tout ce qui
+#   est *aussi* une couche et qui n'y figure pas est une violation.
+# - Une dépendance vers une classe qui n'appartient à aucune couche
+#   (AbstractController, LoggerInterface, un attribut PHPUnit, l'essentiel de
+#   vendor/) est « uncovered » (non couverte). deptrac les ignore sauf si on le
+#   lui demande ; `--report-uncovered` les liste pour qu'un répertoire src/
+#   que personne n'a collecté reste visible. `--fail-on-uncovered` N'EST PAS
+#   utilisé : cela échouerait dès la première classe vendor qu'un contrôleur
+#   étend.
+#
+# Les répertoires volontairement laissés hors des couches — src/Command,
+# src/Doctrine, src/EventListener, src/Serializer, src/Health, src/Scheduler —
+# ne sont pas analysés du tout. Ajouter une couche le jour où l'un d'eux a
+# besoin d'une règle.
+deptrac:
+    paths:
+        - ./src
+
+    layers:
+        - name: Controller
+          collectors:
+              - type: directory
+                value: src/Controller/.*
+
+        - name: Service
+          collectors:
+              - type: directory
+                value: src/Service/.*
+
+        - name: Repository
+          collectors:
+              - type: directory
+                value: src/Repository/.*
+
+        - name: Entity
+          collectors:
+              - type: directory
+                value: src/Entity/.*
+
+        - name: Dto
+          collectors:
+              - type: directory
+                value: src/Dto/.*
+
+        - name: Form
+          collectors:
+              - type: directory
+                value: src/Form/.*
+
+        - name: Message
+          collectors:
+              - type: directory
+                value: src/(Message|MessageHandler)/.*
+
+        # Les exceptions métier portent leur propre statut HTTP
+        # (#[WithHttpStatus]) et sont levées par les services, les handlers
+        # et, rarement, les contrôleurs.
+        - name: Exception
+          collectors:
+              - type: directory
+                value: src/Exception/.*
+
+        # Les voters. Un contrôleur référence leurs constantes dans #[IsGranted].
+        - name: Security
+          collectors:
+              - type: directory
+                value: src/Security/.*
+
+        # Les enums natifs, mappés avec enumType: et utilisés par les formulaires et les DTO.
+        - name: Enum
+          collectors:
+              - type: directory
+                value: src/Enum/.*
+
+        # Tout ce qui est de Doctrine *sauf* les deux dérogations ci-dessous.
+        # Le lookahead négatif est ce qui garde ce fichier cohérent avec le
+        # contrat de couches : le service possède la frontière transactionnelle
+        # et appelle flush(), donc il doit pouvoir typer l'entity manager —
+        # tout en restant incapable de toucher QueryBuilder, DQL ou DBAL.
+        - name: Doctrine
+          collectors:
+              - type: classNameRegex
+                value: '/^Doctrine\\(?!ORM\\EntityManagerInterface$|Persistence\\ObjectManager$|ORM\\Mapping\\|Common\\Collections\\|DBAL\\Types\\Types$).*/'
+
+        # Ce dont une entité est faite : les attributs de mapping #[ORM\...],
+        # les classes Collection, et les constantes Types de DBAL. Séparé pour
+        # que la couche Entity reste fermée à tout le reste de Doctrine.
+        - name: DoctrineMapping
+          collectors:
+              - type: classNameRegex
+                value: '/^Doctrine\\(ORM\\Mapping\\.*|Common\\Collections\\.*|DBAL\\Types\\Types)$/'
+
+        # flush() uniquement. Délibérément étroit : élargir ceci à toute la
+        # couche Doctrine rouvrirait silencieusement les requêtes dans les
+        # services, ce qui est exactement ce que ce fichier existe pour empêcher.
+        - name: EntityManager
+          collectors:
+              - type: classNameRegex
+                value: '/^Doctrine\\(ORM\\EntityManagerInterface|Persistence\\ObjectManager)$/'
+
+        - name: Http
+          collectors:
+              - type: classNameRegex
+                value: '/^Symfony\\Component\\HttpFoundation\\.*/'
+
+    ruleset:
+        # Un contrôleur traduit HTTP, donc il voit HttpFoundation, et il peut
+        # atteindre les couches entre lesquelles il traduit. Doctrine est
+        # délibérément absent : pas de persistance dans les contrôleurs.
+        # Entity est là pour l'EntityValueResolver et pour
+        # #[IsGranted(subject:)] ; Security pour les constantes de voter que
+        # ces attributs nomment.
+        Controller:
+            - Http
+            - Service
+            - Dto
+            - Entity
+            - Form
+            - Message
+            - Exception
+            - Security
+            - Enum
+
+        # Un service porte la règle. Il peut demander des données à un
+        # repository et il appelle flush() une fois par cas d'utilisation,
+        # mais il ne peut pas construire de requêtes (Doctrine) et il ne peut
+        # pas connaître HTTP — noter l'absence de Http.
+        Service:
+            - Repository
+            - Dto
+            - Entity
+            - Message
+            - EntityManager
+            - Exception
+            - Enum
+
+        # Un repository est le seul endroit autorisé à toucher Doctrine.
+        Repository:
+            - Entity
+            - Dto
+            - Doctrine
+            - DoctrineMapping
+            - EntityManager
+            - Enum
+
+        # Les handlers de message traduisent un message en appel de service,
+        # exactement comme un contrôleur traduit une requête. Ils rechargent
+        # depuis un repository car un message transporte des identifiants,
+        # jamais des entités.
+        Message:
+            - Service
+            - Repository
+            - Dto
+            - Entity
+            - Exception
+            - Enum
+
+        # Les formulaires se mappent sur des DTO d'entrée, jamais sur des
+        # entités. Un EnumType peut nommer un enum.
+        Form:
+            - Dto
+            - Enum
+
+        # Les voters décident sur une entité ou un DTO. Rien d'autre des nôtres.
+        Security:
+            - Entity
+            - Dto
+            - Enum
+
+        # Une entité, c'est du mapping plus des enums, rien d'autre des
+        # nôtres. Noter ce qui est absent : un service ou un repository, ce
+        # qui en ferait un orchestrateur. Les DTO ne dépendent que des enums
+        # qu'ils transportent ; les enums et les exceptions ne dépendent de
+        # rien du tout.
+        Entity:
+            - DoctrineMapping
+            - Enum
+        Dto:
+            - Enum
+        Enum: ~
+        Exception: ~
