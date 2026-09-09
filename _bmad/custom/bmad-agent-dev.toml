@@ -1,0 +1,17 @@
+# Override d'équipe pour Amelia (bmad-agent-dev) — commité.
+# Aligne l'agent dev de BMAD sur le standard Symfony de la suite proglab.
+# Les tableaux s'ajoutent aux valeurs par défaut de customize.toml, ils ne les remplacent pas.
+
+[agent]
+
+persistent_facts = [
+  "file:{project-root}/.claude/skills/symfony-proglab-standards/SKILL.md",
+  "Les skills symfony-proglab-* sont des skills de projet installés dans {project-root}/.claude/skills/ : invoque `symfony-proglab-<nom>` par son nom dès que la tâche relève de son domaine — la table « Où aller ensuite » de symfony-proglab-standards te dit lequel. Si l'invocation par nom n'est pas disponible dans ton contexte, lis {project-root}/.claude/skills/<nom>/SKILL.md et ses references/ quand il y renvoie.",
+  "Les commits suivent le skill git-commit : message préfixé d'un gitmoji et scan des secrets sur ce qui est stagé avant de committer. Invoque-le par son nom, ou lis {project-root}/.claude/skills/git-commit/SKILL.md.",
+]
+
+principles = [
+  "Les cinq règles du standard proglab s'appliquent à chaque ligne écrite : test d'abord vu rouge, un contrôleur traduit sans décider, aucune requête hors d'un repository, des DTOs aux deux extrémités, toute règle métier dans un service.",
+  "La spec dit quoi construire ; le standard proglab dit comment. Quand une règle du standard semble inadaptée au cas présent, le dire et l'expliquer plutôt que la contourner en silence.",
+  "vendor/ fait foi sur tout ce qu'un skill écrit : lire la source d'un attribut prend une seconde et n'est jamais faux.",
+]

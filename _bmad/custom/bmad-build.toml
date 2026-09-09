@@ -1,0 +1,53 @@
+# Override d'équipe pour le workflow bmad-build — commité.
+#
+# Deux choses ici :
+#   1. implementation_handoff (scalaire, remplace le défaut) : le sous-agent d'implémentation
+#      démarre SANS contexte — les persistent_facts d'Amelia ne l'atteignent pas. Le handoff
+#      est donc le seul endroit où lui imposer le standard proglab.
+#   2. Une couche de revue « proglab-conformance » ajoutée aux relecteurs existants
+#      (les tableaux keyés par id s'ajoutent, ils ne remplacent pas).
+
+[workflow]
+
+persistent_facts = [
+  "file:{project-root}/.claude/skills/symfony-proglab-standards/SKILL.md",
+  "Les skills symfony-proglab-* sont des skills de projet dans {project-root}/.claude/skills/, invocables par leur nom ; en repli, {project-root}/.claude/skills/<nom>/SKILL.md.",
+]
+
+implementation_handoff = """
+Launch a subagent with no prior conversation context, with this prompt:
+
+> Read {spec_file} fully and implement it — the spec is the sole source of truth. Load every file listed in its frontmatter `context:` before you start.
+>
+> Ce projet suit le standard Symfony de la suite proglab. Avant d'écrire la moindre ligne, invoque le skill `symfony-proglab-standards` et applique ses cinq règles. Pour chaque domaine que la spec touche (HTTP, Doctrine, tests, sécurité, frontend, async, console…), invoque aussi le skill spécialisé `symfony-proglab-<domaine>` par son nom — la table « Où aller ensuite » du standard te dit lequel — et lis ses `references/` quand il y renvoie. Si tu ne peux pas invoquer de skills dans ton contexte, lis les fichiers directement : `{project-root}/.claude/skills/symfony-proglab-<nom>/SKILL.md`. La spec dit quoi construire ; le standard dit comment. Le test s'écrit avant le code et doit être vu rouge. Si une règle du standard te semble inadaptée à un point précis de la spec, applique-la quand même et signale le conflit dans ton rapport plutôt que de la contourner en silence.
+>
+> When done, report what you changed, how you verified it, and anything left incomplete or risky.
+"""
+
+[[workflow.review_layers]]
+id = "proglab-conformance"
+name = "Conformité au standard proglab"
+instruction = """
+Launch a context-free subagent with this prompt:
+
+Read `{project-root}/_bmad/custom/proglab-conformance-review.md` completely and follow it as your review instructions.
+
+Review content: the unified diff at `{diff_file}`. Read that file — it is the content under review.
+
+Do not invoke any skill, and do not spawn subagents of your own — you are the reviewer. If the instruction file is unreadable, report that exact failure and stop. Return your findings as text in your final message; do not route them through any findings-reporting tool the host may offer.
+
+"""
+
+[[workflow.oneshot_review_layers]]
+id = "proglab-conformance"
+name = "Conformité au standard proglab"
+instruction = """
+Launch a context-free subagent with this prompt:
+
+Read `{project-root}/_bmad/custom/proglab-conformance-review.md` completely and follow it as your review instructions.
+
+Review content: the changed files in the current worktree. Inspect them directly before reviewing.
+
+Do not invoke any skill, and do not spawn subagents of your own — you are the reviewer. If the instruction file is unreadable, report that exact failure and stop. Return your findings as text in your final message; do not route them through any findings-reporting tool the host may offer.
+
+"""

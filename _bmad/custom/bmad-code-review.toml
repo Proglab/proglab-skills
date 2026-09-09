@@ -1,0 +1,23 @@
+# Override d'équipe pour le workflow bmad-code-review — commité.
+# Ajoute une couche de revue de conformité au standard proglab aux relecteurs existants.
+
+[workflow]
+
+persistent_facts = [
+  "file:{project-root}/.claude/skills/symfony-proglab-standards/SKILL.md",
+  "Les skills symfony-proglab-* sont des skills de projet dans {project-root}/.claude/skills/, invocables par leur nom ; en repli, {project-root}/.claude/skills/<nom>/SKILL.md.",
+]
+
+[[workflow.review_layers]]
+id = "proglab-conformance"
+name = "Conformité au standard proglab"
+instruction = """
+Launch a context-free subagent with this prompt:
+
+Read `{project-root}/_bmad/custom/proglab-conformance-review.md` completely and follow it as your review instructions.
+
+Review content: the unified diff at `{diff_file}`. Read that file — it is the content under review.
+
+Do not invoke any skill, and do not spawn subagents of your own — you are the reviewer. If the instruction file is unreadable, report that exact failure and stop. Return your findings as text in your final message; do not route them through any findings-reporting tool the host may offer.
+
+"""
