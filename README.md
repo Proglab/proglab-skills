@@ -9,21 +9,11 @@ si tant est qu'ils les écrivent. Ces skills comblent cet écart en prenant les 
 en amont, et en expliquant *pourquoi* chacune a été prise, pour que l'agent puisse
 appliquer ce raisonnement aux cas que les skills n'ont jamais anticipés.
 
-```bash
-npx skills add Proglab/proglab-skills
-```
-
-Installer un seul skill à la place :
-
-```bash
-npx skills add https://github.com/Proglab/proglab-skills/tree/main/skills/symfony-proglab-testing
-```
-
-Ou en essayer un sans rien installer :
-
-```bash
-npx skills use Proglab/proglab-skills@symfony-proglab-architecture
-```
+Les skills vivent dans `.claude/skills/` : ce sont des skills de projet, chargés
+automatiquement par Claude Code quand on travaille depuis ce dépôt, et invocables par
+leur nom. Ce dépôt n'est plus un catalogue installable ailleurs — c'est l'espace de
+travail lui-même, qui embarque aussi [BMAD](https://bmadcode.com/) (`_bmad/`), dont les
+agents sont alignés sur cette suite via les overrides de `_bmad/custom/`.
 
 ## Les skills
 
@@ -97,24 +87,14 @@ disponible.
 `vendor/` est toujours traité comme la source de vérité au-dessus de tout ce qui est
 écrit ici — c'est aussi la règle que les skills s'appliquent à eux-mêmes.
 
-## Les contributions ne sont pas acceptées
+## Origine
 
-Cette suite est ma propre vision opinionée de Symfony. Sa valeur vient du fait qu'elle
-est cohérente et tranchée, pas d'être un consensus — et un standard assemblé par
-comité cesse d'être un standard.
-
-Donc : pas de pull requests, et les issues proposant des choix par défaut différents
-seront fermées. Rien de personnel, et aucun jugement sur les alternatives — plusieurs
-options rejetées sont parfaitement défendables, ce qui explique précisément pourquoi
-elles sont documentées comme des rejets délibérés plutôt que des oublis.
-
-Si tu n'es pas d'accord, **fork it**. C'est la bonne réponse ici : les skills sont du
-Markdown brut, chaque décision est écrite avec son raisonnement, et en changer une est
-une simple question d'édition de fichier. Tu obtiendras ta propre suite opinionée, qui
-vaudra plus pour toi que la mienne.
-
-Les rapports de bugs — une commande cassée, un mauvais namespace, une API qui n'existe
-plus — sont les bienvenus en issues. Ce sont des faits, pas des opinions.
+Cette suite est un fork personnalisé de
+[symfony-yoandev-skills](https://github.com/yoanbernabeu/symfony-yoandev-skills) : même
+architecture opinionée, adaptée à une autre stack (Laragon, MySQL, Deployer, Apache) et
+traduite en français. Sa valeur vient de ce qu'elle est cohérente et tranchée, pas d'être
+un consensus — les options rejetées sont documentées comme des rejets délibérés, avec
+leur raison, dans `symfony-proglab-architecture/references/rejections.md`.
 
 ## Licence
 
