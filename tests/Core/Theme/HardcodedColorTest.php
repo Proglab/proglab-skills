@@ -21,10 +21,11 @@ use Symfony\Component\Finder\Finder;
  * templates : une classe écrite en PHP ou dans un contrôleur Stimulus compile dans la
  * feuille livrée exactement comme une classe écrite en Twig.
  *
- * Ce que ce test ne voit pas, et qui est assumé : le `href` du favicon de la recette
- * Symfony dans `templates/base.html.twig` porte un `%23fff` **percent-encodé** à
- * l'intérieur d'une image `data:`. Il disparaît avec ce gabarit à la story 1.4, qui
- * livre le vrai `base.html.twig` du socle.
+ * L'angle mort noté par la story 1.3 — le `%23fff` percent-encodé du favicon `data:` de
+ * la recette Symfony, invisible pour ces motifs — n'existe plus : la story 1.4 a remplacé
+ * `templates/base.html.twig` par le gabarit du socle, qui ne porte pas ce favicon. Le
+ * motif hexadécimal reste néanmoins aveugle à une couleur percent-encodée ou concaténée ;
+ * c'est un plancher, pas une preuve.
  */
 final class HardcodedColorTest extends TestCase
 {

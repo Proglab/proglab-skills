@@ -16,6 +16,7 @@
 # qa-category: Layer contract = deptrac
 # qa-category: Tests = test
 # qa-category: Linters and audits = lint audit
+# qa-category: Accessibility = a11y
 
 # Sous Windows, GNU Make appelle cmd.exe, qui ne sait exécuter ni `vendor/bin/…` ni
 # `grep`. Le socle se développe sous Laragon et s'intègre sous Ubuntu : les deux façades
@@ -27,13 +28,15 @@ SHELL := bash.exe
 endif
 
 .DEFAULT_GOAL := help
-.PHONY: help qa test stan stan-baseline cs cs-check deptrac audit lint container-cache
+.PHONY: help qa test stan stan-baseline cs cs-check deptrac audit lint a11y container-cache
 
+# Le `0-9` de la classe n'est pas decoratif : `a11y` porte un chiffre, et sans lui la
+# cible existe, s'execute et n'apparait dans aucune liste.
 help: ## Liste les cibles disponibles
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
 	  | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
 
-qa: cs-check stan deptrac lint audit test ## Exécute la porte complète, exactement comme la CI
+qa: cs-check stan deptrac lint audit test a11y ## Exécute la porte complète, exactement comme la CI
 
 # Les memes etapes que le job « Tests » de la CI, dans le meme ordre : sans le garde-fou,
 # sans les migrations et sans le theme compile, la facade locale verifierait moins que la
@@ -54,6 +57,49 @@ test: ## Exécute la suite de tests, comme le job « Tests » de la CI
 	php bin/console --env=test doctrine:migrations:migrate --no-interaction --allow-no-migration
 	php bin/console tailwind:build
 	php vendor/bin/phpunit
+
+# La sixieme categorie. Elle a sa propre testsuite (phpunit.dist.xml) plutot qu'un test
+# perdu dans la suite : « Accessibility » rouge dit quoi corriger, « Tests » rouge ne le
+# dit pas. `defaultTestSuite` exclut cette suite de la cible `test`, donc la porte ne la
+# joue qu'une fois.
+#
+# `tailwind:build` pour la meme raison que dans `test` : le plancher rend de vraies pages,
+# et sans la feuille compilee chaque rendu tombe sur `missing_import_mode: strict`.
+#
+# Les deux dernieres lignes sont **la seule etape Node de tout le depot**. Quatre lignes
+# de la matrice d'edge cases de la story 1.4 decrivent du comportement JavaScript — le
+# focus replace apres une navigation Turbo, la recopie d'un message dans la region
+# d'annonces — et aucun test PHP ne peut les prouver. Elles appartiennent a
+# « Accessibility » et non a « Tests » : c'est du comportement d'accessibilite, et un
+# echec doit dire « le plancher est casse ».
+#
+# La chaine d'assets, elle, reste sans Node : tout le necessaire vit sous `tests/js/`,
+# rien a la racine, et `AssetPipelineTest` tient les deux bouts.
+#
+# `install` en local et `ci` en CI : `install` est quasi instantane quand rien n'a bouge,
+# la ou `ci` supprime et reinstalle `node_modules` a chaque appel.
+#
+# Mais il n'est lance que quand il a quelque chose a faire. Le temoin est
+# `node_modules/.package-lock.json`, l'arbre reellement installe qu'npm y ecrit : absent,
+# ou plus vieux que le lockfile, l'installation a du retard. Sans cette condition, `make qa`
+# exigeait le reseau a chaque execution, alors que tout le reste de la porte tourne hors
+# ligne — un poste sans connexion ne pouvait plus lancer sa propre porte.
+#
+# Et si `node` manque, on le dit. « npm: not found » n'apprend rien a qui decouvre le
+# depot ; le README explique le plancher de version, la seule etape Node et pourquoi elle
+# existe.
+a11y: ## Vérifie le plancher d'accessibilité sur les pages rendues, les sources et les deux contrôleurs Stimulus
+	php bin/console tailwind:build
+	php vendor/bin/phpunit --testsuite Accessibility
+	@command -v node > /dev/null 2>&1 || { \
+	  echo "Node est absent : la moitié JavaScript de « Accessibility » ne peut pas s'exécuter."; \
+	  echo "Installez Node 22.15 ou plus récent (plancher déclaré dans tests/js/package.json), puis relancez « make a11y »."; \
+	  exit 1; \
+	}
+	@if [ ! -f tests/js/node_modules/.package-lock.json ] || [ tests/js/package-lock.json -nt tests/js/node_modules/.package-lock.json ]; then \
+	  npm --prefix tests/js install --no-audit --no-fund; \
+	fi
+	node --test "tests/js/**/*.test.js"
 
 container-cache: ## Compile le conteneur pour que PHPStan puisse lire les ids de service
 	php bin/console cache:warmup --env=dev

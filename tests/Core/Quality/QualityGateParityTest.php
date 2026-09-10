@@ -24,11 +24,13 @@ use PHPUnit\Framework\TestCase;
 final class QualityGateParityTest extends TestCase
 {
     /**
-     * Les catégories que la story 1.2 livre. La liste peut grandir — la story 1.4 y
-     * ajoutera l'accessibilité — mais aucune de celles-ci ne peut disparaître en
-     * silence, sinon la porte cesse de vérifier ce pour quoi elle a été construite.
+     * Les catégories que la porte doit avoir : les cinq de la story 1.2, plus
+     * « Accessibility » que la story 1.4 y ajoute. La liste peut grandir encore, mais
+     * aucune de celles-ci ne peut disparaître en silence, sinon la porte cesse de
+     * vérifier ce pour quoi elle a été construite.
      */
     private const array FLOOR = [
+        'Accessibility',
         'Code style',
         'Layer contract',
         'Linters and audits',
@@ -121,6 +123,24 @@ final class QualityGateParityTest extends TestCase
             // une faille publiée. Elle est nommée ici parce qu'une catégorie peut rester
             // présente par son nom et se vider de sa substance.
             'importmap:audit',
+        ],
+        // `--testsuite Accessibility` est dans la liste, pas seulement `phpunit` : sans
+        // l'option, le job rejouerait la suite par défaut — la catégorie resterait verte
+        // en permanence tout en ne vérifiant plus jamais le plancher d'accessibilité.
+        // `tailwind:build` y est pour la même raison que dans « Tests » : le plancher rend
+        // de vraies pages, et sans la feuille compilée chaque rendu échoue.
+        //
+        // La troisième ligne est la seule étape Node du dépôt, et elle appartient à cette
+        // catégorie plutôt qu'à « Tests » : ce qu'elle exécute est du comportement
+        // d'accessibilité — le focus replacé après une navigation Turbo, un message
+        // recopié dans la région d'annonces. Sans elle nommée ici, une façade pourrait
+        // cesser d'exécuter les deux contrôleurs Stimulus sans que rien ne le signale, et
+        // les quatre lignes de la matrice d'edge cases qu'ils portent redeviendraient
+        // muettes.
+        'Accessibility' => [
+            'tailwind:build',
+            'phpunit --testsuite Accessibility',
+            'node --test "tests/js/**/*.test.js"',
         ],
     ];
 

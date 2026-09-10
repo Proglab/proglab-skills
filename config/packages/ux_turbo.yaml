@@ -1,0 +1,14 @@
+# Fichier posé par la recette de `symfony/ux-turbo`, conservé tel quel et commenté.
+#
+# Ce que fait la ligne : quand une soumission de formulaire passe par Turbo,
+# `assets/controllers/csrf_protection_controller.js` envoie le jeton CSRF **aussi** dans
+# un en-tête, et `check_header` demande au framework de le vérifier là.
+#
+# Ce qu'elle fait aujourd'hui : rien. La vérification d'en-tête ne s'applique qu'aux
+# jetons CSRF sans état (`framework.csrf_protection.stateless_token_ids`), et le socle
+# n'en déclare aucun avant la story 1.6, qui pose le premier formulaire. La ligne est
+# gardée parce qu'elle devient juste le jour où ce formulaire arrive, et qu'un réglage
+# de sécurité retiré puis remis est un réglage qu'on oublie de remettre.
+framework:
+    csrf_protection:
+        check_header: true

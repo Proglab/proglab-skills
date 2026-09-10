@@ -6,6 +6,15 @@
 # `when@test` sur les modules de démonstration. Les deux sont volontairement l'un sous
 # l'autre : c'est là qu'une divergence de forme se voit à l'œil nu.
 parameters:
+    # Le nom du dérivé — celui que le gabarit compose dans chaque `<title>`.
+    #
+    # Il vient de `APP_NAME` (voir `.env`) et s'arrête ici : le seul consommateur est le
+    # global Twig `app_name` de `config/packages/twig.yaml`. Trois raisons pour une
+    # variable d'environnement plutôt qu'un réglage administrable : un dérivé se renomme
+    # au clonage sans éditer `src/` ni `config/`, le nom est déjà connu au premier rendu
+    # (aucune requête en base pour afficher un titre), et une page d'erreur 500 le rend
+    # encore quand la base ne répond plus.
+    app.name: '%env(APP_NAME)%'
 
 services:
     _defaults:

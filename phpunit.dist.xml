@@ -11,6 +11,7 @@
          failOnWarning="true"
          bootstrap="tests/bootstrap.php"
          cacheDirectory=".phpunit.cache"
+         defaultTestSuite="Project Test Suite"
 >
     <php>
         <ini name="display_errors" value="1" />
@@ -19,9 +20,22 @@
         <server name="SHELL_VERBOSITY" value="-1" />
     </php>
 
+    <!-- Deux testsuites, et un défaut.
+
+         « Accessibility » est la sixième catégorie de la porte de qualité : elle a sa
+         propre cible `make a11y` et son propre job de CI, pour qu'un échec dise « le
+         plancher d'accessibilité est cassé » plutôt que « un test a échoué quelque part ».
+         Sans `defaultTestSuite`, `php vendor/bin/phpunit` sans option lancerait les deux
+         suites, et la catégorie « Tests » rejouerait le plancher — deux catégories rouges
+         pour un seul défaut, et le double du temps sur chaque exécution locale. -->
     <testsuites>
         <testsuite name="Project Test Suite">
             <directory>tests</directory>
+            <exclude>tests/Core/Accessibility</exclude>
+        </testsuite>
+
+        <testsuite name="Accessibility">
+            <directory>tests/Core/Accessibility</directory>
         </testsuite>
     </testsuites>
 

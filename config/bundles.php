@@ -20,4 +20,10 @@ return [
     TalesFromADev\Twig\Extra\Tailwind\Bridge\Symfony\Bundle\TalesFromADevTwigExtraTailwindBundle::class => ['all' => true],
     Symfony\UX\Toolkit\UXToolkitBundle::class => ['dev' => true, 'test' => true],
     Twig\Extra\TwigExtraBundle\TwigExtraBundle::class => ['all' => true],
+    // Turbo Drive. Trois critères de la story 1.4 sont écrits en termes de navigation
+    // Turbo — `data-turbo-permanent`, `connect()` rejoué à chaque remplacement de body,
+    // focus après remplacement — et `symfony/ux-turbo` est dans la table Stack de
+    // l'architecture (AR-25). Il n'ajoute que du confort : chaque chemin du socle
+    // fonctionne en pleine page sans lui.
+    Symfony\UX\Turbo\TurboBundle::class => ['all' => true],
 ];
