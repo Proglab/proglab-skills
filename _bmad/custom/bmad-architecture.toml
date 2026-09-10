@@ -1,0 +1,17 @@
+# Override d'équipe pour le workflow bmad-architecture — commité.
+# Le spine d'architecture se construit à l'intérieur du contrat de couches proglab
+# et des rejets déjà décidés ; un relecteur supplémentaire le vérifie au finalize.
+
+[workflow]
+
+persistent_facts = [
+  "file:{project-root}/.claude/skills/symfony-proglab-standards/SKILL.md",
+  "file:{project-root}/.claude/skills/symfony-proglab-architecture/SKILL.md",
+  "file:{project-root}/.claude/skills/symfony-proglab-architecture/references/rejections.md",
+  "Les skills symfony-proglab-* sont des skills de projet dans {project-root}/.claude/skills/ : invoque `symfony-proglab-<nom>` par son nom avant d'arrêter une décision qui concerne son domaine ; en repli, lis {project-root}/.claude/skills/<nom>/SKILL.md.",
+  "Stack décidée, hors du périmètre de l'architecture : Laragon en local, MySQL, AssetMapper sans bundler, Deployer vers Apache + PHP-FPM, outils qualité en require-dev.",
+]
+
+finalize_reviewers = [
+  "Confronte chaque décision (AD-n) du spine au contrat de couches de {project-root}/.claude/skills/symfony-proglab-architecture/SKILL.md et à la liste de {project-root}/.claude/skills/symfony-proglab-architecture/references/rejections.md. Signale toute décision qui place une règle métier hors d'un service, une requête hors d'un repository, une entité à une frontière HTTP ou Twig, ou qui réintroduit une alternative rejetée (événements de domaine, entités riches, bus de commandes, UUID, bundler, API Platform, Docker) sans la présenter comme un écart délibéré au standard.",
+]

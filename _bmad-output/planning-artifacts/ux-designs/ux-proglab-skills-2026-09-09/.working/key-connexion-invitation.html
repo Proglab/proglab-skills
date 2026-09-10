@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Écran clé — Connexion, acceptation d'invitation, invitation expirée</title>
+<style>
+/* =====================================================================
+   ÉCRAN CLÉ — CONNEXION (app_login) · ACCEPTATION D'INVITATION
+   (app_invitation_accept) · INVITATION EXPIRÉE
+   ---------------------------------------------------------------------
+   Sections du spine qui gouvernent ces écrans :
+   EXPERIENCE.md
+     · Information Architecture › Surfaces › « Connexion », « Acceptation
+       d'invitation » ; Exigences → surfaces › FR-3, FR-4, FR-19
+     · Component Patterns › Champ de formulaire, Button, Sélecteur de langue
+       (Connexion), Alert, Flash
+     · State Patterns › Erreur de champ, Mot de passe erroné avec
+       ralentissement, Compte désactivé, Invitation expirée
+     · Voice and Tone › « Mot de passe erroné », « Premier accès après
+       invitation », « Invitation expirée »
+     · Key Flows › UJ-1 étape 2, UJ-2 cas limite, Flux 6 étapes 1-2, Flux 7
+     · Internationalisation › sélecteur de la page de Connexion
+   DESIGN.md
+     · Components › Champ de formulaire, Button, Alert (destructive),
+       Avatar/logo ; Layout & Spacing (formulaires : une colonne, 480 px,
+       label au-dessus, boutons à gauche) ; Colors (destructive réservé aux
+       erreurs)
+   Tokens et coque : mêmes valeurs que direction-aere.html. Les pages non
+   authentifiées n'ont ni sidebar ni en-tête : une carte de 480 px centrée
+   sur le fond de page, logo et nom du dérivé au-dessus.
+   [NOTE FOR UX] Aucune direction de .working/ ne fixe la composition des
+   pages non authentifiées ; cette carte centrée de 480 px suit la règle
+   « Formulaires » de DESIGN.md · Layout & Spacing et reste à confirmer.
+   Accessibilité : erreur = bordure + icône + texte, jamais la couleur
+   seule (1) ; contrastes du thème (2) ; labels réels, y compris sur le
+   sélecteur de langue (3) ; :focus-visible partout (4) ; icônes décoratives
+   aria-hidden (5) ; un seul h1 par page (6) ; rien au survol seul (7).
+   Aucun JavaScript, aucune requête réseau, polices système.
+   ===================================================================== */
+
+:root { --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: var(--font); background: #e8e8e8; color: #0a0a0a; padding: 32px; }
+.doc-intro { max-width: 1280px; margin: 0 auto 24px; font-size: 15px; line-height: 1.5; }
+.doc-intro .kicker { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: #525252; margin: 0 0 4px; }
+.doc-intro p { margin: 0 0 6px; }
+.doc-label { max-width: 1280px; margin: 28px auto 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: #525252; }
+.doc-note { max-width: 1280px; margin: 10px auto 0; font-size: 13px; color: #525252; }
+
+.frame {
+  --background: oklch(1 0 0); --foreground: oklch(0.145 0 0); --card: oklch(1 0 0);
+  --muted: oklch(0.97 0 0); --muted-foreground: oklch(0.556 0 0); --muted-strong: oklch(0.439 0 0);
+  --primary: oklch(0.205 0 0); --primary-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.577 0.245 27.325); --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.922 0 0); --input: oklch(0.922 0 0); --ring: oklch(0.708 0 0);
+  --page: oklch(0.97 0 0);
+}
+.frame.dark {
+  --background: oklch(0.145 0 0); --foreground: oklch(0.985 0 0); --card: oklch(0.205 0 0);
+  --muted: oklch(0.269 0 0); --muted-foreground: oklch(0.708 0 0); --muted-strong: oklch(0.80 0 0);
+  --primary: oklch(0.922 0 0); --primary-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.704 0.191 22.216); --destructive-foreground: oklch(0.145 0 0);
+  --border: oklch(1 0 0 / 10%); --input: oklch(0.269 0 0); --ring: oklch(0.556 0 0);
+  --page: oklch(0.145 0 0);
+}
+
+.frame { width: 1280px; margin: 0 auto; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 30px rgba(0,0,0,.18); background: var(--page); color: var(--foreground); font-size: 15px; line-height: 1.5; }
+.chrome { height: 38px; background: #d9d9d9; display: flex; align-items: center; gap: 8px; padding: 0 12px; }
+.frame.dark .chrome { background: #2b2b2b; }
+.chrome i { width: 11px; height: 11px; border-radius: 50%; background: #b3b3b3; display: inline-block; }
+.chrome .url { flex: 1; margin-left: 10px; height: 24px; border-radius: 6px; background: #f2f2f2; color: #444; font-size: 12px; display: flex; align-items: center; padding: 0 10px; }
+.frame.dark .chrome .url { background: #1c1c1c; color: #bdbdbd; }
+
+/* Coque des pages non authentifiées */
+.auth { min-height: 640px; display: flex; flex-direction: column; align-items: center; padding: 56px 32px 48px; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 600; margin-bottom: 24px; }
+.brand .logo { width: 32px; height: 32px; border-radius: 8px; background: var(--primary); color: var(--primary-foreground); display: grid; place-items: center; font-size: 12px; font-weight: 600; }
+.brand small { display: block; font-weight: 400; color: var(--muted-foreground); font-size: 12px; }
+.card { width: 480px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; }
+.card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 8px; }
+h1 { font-size: 30px; font-weight: 600; letter-spacing: -0.02em; margin: 0; line-height: 1.2; }
+.lead { margin: 6px 0 20px; color: var(--muted-strong); font-size: 16px; }
+.lead b { color: var(--foreground); font-weight: 500; }
+
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+
+/* Sélecteur de langue : label réel (règle 3), soumet en GET ?lang= */
+.lang { display: flex; align-items: center; gap: 8px; flex: none; }
+.lang label { font-size: 13px; color: var(--muted-foreground); }
+.lang select { font: inherit; font-size: 14px; height: 32px; border: 1px solid var(--input); border-radius: 8px; background: var(--background); color: var(--foreground); padding: 0 8px; }
+
+/* Champs */
+.field { margin: 0 0 16px; }
+.field .label-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
+.field label { display: block; font-size: 14px; font-weight: 500; }
+.field .label-row a { font-size: 13px; color: var(--muted-strong); }
+.field input { font: inherit; font-size: 15px; height: 38px; width: 100%; border: 1px solid var(--input); border-radius: 8px; background: var(--background); color: var(--foreground); padding: 0 12px; }
+.field input[aria-invalid="true"] { border-color: var(--destructive); }
+.field .help { margin: 6px 0 0; color: var(--muted-foreground); font-size: 13px; }
+.field .error { margin: 6px 0 0; color: var(--destructive); font-size: 13px; display: flex; align-items: center; gap: 6px; }
+.field .error svg { width: 15px; height: 15px; flex: none; }
+.readonly { display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--muted); color: var(--muted-strong); }
+.readonly svg { width: 15px; height: 15px; }
+
+.btn { font: inherit; font-size: 14px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 38px; padding: 0 16px; border-radius: 8px; border: 1px solid transparent; cursor: pointer; text-decoration: none; }
+.btn-primary { background: var(--primary); color: var(--primary-foreground); }
+.btn-outline { background: var(--card); color: var(--foreground); border-color: var(--border); }
+.form-actions { display: flex; gap: 10px; margin-top: 4px; }
+
+/* Alert (défaut / destructive) */
+.alert { display: flex; gap: 14px; align-items: flex-start; background: var(--card); border: 1px solid var(--border); border-left: 4px solid var(--foreground); border-radius: 10px; padding: 14px 18px; margin: 0 0 20px; }
+.alert svg { width: 20px; height: 20px; flex: none; margin-top: 2px; }
+.alert p { margin: 0; color: var(--muted-strong); font-size: 14px; }
+.alert p b { color: var(--foreground); font-weight: 500; }
+.alert.destructive { border-left-color: var(--destructive); }
+.alert.destructive svg { color: var(--destructive); }
+.alert.destructive p b { color: var(--foreground); }
+
+.foot { margin-top: 20px; font-size: 13px; color: var(--muted-foreground); text-align: center; }
+.foot a { color: var(--muted-strong); }
+.card p.body { margin: 0 0 16px; }
+</style>
+</head>
+<body>
+
+<div class="doc-intro">
+  <p class="kicker">Écran clé 3 / 3 — Connexion et invitation</p>
+  <p><strong>Ce que montrent les maquettes.</strong> Les trois surfaces qu'une personne voit avant d'avoir une session : la Connexion (email, mot de passe, langue, mot de passe oublié — FR-3, FR-19), l'Acceptation d'invitation de Karim (« Bienvenue Karim ! », création du mot de passe — FR-4, Flux 6) et l'état « Invitation expirée » (UJ-2, cas limite). Aucune sidebar, aucun en-tête : une carte centrée sur le fond de page, logo du dérivé au-dessus.</p>
+  <p>États rendus, en clair puis en sombre : <em>Connexion après un premier échec</em>, <em>Connexion après le cinquième échec</em> (message de ralentissement, bouton toujours actif), <em>Bienvenue Karim</em>, <em>Invitation expirée</em>.</p>
+</div>
+
+<!-- ===================================================================
+     (a) CONNEXION — mode clair : premier échec
+     =================================================================== -->
+<p class="doc-label">(a) Connexion — mode clair — après un échec : « Email ou mot de passe incorrect. »</p>
+<article class="frame" aria-label="Connexion, mode clair">
+  <div class="chrome"><i></i><i></i><i></i><div class="url">https://erp.menuiserie-delcourt.example/connexion</div></div>
+  <div class="auth">
+    <div class="brand"><span class="logo" aria-hidden="true">MD</span><span>Menuiserie Delcourt<small>ERP</small></span></div>
+    <main class="card">
+      <div class="card-top">
+        <h1>Connexion</h1>
+        <form class="lang" action="#" method="get">
+          <label for="lang-a">Langue</label>
+          <select id="lang-a" name="lang">
+            <option selected>Français</option>
+            <option>English</option>
+            <option>Nederlands</option>
+          </select>
+        </form>
+      </div>
+      <p class="lead">Bonjour. Connectez-vous avec l'adresse de votre invitation.</p>
+
+      <div class="alert destructive" role="alert">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
+        <p><b>Email ou mot de passe incorrect.</b> Vérifiez votre saisie, ou demandez un nouveau mot de passe.</p>
+      </div>
+
+      <form action="#" method="post">
+        <div class="field">
+          <label for="email-a">Email</label>
+          <input id="email-a" name="email" type="email" autocomplete="username" value="sophie.lemaire@menuiserie-delcourt.example" aria-invalid="true" aria-describedby="err-a">
+        </div>
+        <div class="field">
+          <div class="label-row"><label for="pwd-a">Mot de passe</label><a href="#">Mot de passe oublié ?</a></div>
+          <input id="pwd-a" name="password" type="password" autocomplete="current-password" aria-invalid="true" aria-describedby="err-a">
+          <p class="error" id="err-a"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>Le couple email et mot de passe n'a pas été reconnu.</p>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" type="submit">Se connecter</button>
+        </div>
+      </form>
+    </main>
+    <p class="foot">Seules les langues activées par votre administrateur sont proposées. Votre choix est mémorisé jusqu'à la connexion ; ensuite, la langue de votre profil s'applique.</p>
+  </div>
+</article>
+<p class="doc-note">Le message ne révèle jamais si le compte existe. Un compte désactivé reçoit à la place : « Ce compte est désactivé. Adressez-vous à votre administrateur. » — même écran, même Alert.</p>
+
+<!-- ===================================================================
+     (a') CONNEXION — mode sombre : cinquième échec, ralentissement
+     =================================================================== -->
+<p class="doc-label">(a) Connexion — mode sombre — à partir du cinquième échec : ralentissement, bouton toujours actif</p>
+<article class="frame dark" aria-label="Connexion, mode sombre">
+  <div class="chrome"><i></i><i></i><i></i><div class="url">https://erp.menuiserie-delcourt.example/connexion</div></div>
+  <div class="auth">
+    <div class="brand"><span class="logo" aria-hidden="true">MD</span><span>Menuiserie Delcourt<small>ERP</small></span></div>
+    <main class="card">
+      <div class="card-top">
+        <h1>Connexion</h1>
+        <form class="lang" action="#" method="get">
+          <label for="lang-b">Langue</label>
+          <select id="lang-b" name="lang">
+            <option selected>Français</option>
+            <option>English</option>
+            <option>Nederlands</option>
+          </select>
+        </form>
+      </div>
+      <p class="lead">Bonjour. Connectez-vous avec l'adresse de votre invitation.</p>
+
+      <div class="alert destructive" role="alert">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        <p><b>Email ou mot de passe incorrect.</b> Patientez 40 secondes avant de réessayer.</p>
+      </div>
+
+      <form action="#" method="post">
+        <div class="field">
+          <label for="email-b">Email</label>
+          <input id="email-b" name="email" type="email" autocomplete="username" value="sophie.lemaire@menuiserie-delcourt.example" aria-invalid="true" aria-describedby="err-b">
+        </div>
+        <div class="field">
+          <div class="label-row"><label for="pwd-b">Mot de passe</label><a href="#">Mot de passe oublié ?</a></div>
+          <input id="pwd-b" name="password" type="password" autocomplete="current-password" aria-invalid="true" aria-describedby="err-b">
+          <p class="error" id="err-b"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>Le couple email et mot de passe n'a pas été reconnu.</p>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" type="submit">Se connecter</button>
+        </div>
+      </form>
+    </main>
+    <p class="foot">Seules les langues activées par votre administrateur sont proposées. Votre choix est mémorisé jusqu'à la connexion ; ensuite, la langue de votre profil s'applique.</p>
+  </div>
+</article>
+<p class="doc-note">Le délai double à chaque échec à partir du cinquième, plafonné à quinze minutes, sans blocage définitif [ASSUMPTION PRD]. Le bouton reste actif : c'est le serveur qui refuse pendant le délai, et le message dit combien de temps attendre.</p>
+
+<!-- ===================================================================
+     (b) ACCEPTATION D'INVITATION — mode clair
+     =================================================================== -->
+<p class="doc-label">(b) Acceptation d'invitation — mode clair — « Bienvenue Karim ! », création du mot de passe</p>
+<article class="frame" aria-label="Acceptation d'invitation, mode clair">
+  <div class="chrome"><i></i><i></i><i></i><div class="url">https://erp.menuiserie-delcourt.example/invitation/7f3a…</div></div>
+  <div class="auth">
+    <div class="brand"><span class="logo" aria-hidden="true">MD</span><span>Menuiserie Delcourt<small>ERP</small></span></div>
+    <main class="card">
+      <h1>Bienvenue Karim !</h1>
+      <p class="lead">Sophie Lemaire vous a invité à rejoindre l'ERP de Menuiserie Delcourt avec le rôle <b>User</b>. Choisissez votre mot de passe pour créer votre compte.</p>
+
+      <form action="#" method="post">
+        <div class="field">
+          <label for="email-c">Email</label>
+          <div class="readonly" id="email-c"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>karim.benali@menuiserie-delcourt.example</div>
+          <p class="help">C'est l'adresse qui a reçu l'invitation ; elle servira à vous connecter.</p>
+        </div>
+        <div class="field">
+          <label for="pwd-c">Mot de passe</label>
+          <input id="pwd-c" name="password" type="password" autocomplete="new-password" aria-describedby="help-c">
+          <p class="help" id="help-c">Au moins 12 caractères. Une phrase que vous seul connaissez fait un bon mot de passe.</p>
+          <!-- [NOTE FOR UX] La règle de longueur du mot de passe n'est fixée ni par le PRD ni par le
+               spine ; « 12 caractères » est une hypothèse de maquette à confirmer ou à remplacer. -->
+        </div>
+        <div class="field">
+          <label for="pwd2-c">Confirmez le mot de passe</label>
+          <input id="pwd2-c" name="password_confirm" type="password" autocomplete="new-password">
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" type="submit">Créer mon compte</button>
+        </div>
+      </form>
+    </main>
+    <p class="foot">Ce lien est à usage unique et reste valable jusqu'au 16 septembre 2026.</p>
+  </div>
+</article>
+<p class="doc-note">Après validation (Flux 6, étape 2) : compte actif, session ouverte, redirection vers la Roadmap avec le Flash « Bienvenue Karim ! Votre compte est prêt. » Karim est User : pas de bandeau 2FA, il pourra l'activer depuis son profil.</p>
+
+<!-- ===================================================================
+     (b') ACCEPTATION D'INVITATION — mode sombre
+     =================================================================== -->
+<p class="doc-label">(b) Acceptation d'invitation — mode sombre</p>
+<article class="frame dark" aria-label="Acceptation d'invitation, mode sombre">
+  <div class="chrome"><i></i><i></i><i></i><div class="url">https://erp.menuiserie-delcourt.example/invitation/7f3a…</div></div>
+  <div class="auth">
+    <div class="brand"><span class="logo" aria-hidden="true">MD</span><span>Menuiserie Delcourt<small>ERP</small></span></div>
+    <main class="card">
+      <h1>Bienvenue Karim !</h1>
+      <p class="lead">Sophie Lemaire vous a invité à rejoindre l'ERP de Menuiserie Delcourt avec le rôle <b>User</b>. Choisissez votre mot de passe pour créer votre compte.</p>
+
+      <form action="#" method="post">
+        <div class="field">
+          <label for="email-d">Email</label>
+          <div class="readonly" id="email-d"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>karim.benali@menuiserie-delcourt.example</div>
+          <p class="help">C'est l'adresse qui a reçu l'invitation ; elle servira à vous connecter.</p>
+        </div>
+        <div class="field">
+          <label for="pwd-d">Mot de passe</label>
+          <input id="pwd-d" name="password" type="password" autocomplete="new-password" aria-describedby="help-d">
+          <p class="help" id="help-d">Au moins 12 caractères. Une phrase que vous seul connaissez fait un bon mot de passe.</p>
+        </div>
+        <div class="field">
+          <label for="pwd2-d">Confirmez le mot de passe</label>
+          <input id="pwd2-d" name="password_confirm" type="password" autocomplete="new-password" value="••••••••••••••••" aria-invalid="true" aria-describedby="err-d">
+          <p class="error" id="err-d"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>Les deux mots de passe ne sont pas identiques.</p>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" type="submit">Créer mon compte</button>
+        </div>
+      </form>
+    </main>
+    <p class="foot">Ce lien est à usage unique et reste valable jusqu'au 16 septembre 2026.</p>
+  </div>
+</article>
+<p class="doc-note">Variante sombre avec une erreur de champ (State Patterns › Erreur de champ) : bordure + icône + texte, aria-invalid et aria-describedby, focus rendu au champ en erreur après le 422.</p>
+
+<!-- ===================================================================
+     (c) INVITATION EXPIRÉE — mode clair
+     =================================================================== -->
+<p class="doc-label">(c) Invitation expirée — mode clair — aucun formulaire, Alert destructive, quoi faire ensuite</p>
+<article class="frame" aria-label="Invitation expirée, mode clair" style="min-height:0">
+  <div class="chrome"><i></i><i></i><i></i><div class="url">https://erp.menuiserie-delcourt.example/invitation/7f3a…</div></div>
+  <div class="auth" style="min-height:520px">
+    <div class="brand"><span class="logo" aria-hidden="true">MD</span><span>Menuiserie Delcourt<small>ERP</small></span></div>
+    <main class="card">
+      <h1>Invitation expirée</h1>
+      <p class="lead">Bonjour Karim. Ce lien a dépassé sa durée de validité de 7 jours, ou a déjà été remplacé.</p>
+      <div class="alert destructive" role="alert">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v4M12 17h.01"/></svg>
+        <p><b>Ce lien d'invitation n'est plus valable.</b> Demandez à votre administrateur de vous en envoyer un nouveau.</p>
+      </div>
+      <p class="body">Pour Menuiserie Delcourt, c'est Sophie Lemaire qui gère les invitations : un mot de sa part suffit, le nouveau lien arrivera dans votre boîte mail.</p>
+      <div class="form-actions">
+        <a class="btn btn-outline" href="#">Aller à la page de connexion</a>
+      </div>
+    </main>
+  </div>
+</article>
+
+<!-- ===================================================================
+     (c') INVITATION EXPIRÉE — mode sombre
+     =================================================================== -->
+<p class="doc-label">(c) Invitation expirée — mode sombre</p>
+<article class="frame dark" aria-label="Invitation expirée, mode sombre" style="min-height:0">
+  <div class="chrome"><i></i><i></i><i></i><div class="url">https://erp.menuiserie-delcourt.example/invitation/7f3a…</div></div>
+  <div class="auth" style="min-height:520px">
+    <div class="brand"><span class="logo" aria-hidden="true">MD</span><span>Menuiserie Delcourt<small>ERP</small></span></div>
+    <main class="card">
+      <h1>Invitation expirée</h1>
+      <p class="lead">Bonjour Karim. Ce lien a dépassé sa durée de validité de 7 jours, ou a déjà été remplacé.</p>
+      <div class="alert destructive" role="alert">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v4M12 17h.01"/></svg>
+        <p><b>Ce lien d'invitation n'est plus valable.</b> Demandez à votre administrateur de vous en envoyer un nouveau.</p>
+      </div>
+      <p class="body">Pour Menuiserie Delcourt, c'est Sophie Lemaire qui gère les invitations : un mot de sa part suffit, le nouveau lien arrivera dans votre boîte mail.</p>
+      <div class="form-actions">
+        <a class="btn btn-outline" href="#">Aller à la page de connexion</a>
+      </div>
+    </main>
+  </div>
+</article>
+<p class="doc-note">Côté Sophie (UJ-2, cas limite) : la fiche de Karim affiche « Invitation expirée » et le bouton « Renvoyer l'invitation » ; l'ancien lien reste sur cette page. Un lien déjà utilisé mène à la Connexion.</p>
+
+</body>
+</html>

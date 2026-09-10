@@ -1,0 +1,23 @@
+# yaml-language-server: $schema=../vendor/symfony/routing/Loader/schema/routing.schema.json
+
+# Chargement des routes par attribut, sur les deux racines (AD-13).
+#
+# Le glob des modules est écrit une fois pour la production, et une seconde fois sous
+# `when@test` sur les modules de démonstration, l'un sous l'autre.
+#
+#   bin/console debug:router
+
+core_controllers:
+    resource: '../src/Core/Controller/'
+    type: attribute
+
+# Ajouter un module ne modifie pas ce fichier.
+module_controllers:
+    resource: '../src/Module/*/Controller/**/*.php'
+    type: attribute
+
+when@test:
+    # Miroir du glob ci-dessus, sur les modules de démonstration.
+    fixture_module_controllers:
+        resource: '../tests/Fixtures/Module/*/Controller/**/*.php'
+        type: attribute

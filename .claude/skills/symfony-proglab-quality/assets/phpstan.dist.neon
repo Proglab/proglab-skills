@@ -1,0 +1,49 @@
+# Analyse statique. Copier à la racine du projet et committer.
+#
+#   make stan           (ou : castor qa:stan)
+#
+# Nécessite les extensions en require-dev — elles ne sont pas auto-enregistrées :
+#   composer require --dev phpstan/phpstan phpstan/phpstan-symfony phpstan/phpstan-doctrine \
+#     phpstan/phpstan-strict-rules phpstan/phpstan-deprecation-rules phpstan/phpstan-phpunit
+#
+# Sans ces includes, PHPStan n'échoue pas, il se tait : il sort en 0 et ne
+# signale rien au-delà des règles du cœur, si bien que la porte paraît verte
+# tout en ne vérifiant qu'une fraction de ce qu'elle prétend.
+includes:
+    - vendor/phpstan/phpstan-symfony/extension.neon
+    - vendor/phpstan/phpstan-doctrine/extension.neon
+    - vendor/phpstan/phpstan-strict-rules/rules.neon
+    - vendor/phpstan/phpstan-deprecation-rules/rules.neon
+    - vendor/phpstan/phpstan-phpunit/rules.neon
+
+parameters:
+    level: max
+
+    paths:
+        - src
+        - tests
+
+    symfony:
+        # Doit correspondre au vrai nom de fichier dans var/cache/dev/ — il
+        # intègre le nom de la classe du kernel, qui intègre le namespace du
+        # projet. Vérifier :
+        #   ls var/cache/dev/*KernelDevDebugContainer.xml
+        # Si ce chemin est faux, PHPStan n'échoue pas, il se tait : les ids de
+        # service et les noms de route cessent d'être vérifiés et les règles
+        # passent silencieusement.
+        containerXmlPath: var/cache/dev/App_KernelDevDebugContainer.xml
+
+    doctrine:
+        # Nécessite tests/object-manager.php retournant l'entity manager.
+        # Supprimer ce bloc sur un projet sans Doctrine.
+        objectManagerLoader: tests/object-manager.php
+
+    # Les entités sont hydratées par Doctrine, donc PHPStan ne peut pas voir que
+    # ces propriétés sont initialisées au moment où quoi que ce soit les lit.
+    checkUninitializedProperties: false
+
+    # Une baseline sert uniquement à adopter le standard sur une base de code
+    # existante. Le nouveau code est écrit au niveau max ; la baseline peut
+    # rétrécir, jamais grandir.
+    # includes:
+    #     - phpstan-baseline.neon

@@ -1,0 +1,354 @@
+# Le contrat de couches et la frontière des deux racines, rendus vérifiables (AD-7).
+#
+#   vendor/bin/deptrac analyse --config-file=deptrac.yaml --report-uncovered
+#
+# Ce fichier vérifie deux choses indépendantes, et il faut les lire séparément.
+#
+# 1. **Le contrat de couches proglab**, transposé aux deux racines : les collecteurs de
+#    `symfony-proglab-quality` sont repris tels quels, à ceci près que `src/Controller/.*`
+#    devient `(src|tests/Fixtures)/(Core|Module/[^/]+)/Controller/.*` pour s'appliquer
+#    identiquement dans `src/Core/`, dans `src/Module/<Nom>/` et dans les modules de
+#    démonstration de `tests/Fixtures/Module/<Nom>/`. Les collecteurs `Doctrine`,
+#    `DoctrineMapping` et `EntityManager` sont ceux du skill, mot pour mot — leurs deux
+#    dérogations sont ce qui empêche ce fichier de contredire le standard.
+#
+# 2. **La frontière des deux racines** (AD-2), par des couches de *racine* : `Core` (tout
+#    `src/Core/` **hors** `Contract/`), `CoreContract` (`src/Core/Contract/`), et une
+#    couche par module. Le ruleset n'accorde à un module que `CoreContract`, et à `Core`
+#    aucun module. C'est le patron « ouvrir exactement une porte » de
+#    `references/deptrac.md`, appliqué à AD-2.
+#
+# **Chaque classe appartient donc à deux couches** — sa couche technique et sa couche de
+# racine — et deptrac évalue les deux séparément. C'est voulu : la couche technique
+# décide *ce qu'une classe a le droit de faire*, la couche de racine décide *chez qui elle
+# a le droit d'aller*. Pour que chaque dimension tranche seule, chacune est aveugle à
+# l'autre : une couche technique autorise toutes les racines (`+AnyRoot`), une racine
+# autorise toutes les couches techniques (`+AnyLayer`). Retirer l'une de ces deux lignes
+# ne durcit rien — cela transforme un contrôleur appelant son propre service en violation.
+# Deptrac avertit qu'une classe est dans plus d'une couche : cet avertissement est le prix
+# de la double dimension, pas un défaut à corriger.
+#
+# `AnyLayer` et `AnyRoot` sont des couches de vocabulaire : leur collecteur ne peut rien
+# attraper, elles n'existent que pour être héritées avec `+`. Ajouter un module coûte
+# **quatre éditions** dans ce seul fichier — son bloc de couche, sa ligne de ruleset, son
+# nom dans `AnyRoot`, et son exclusion dans `UndeclaredModule`.
+#
+# En oublier une ne rouvre pas la frontière : le module reste attrapé par la couche
+# `UndeclaredModule`, dont le ruleset n'autorise rien, et la première dépendance qu'il
+# porte échoue en le nommant. C'est le filet, et il est vérifié par
+# `tests/Core/BoundaryTest.php`.
+#
+# Ce que ce fichier ne collecte pas dans une couche technique : `Command/`,
+# `EventListener/` et `Twig/`, exactement comme le fichier du skill les laisse de côté.
+# Ils restent couverts par leur couche de racine, donc ils n'apparaissent pas dans
+# `--report-uncovered`, mais aucune règle de couche ne s'y applique. Leur donner une
+# couche le jour où l'un d'eux en a besoin.
+#
+# `--fail-on-uncovered` n'est pas utilisé : il échouerait sur la première classe vendor
+# qu'un contrôleur étend.
+deptrac:
+    paths:
+        - ./src
+        - ./tests/Fixtures/Module
+
+    layers:
+        # --- Le contrat de couches proglab, dans les deux racines ---------------
+        - name: Controller
+          collectors:
+              - type: directory
+                value: (src|tests/Fixtures)/(Core|Module/[^/]+)/Controller/.*
+
+        - name: Service
+          collectors:
+              - type: directory
+                value: (src|tests/Fixtures)/(Core|Module/[^/]+)/Service/.*
+
+        - name: Repository
+          collectors:
+              - type: directory
+                value: (src|tests/Fixtures)/(Core|Module/[^/]+)/Repository/.*
+
+        - name: Entity
+          collectors:
+              - type: directory
+                value: (src|tests/Fixtures)/(Core|Module/[^/]+)/Entity/.*
+
+        - name: Dto
+          collectors:
+              - type: directory
+                value: (src|tests/Fixtures)/(Core|Module/[^/]+)/Dto/.*
+
+        - name: Form
+          collectors:
+              - type: directory
+                value: (src|tests/Fixtures)/(Core|Module/[^/]+)/Form/.*
+
+        - name: Message
+          collectors:
+              - type: directory
+                value: (src|tests/Fixtures)/(Core|Module/[^/]+)/(Message|MessageHandler)/.*
+
+        # Les exceptions métier portent leur propre statut HTTP (#[WithHttpStatus]).
+        - name: Exception
+          collectors:
+              - type: directory
+                value: (src|tests/Fixtures)/(Core|Module/[^/]+)/Exception/.*
+
+        # Les voters. Un contrôleur référence leurs constantes dans #[IsGranted].
+        - name: Security
+          collectors:
+              - type: directory
+                value: (src|tests/Fixtures)/(Core|Module/[^/]+)/Security/.*
+
+        # Les enums natifs, mappés avec enumType: et utilisés par les formulaires et les DTO.
+        - name: Enum
+          collectors:
+              - type: directory
+                value: (src|tests/Fixtures)/(Core|Module/[^/]+)/Enum/.*
+
+        # Tout ce qui est de Doctrine *sauf* les deux dérogations ci-dessous.
+        - name: Doctrine
+          collectors:
+              - type: classNameRegex
+                value: '/^Doctrine\\(?!ORM\\EntityManagerInterface$|Persistence\\ObjectManager$|ORM\\Mapping\\|Common\\Collections\\|DBAL\\Types\\Types$).*/'
+
+        # Ce dont une entité est faite : les attributs de mapping #[ORM\...], les classes
+        # Collection, et les constantes Types de DBAL.
+        - name: DoctrineMapping
+          collectors:
+              - type: classNameRegex
+                value: '/^Doctrine\\(ORM\\Mapping\\.*|Common\\Collections\\.*|DBAL\\Types\\Types)$/'
+
+        # flush() uniquement. Délibérément étroit.
+        - name: EntityManager
+          collectors:
+              - type: classNameRegex
+                value: '/^Doctrine\\(ORM\\EntityManagerInterface|Persistence\\ObjectManager)$/'
+
+        - name: Http
+          collectors:
+              - type: classNameRegex
+                value: '/^Symfony\\Component\\HttpFoundation\\.*/'
+
+        # --- La frontière des deux racines (AD-2) -------------------------------
+        # Le socle, moins sa porte publique.
+        - name: Core
+          collectors:
+              - type: bool
+                must:
+                    - type: directory
+                      value: src/Core/.*
+                must_not:
+                    - type: directory
+                      value: src/Core/Contract/.*
+
+        # La porte publique, et la seule chose du socle qu'un module voit.
+        - name: CoreContract
+          collectors:
+              - type: directory
+                value: src/Core/Contract/.*
+
+        # --- Un module, une couche ----------------------------------------------
+        # « Module → Module interdit » n'est pas exprimable sans nommer chaque module :
+        # deptrac ne dispense une couche de la règle que vis-à-vis d'elle-même.
+        - name: ModuleDemo
+          collectors:
+              - type: directory
+                value: (src|tests/Fixtures)/Module/Demo/.*
+
+        - name: ModuleBilling
+          collectors:
+              - type: directory
+                value: (src|tests/Fixtures)/Module/Billing/.*
+
+        # Le filet. Tout module posé sous une racine globée sans être déclaré ci-dessus
+        # tombe ici, et son ruleset n'autorise rien : la première dépendance qu'il porte
+        # échoue en le nommant.
+        #
+        # Sans cette couche, un module non déclaré n'a *que* sa couche technique, dont le
+        # ruleset porte `+AnyRoot` — il atteint donc `Core` et les autres modules sans
+        # qu'aucune règle ne s'y oppose, et deptrac sort en 0. C'est exactement la
+        # frontière que ce fichier existe pour tenir, et elle échouait en silence.
+        #
+        # **Ajouter un module ajoute donc une quatrième édition : son `must_not` ici.**
+        # L'oublier ne rouvre rien — le module reste dans cette couche, et ses propres
+        # dépendances internes le signalent bruyamment.
+        - name: UndeclaredModule
+          collectors:
+              - type: bool
+                must:
+                    - type: directory
+                      value: (src|tests/Fixtures)/Module/[^/]+/.*
+                must_not:
+                    - type: directory
+                      value: (src|tests/Fixtures)/Module/Demo/.*
+                    - type: directory
+                      value: (src|tests/Fixtures)/Module/Billing/.*
+
+        # --- Deux couches de vocabulaire, qui n'attrapent rien ------------------
+        # Elles n'existent que pour être héritées avec `+` dans le ruleset.
+        - name: AnyLayer
+          collectors:
+              - type: classNameRegex
+                value: '/^\x00CollectsNothing$/'
+
+        - name: AnyRoot
+          collectors:
+              - type: classNameRegex
+                value: '/^\x00CollectsNothing$/'
+
+    ruleset:
+        # --- Le vocabulaire ------------------------------------------------------
+        # Toutes les couches techniques. Une racine les voit toutes : ce n'est pas à
+        # elle de dire si un service a le droit de construire une requête.
+        AnyLayer:
+            - Controller
+            - Service
+            - Repository
+            - Entity
+            - Dto
+            - Form
+            - Message
+            - Exception
+            - Security
+            - Enum
+            - Http
+            - Doctrine
+            - DoctrineMapping
+            - EntityManager
+
+        # Toutes les racines. Une couche technique les voit toutes : ce n'est pas à
+        # elle de dire si un module a le droit d'atteindre le socle.
+        # **Ajouter un module ajoute une ligne ici.**
+        AnyRoot:
+            - Core
+            - CoreContract
+            - ModuleDemo
+            - ModuleBilling
+
+        # --- Le contrat de couches proglab ---------------------------------------
+        # Chaque couche se voit elle-même : deux classes de la même couche vivant dans
+        # des racines différentes ne se dispensent pas de la règle toutes seules.
+
+        # Un contrôleur traduit HTTP, donc il voit HttpFoundation, et il peut atteindre
+        # les couches entre lesquelles il traduit. Doctrine est délibérément absent :
+        # pas de persistance dans les contrôleurs.
+        Controller:
+            - Controller
+            - Http
+            - Service
+            - Dto
+            - Entity
+            - Form
+            - Message
+            - Exception
+            - Security
+            - Enum
+            - '+AnyRoot'
+
+        # Un service porte la règle. Il peut demander des données à un repository et il
+        # appelle flush() une fois par cas d'utilisation, mais il ne peut pas construire
+        # de requêtes (Doctrine) et il ne peut pas connaître HTTP — noter l'absence
+        # de Http.
+        Service:
+            - Service
+            - Repository
+            - Dto
+            - Entity
+            - Message
+            - EntityManager
+            - Exception
+            - Enum
+            - '+AnyRoot'
+
+        # Un repository est le seul endroit autorisé à toucher Doctrine.
+        Repository:
+            - Repository
+            - Entity
+            - Dto
+            - Doctrine
+            - DoctrineMapping
+            - EntityManager
+            - Enum
+            - '+AnyRoot'
+
+        # Les handlers traduisent un message en appel de service, exactement comme un
+        # contrôleur traduit une requête.
+        Message:
+            - Message
+            - Service
+            - Repository
+            - Dto
+            - Entity
+            - Exception
+            - Enum
+            - '+AnyRoot'
+
+        # Les formulaires se mappent sur des DTO d'entrée, jamais sur des entités.
+        Form:
+            - Form
+            - Dto
+            - Enum
+            - '+AnyRoot'
+
+        # Les voters décident sur une entité ou un DTO. Rien d'autre des nôtres.
+        Security:
+            - Security
+            - Entity
+            - Dto
+            - Enum
+            - '+AnyRoot'
+
+        # Une entité, c'est du mapping, ses relations et des enums, rien d'autre des
+        # nôtres. Noter ce qui est absent : un service ou un repository, ce qui en
+        # ferait un orchestrateur.
+        Entity:
+            - Entity
+            - DoctrineMapping
+            - Enum
+            - '+AnyRoot'
+        Dto:
+            - Dto
+            - Enum
+            - '+AnyRoot'
+        Enum:
+            - Enum
+            - '+AnyRoot'
+        Exception:
+            - Exception
+            - '+AnyRoot'
+
+        # --- Les trois règles de frontière ---------------------------------------
+        # Le socle ne voit aucun module. Le reste lui est ouvert : ce sont les couches
+        # techniques qui tranchent ce qu'une classe du socle a le droit de faire.
+        Core:
+            - '+AnyLayer'
+            - Core
+            - CoreContract
+
+        # La porte publique ne dépend de rien : ni Doctrine, ni HTTP, ni le socle.
+        #
+        # Conséquence à connaître avant d'écrire le premier contrat : **un enum ou un objet
+        # valeur que traverse un contrat vit dans `Contract/`, pas dans `src/Core/Enum/`.**
+        # Un DTO de `Contract/` qui référence `App\Core\Enum\…` échoue ici, et c'est
+        # voulu — cet enum est un interne du socle, et une porte qui atteint les internes
+        # n'est plus une porte. deptrac le dit en toutes lettres :
+        # « App\Core\Contract\X must not depend on App\Core\Enum\Y ». Le correctif est de
+        # déplacer l'enum dans `Contract/`, jamais d'ouvrir cette ligne.
+        CoreContract: ~
+
+        # Un module non déclaré n'a droit à rien. Voir le commentaire de la couche.
+        UndeclaredModule: ~
+
+        # Un module voit `CoreContract` et rien d'autre du socle, ni aucun autre module.
+        # C'est la règle qui rend le report d'un correctif mécanisable.
+        # **Ajouter un module copie ce bloc.**
+        ModuleDemo:
+            - '+AnyLayer'
+            - ModuleDemo
+            - CoreContract
+
+        ModuleBilling:
+            - '+AnyLayer'
+            - ModuleBilling
+            - CoreContract

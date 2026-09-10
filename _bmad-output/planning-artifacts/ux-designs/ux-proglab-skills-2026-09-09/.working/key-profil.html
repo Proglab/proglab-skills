@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Écran clé — Profil de Sophie Lemaire (Admin), Tabs et bandeau 2FA</title>
+<style>
+/* =====================================================================
+   ÉCRAN CLÉ — PROFIL (app_profile, /profil/{onglet})
+   Sophie Lemaire (Admin), 5 jours restants dans le délai de grâce 2FA.
+   ---------------------------------------------------------------------
+   Sections du spine qui gouvernent cet écran :
+   EXPERIENCE.md
+     · Information Architecture › Surfaces › « Profil » (Tabs : Langue ·
+       Mot de passe · Double authentification · Jetons d'API) et « Enrôlement 2FA »
+     · Component Patterns › Tabs (Profil), Banner (2FA), Champ de formulaire,
+       Button, Table, Dialog (révoquer un jeton), Card
+     · State Patterns › Délai de grâce 2FA, Délai de grâce expiré
+     · Voice and Tone › « Banner 2FA »
+     · Key Flows › Flux 6 étapes 3-6 (bandeau, activation, codes de secours)
+     · Internationalisation › Profil › Langue (langues actives seulement)
+     · Questions ouvertes › OQ-UX-1 (durée du délai), OQ-UX-3 (jetons d'API)
+   DESIGN.md
+     · Components › Tabs, Banner, Card, Champ de formulaire, Button, Table,
+       Badge ; Typography (h1 display, h2 heading, label, meta, mono) ;
+       Layout & Spacing (formulaires : une colonne, 480 px, boutons à gauche)
+   Frame, sidebar, en-tête, bouton compte : repris de direction-aere.html.
+   Accessibilité : statut 2FA = icône + libellé (1) ; contrastes du thème (2) ;
+   labels et legend réels (3) ; :focus-visible partout (4) ; aria-label sur
+   les boutons icône-seule (5) ; un seul h1, cartes en h2 (6) ; rien au
+   survol seul (7). Aucun JavaScript, aucune requête réseau, polices système.
+
+   Tokens : voir DESIGN.md frontmatter (shadcn neutral, clair et sombre).
+   ===================================================================== */
+
+:root { --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: var(--font); background: #e8e8e8; color: #0a0a0a; padding: 32px; }
+.doc-intro { max-width: 1280px; margin: 0 auto 24px; font-size: 15px; line-height: 1.5; }
+.doc-intro .kicker { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: #525252; margin: 0 0 4px; }
+.doc-intro p { margin: 0 0 6px; }
+.doc-label { max-width: 1280px; margin: 28px auto 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: #525252; }
+.doc-note { max-width: 1280px; margin: 10px auto 0; font-size: 13px; color: #525252; }
+
+.frame {
+  --background: oklch(1 0 0); --foreground: oklch(0.145 0 0); --card: oklch(1 0 0);
+  --muted: oklch(0.97 0 0); --muted-foreground: oklch(0.556 0 0); --muted-strong: oklch(0.439 0 0);
+  --primary: oklch(0.205 0 0); --primary-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.577 0.245 27.325); --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.922 0 0); --input: oklch(0.922 0 0); --ring: oklch(0.708 0 0);
+  --sidebar: oklch(0.985 0 0); --sidebar-accent: oklch(0.94 0 0); --accent: oklch(0.97 0 0);
+  --page: oklch(0.97 0 0);
+}
+.frame.dark {
+  --background: oklch(0.145 0 0); --foreground: oklch(0.985 0 0); --card: oklch(0.205 0 0);
+  --muted: oklch(0.269 0 0); --muted-foreground: oklch(0.708 0 0); --muted-strong: oklch(0.80 0 0);
+  --primary: oklch(0.922 0 0); --primary-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.704 0.191 22.216); --destructive-foreground: oklch(0.145 0 0);
+  --border: oklch(1 0 0 / 10%); --input: oklch(0.269 0 0); --ring: oklch(0.556 0 0);
+  --sidebar: oklch(0.205 0 0); --sidebar-accent: oklch(0.269 0 0); --accent: oklch(0.269 0 0);
+  --page: oklch(0.145 0 0);
+}
+
+.frame { width: 1280px; margin: 0 auto; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 30px rgba(0,0,0,.18); background: var(--page); color: var(--foreground); font-size: 15px; line-height: 1.5; position: relative; }
+.chrome { height: 38px; background: #d9d9d9; display: flex; align-items: center; gap: 8px; padding: 0 12px; }
+.frame.dark .chrome { background: #2b2b2b; }
+.chrome i { width: 11px; height: 11px; border-radius: 50%; background: #b3b3b3; display: inline-block; }
+.chrome .url { flex: 1; margin-left: 10px; height: 24px; border-radius: 6px; background: #f2f2f2; color: #444; font-size: 12px; display: flex; align-items: center; padding: 0 10px; }
+.frame.dark .chrome .url { background: #1c1c1c; color: #bdbdbd; }
+
+.app { display: grid; grid-template-columns: 248px 1fr; min-height: 820px; }
+
+.sidebar { background: var(--sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 16px 12px; }
+.brand { display: flex; align-items: center; gap: 10px; padding: 4px 8px 18px; font-weight: 600; }
+.brand .logo { width: 32px; height: 32px; border-radius: 8px; background: var(--primary); color: var(--primary-foreground); display: grid; place-items: center; font-size: 12px; font-weight: 600; }
+.brand small { display: block; font-weight: 400; color: var(--muted-foreground); font-size: 12px; }
+.nav-group { font-size: 12px; color: var(--muted-foreground); padding: 10px 10px 6px; }
+.nav a { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; color: var(--foreground); text-decoration: none; }
+.nav a[aria-current="page"] { background: var(--sidebar-accent); font-weight: 600; }
+.nav a svg { width: 18px; height: 18px; flex: none; }
+.sidebar-foot { margin-top: auto; border-top: 1px solid var(--border); padding-top: 14px; display: flex; align-items: center; gap: 10px; font-size: 14px; }
+.avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--primary); color: var(--primary-foreground); display: grid; place-items: center; font-size: 12px; font-weight: 600; flex: none; }
+.sidebar-foot small { display: block; color: var(--muted-foreground); font-size: 12px; }
+
+.main { min-width: 0; display: flex; flex-direction: column; }
+.header { height: 60px; display: flex; align-items: center; padding: 0 32px; gap: 12px; background: var(--page); }
+.header .spacer { flex: 1; }
+.btn-account { font: inherit; display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--border); background: var(--card); color: var(--foreground); border-radius: 999px; height: 38px; padding: 0 14px 0 6px; cursor: pointer; }
+.btn-account svg { width: 16px; height: 16px; }
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+
+/* Bandeau 2FA — pleine largeur sous l'en-tête, non fermable */
+.banner { display: flex; align-items: center; gap: 10px; background: var(--muted); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 10px 32px; font-size: 14px; }
+.banner svg { width: 18px; height: 18px; flex: none; }
+.banner a { color: var(--foreground); font-weight: 500; margin-left: 4px; }
+
+.content { padding: 8px 32px 40px; max-width: 1000px; }
+.title { margin: 12px 0 22px; }
+h1 { font-size: 30px; font-weight: 600; letter-spacing: -0.02em; margin: 0; line-height: 1.2; }
+.lead { margin: 6px 0 0; color: var(--muted-strong); font-size: 16px; }
+
+/* Tabs — chaque onglet est un lien vers /profil/{onglet} */
+.tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); margin: 0 0 24px; }
+.tabs a { display: inline-flex; align-items: center; height: 42px; padding: 0 14px; font-size: 14px; font-weight: 500; color: var(--muted-strong); text-decoration: none; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tabs a[aria-selected="true"] { color: var(--foreground); border-bottom-color: var(--foreground); }
+
+.btn { font: inherit; font-size: 14px; font-weight: 500; display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 14px; border-radius: 8px; border: 1px solid transparent; cursor: pointer; text-decoration: none; white-space: nowrap; }
+.btn svg { width: 16px; height: 16px; }
+.btn-primary { background: var(--primary); color: var(--primary-foreground); }
+.btn-outline { background: var(--card); color: var(--foreground); border-color: var(--border); }
+.btn-sm { height: 32px; padding: 0 12px; font-size: 13px; }
+
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; margin-bottom: 14px; }
+.card h2 { font-size: 18px; font-weight: 600; margin: 0 0 4px; }
+.card .desc { margin: 0 0 16px; color: var(--muted-foreground); font-size: 14px; }
+.card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
+.state { display: inline-flex; align-items: center; gap: 6px; }
+.state svg { width: 15px; height: 15px; flex: none; }
+.status-line { margin: 0 0 18px; }
+.status-line .hint { color: var(--muted-strong); font-size: 14px; }
+
+fieldset { border: 0; padding: 0; margin: 0 0 20px; max-width: 560px; }
+legend { font-size: 14px; font-weight: 500; padding: 0; margin-bottom: 4px; }
+.radio { display: grid; grid-template-columns: 20px 1fr; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--border); align-items: start; }
+.radio:last-of-type { border-bottom: 0; }
+.radio input { width: 18px; height: 18px; margin: 3px 0 0; accent-color: var(--primary); }
+.radio label { display: block; font-size: 15px; font-weight: 500; cursor: pointer; }
+.radio .help { margin: 2px 0 0; color: var(--muted-foreground); font-size: 13px; }
+
+.field { max-width: 480px; margin: 0 0 14px; }
+.field label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 6px; }
+.field input { font: inherit; font-size: 15px; height: 38px; width: 100%; border: 1px solid var(--input); border-radius: 8px; background: var(--background); color: var(--foreground); padding: 0 12px; }
+.field .help { margin: 6px 0 0; color: var(--muted-foreground); font-size: 13px; }
+.form-actions { display: flex; gap: 10px; }
+
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; font-size: 13px; font-weight: 400; color: var(--muted-foreground); padding: 6px 0 8px; border-bottom: 1px solid var(--border); }
+td { padding: 14px 0; border-bottom: 1px solid var(--border); vertical-align: middle; font-size: 15px; }
+tr:last-child td { border-bottom: 0; }
+td.act, th.act { text-align: right; white-space: nowrap; }
+td small { display: block; color: var(--muted-foreground); font-size: 13px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.foot-note { margin: 18px 0 0; color: var(--muted-foreground); font-size: 13px; }
+</style>
+</head>
+<body>
+
+<div class="doc-intro">
+  <p class="kicker">Écran clé 2 / 3 — Profil</p>
+  <p><strong>Ce que montre la maquette.</strong> Le profil de Sophie Lemaire (Admin), atteint depuis le menu compte. Quatre onglets, chacun une URL : Langue · Mot de passe · Double authentification · Jetons d'API. Sophie n'a pas encore activé sa 2FA : le bandeau de rappel reste sous l'en-tête sur chaque page, avec le délai restant (Flux 6, étapes 3-4).</p>
+  <p>États rendus : <em>onglet Double authentification</em> (clair — choix de la méthode, codes de secours à venir) ; <em>onglet Jetons d'API</em> (sombre — liste nom / créé le, créer, révoquer). Le bandeau est présent dans les deux.</p>
+</div>
+
+<!-- ===================================================================
+     MODE CLAIR — onglet Double authentification
+     =================================================================== -->
+<p class="doc-label">Mode clair — onglet « Double authentification », bandeau de délai de grâce (5 jours restants)</p>
+<article class="frame" aria-label="Maquette en mode clair">
+  <div class="chrome"><i></i><i></i><i></i><div class="url">https://erp.menuiserie-delcourt.example/profil/double-authentification</div></div>
+  <div class="app">
+
+    <aside class="sidebar" aria-label="Navigation principale">
+      <div class="brand"><span class="logo" aria-hidden="true">MD</span><span>Menuiserie Delcourt<small>ERP · production</small></span></div>
+      <div class="nav-group">Suivi</div>
+      <nav class="nav">
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Roadmap</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Journal d'audit</a>
+      </nav>
+      <div class="nav-group">Administration</div>
+      <nav class="nav">
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4a3.5 3.5 0 0 1 0 7M21.5 20a6.5 6.5 0 0 0-5-6.3"/></svg>Utilisateurs</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/></svg>Rôles</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>Langues</a>
+      </nav>
+      <div class="sidebar-foot"><span class="avatar" aria-hidden="true">SL</span><span>Sophie Lemaire<small>Admin</small></span></div>
+    </aside>
+
+    <div class="main">
+      <header class="header">
+        <span class="spacer"></span>
+        <button class="btn-account" type="button" aria-haspopup="menu" aria-expanded="false">
+          <span class="avatar" style="width:26px;height:26px;font-size:11px" aria-hidden="true">SL</span>
+          Sophie Lemaire
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+      </header>
+
+      <!-- Banner 2FA (FR-5) : non fermable tant que la condition tient -->
+      <div class="banner" role="note">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/></svg>
+        <span>Sophie, votre rôle demande la double authentification. Il vous reste 5 jours pour l'activer.<a href="#">Activer maintenant</a></span>
+      </div>
+
+      <div class="content">
+        <div class="title">
+          <h1>Votre profil</h1>
+          <p class="lead">Sophie Lemaire · Admin · sophie.lemaire@menuiserie-delcourt.example</p>
+        </div>
+
+        <nav class="tabs" role="tablist" aria-label="Sections du profil">
+          <a href="#" role="tab" aria-selected="false">Langue</a>
+          <a href="#" role="tab" aria-selected="false">Mot de passe</a>
+          <a href="#" role="tab" aria-selected="true" aria-current="page">Double authentification</a>
+          <a href="#" role="tab" aria-selected="false">Jetons d'API</a>
+        </nav>
+
+        <section class="card" aria-labelledby="h-2fa" role="tabpanel">
+          <h2 id="h-2fa">Double authentification</h2>
+          <p class="desc">Un second facteur vous sera demandé à chaque connexion, en plus de votre mot de passe.</p>
+
+          <p class="status-line">
+            <span class="state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M9 9l6 6M15 9l-6 6"/></svg><b style="font-weight:500">Non activée</b></span>
+            <span class="hint"> — votre rôle Admin la demande ; il vous reste 5 jours. Cela prend deux minutes.</span>
+          </p>
+
+          <form action="#" method="post">
+            <fieldset>
+              <legend>Choisissez votre méthode</legend>
+              <div class="radio">
+                <input type="radio" id="m-totp" name="method" value="totp" checked>
+                <div>
+                  <label for="m-totp">Application d'authentification (recommandée)</label>
+                  <p class="help">Un code à six chiffres généré sur votre téléphone, sans réseau. Compatible avec les applications habituelles.</p>
+                </div>
+              </div>
+              <div class="radio">
+                <input type="radio" id="m-mail" name="method" value="email">
+                <div>
+                  <label for="m-mail">Code par email</label>
+                  <p class="help">Un code à six chiffres envoyé à sophie.lemaire@menuiserie-delcourt.example à chaque connexion.</p>
+                </div>
+              </div>
+            </fieldset>
+            <div class="form-actions">
+              <button class="btn btn-primary" type="submit">Activer la double authentification</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="card" aria-labelledby="h-codes">
+          <h2 id="h-codes">Codes de secours</h2>
+          <p class="desc">Dix codes à usage unique, remis une seule fois à l'activation. Ils remplacent votre second facteur si vous perdez votre téléphone ou l'accès à votre boîte mail.</p>
+          <p style="margin:0" class="state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>Vos codes vous seront proposés au téléchargement à la fin de l'activation. Gardez-les en lieu sûr.</p>
+        </section>
+
+        <p class="foot-note">Une fois active, vous pourrez réenrôler votre double authentification depuis cet onglet, avec votre second facteur en cours ou un code de secours.</p>
+      </div>
+    </div>
+  </div>
+</article>
+<p class="doc-note">Après activation (Flux 6, étape 6) : redirection sur cet onglet, Flash « Double authentification activée. », le bandeau disparaît. Durée du délai de grâce : 7 jours en [ASSUMPTION] (OQ-UX-1).</p>
+
+<!-- ===================================================================
+     MODE SOMBRE — onglet Jetons d'API
+     =================================================================== -->
+<p class="doc-label">Mode sombre — onglet « Jetons d'API » (FR-17) : liste nom / créé le, « Créer un jeton », « Révoquer »</p>
+<article class="frame dark" aria-label="Maquette en mode sombre">
+  <div class="chrome"><i></i><i></i><i></i><div class="url">https://erp.menuiserie-delcourt.example/profil/jetons-api</div></div>
+  <div class="app">
+
+    <aside class="sidebar" aria-label="Navigation principale">
+      <div class="brand"><span class="logo" aria-hidden="true">MD</span><span>Menuiserie Delcourt<small>ERP · production</small></span></div>
+      <div class="nav-group">Suivi</div>
+      <nav class="nav">
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Roadmap</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Journal d'audit</a>
+      </nav>
+      <div class="nav-group">Administration</div>
+      <nav class="nav">
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4a3.5 3.5 0 0 1 0 7M21.5 20a6.5 6.5 0 0 0-5-6.3"/></svg>Utilisateurs</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/></svg>Rôles</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>Langues</a>
+      </nav>
+      <div class="sidebar-foot"><span class="avatar" aria-hidden="true">SL</span><span>Sophie Lemaire<small>Admin</small></span></div>
+    </aside>
+
+    <div class="main">
+      <header class="header">
+        <span class="spacer"></span>
+        <button class="btn-account" type="button" aria-haspopup="menu" aria-expanded="false">
+          <span class="avatar" style="width:26px;height:26px;font-size:11px" aria-hidden="true">SL</span>
+          Sophie Lemaire
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+      </header>
+
+      <div class="banner" role="note">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/></svg>
+        <span>Sophie, votre rôle demande la double authentification. Il vous reste 5 jours pour l'activer.<a href="#">Activer maintenant</a></span>
+      </div>
+
+      <div class="content">
+        <div class="title">
+          <h1>Votre profil</h1>
+          <p class="lead">Sophie Lemaire · Admin · sophie.lemaire@menuiserie-delcourt.example</p>
+        </div>
+
+        <nav class="tabs" role="tablist" aria-label="Sections du profil">
+          <a href="#" role="tab" aria-selected="false">Langue</a>
+          <a href="#" role="tab" aria-selected="false">Mot de passe</a>
+          <a href="#" role="tab" aria-selected="false">Double authentification</a>
+          <a href="#" role="tab" aria-selected="true" aria-current="page">Jetons d'API</a>
+        </nav>
+
+        <section class="card" aria-labelledby="h-tokens" role="tabpanel">
+          <div class="card-head">
+            <div>
+              <h2 id="h-tokens">Jetons d'API</h2>
+              <p class="desc">Un jeton permet à une application de se connecter en votre nom. Révoquez ceux qui ne servent plus.</p>
+            </div>
+            <button class="btn btn-primary" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Créer un jeton
+            </button>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th scope="col" style="width:50%">Nom</th>
+                <th scope="col">Créé le</th>
+                <th scope="col" class="act"><span class="sr-only">Action</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Poste de Sophie (bureau)</td>
+                <td>mercredi 2 septembre 2026</td>
+                <td class="act"><button class="btn btn-outline btn-sm" type="button" aria-haspopup="dialog">Révoquer</button></td>
+              </tr>
+              <tr>
+                <td>Essai application mobile</td>
+                <td>mardi 8 septembre 2026</td>
+                <td class="act"><button class="btn btn-outline btn-sm" type="button" aria-haspopup="dialog">Révoquer</button></td>
+              </tr>
+            </tbody>
+          </table>
+          <!-- [NOTE FOR UX] OQ-UX-3 ouverte : la liste se limite à nom / créé le / révoquer, comme le
+               spine l'exige. Ni expiration, ni dernière utilisation, ni affichage unique du jeton à la
+               création ne sont maquettés tant que la question n'est pas tranchée. -->
+        </section>
+
+        <p class="foot-note">Révoquer un jeton déconnecte immédiatement l'application qui l'utilise ; un Dialog vous le confirme avant. Chaque création et chaque révocation est inscrite au journal d'audit.</p>
+      </div>
+    </div>
+  </div>
+</article>
+<p class="doc-note">Onglet Langue (non maquetté) : un groupe radio Français · English · Nederlands limité aux langues activées par l'administration, bouton « Enregistrer » ; le choix s'applique aussi aux emails (FR-21). Onglet Mot de passe : mot de passe actuel, nouveau, confirmation, bouton « Changer mon mot de passe » ; les autres sessions sont closes.</p>
+
+</body>
+</html>

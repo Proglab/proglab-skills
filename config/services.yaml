@@ -1,0 +1,47 @@
+# yaml-language-server: $schema=../vendor/symfony/dependency-injection/Loader/schema/services.schema.json
+
+# Découverte des services des deux racines (AD-2, AD-13).
+#
+# Le glob des modules est écrit une fois pour la production, et une seconde fois sous
+# `when@test` sur les modules de démonstration. Les deux sont volontairement l'un sous
+# l'autre : c'est là qu'une divergence de forme se voit à l'œil nu.
+parameters:
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    # Un module se déclare en implémentant un contrat du socle : le tag est posé ici,
+    # une fois, sur l'interface. `src/Core/Contract/` reste sans dépendance — pas même
+    # un attribut de conteneur.
+    _instanceof:
+        App\Core\Contract\ModuleDescriptor:
+            tags: ['app.module']
+
+    # Le socle. `Contract/` est exclu : il ne porte que des interfaces et des DTO.
+    App\Core\:
+        resource: '../src/Core/'
+        exclude: '../src/Core/{Contract,Dto,Entity}'
+
+    # Les modules du client. Ajouter un module ne modifie pas ce fichier.
+    App\Module\:
+        resource: '../src/Module/*/'
+        exclude: '../src/Module/*/{Dto,Entity}'
+
+when@test:
+    services:
+        _defaults:
+            autowire: true
+            autoconfigure: true
+
+        # `_instanceof` ne vaut que pour les services définis dans le même bloc : le
+        # miroir le reprend, comme il reprend `_defaults`.
+        _instanceof:
+            App\Core\Contract\ModuleDescriptor:
+                tags: ['app.module']
+
+        # Miroir du glob des modules ci-dessus, sur les modules de démonstration.
+        App\Tests\Fixtures\Module\:
+            resource: '../tests/Fixtures/Module/*/'
+            exclude: '../tests/Fixtures/Module/*/{Dto,Entity}'

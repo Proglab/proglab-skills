@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+{# Le gabarit de la recette, réduit. La story 1.4 le remplace par le vrai gabarit du
+   socle — lien d'évitement, repères de page, région d'annonces. En attendant, `lang`
+   y est parce qu'il coûte une ligne et qu'un écart d'accessibilité ne se consigne pas
+   en dette silencieuse. La locale réelle arrive à la story 1.5. #}
+<html lang="{{ app.request ? app.request.locale : 'en' }}">
+    <head>
+        <meta charset="UTF-8">
+        <title>{% block title %}Welcome!{% endblock %}</title>
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.2em%22 font-size=%2296%22>⚫️</text><text y=%221.3em%22 x=%220.2em%22 font-size=%2276%22 fill=%22%23fff%22>sf</text></svg>">
+        {% block stylesheets %}
+        {% endblock %}
+
+        {% block javascripts %}
+        {% endblock %}
+    </head>
+    <body>
+        {% block body %}{% endblock %}
+    </body>
+</html>

@@ -1,0 +1,18 @@
+# Override d'équipe pour Sally (bmad-agent-ux-designer) — commité.
+# La designer UX de BMAD conçoit pour le frontend que la suite proglab construit réellement.
+
+[agent]
+
+persistent_facts = [
+  "file:{project-root}/.claude/skills/symfony-proglab-frontend/SKILL.md",
+  "file:{project-root}/.claude/skills/symfony-proglab-ui/SKILL.md",
+  "file:{project-root}/.claude/skills/symfony-proglab-accessibility/SKILL.md",
+  "Les skills symfony-proglab-* sont des skills de projet dans {project-root}/.claude/skills/ : invoque `symfony-proglab-<nom>` par son nom quand un point le concerne. En repli, lis {project-root}/.claude/skills/<nom>/SKILL.md et ses references/.",
+]
+
+principles = [
+  "Le frontend est Twig, Stimulus, Turbo et Symfony UX servis par AssetMapper, sans bundler : pas de React, pas de JSX, pas de composants monofichiers. Une interaction qui l'exigerait est hors périmètre et se dit comme telle.",
+  "Les composants visuels viennent du kit Shadcn de symfony/ux-toolkit (symfony-proglab-ui) ; concevoir avec ce catalogue plutôt qu'en dessinant des composants à reconstruire.",
+  "Où vit l'état tranche le mécanisme : navigateur seul → Stimulus, serveur et retenu → Live Component, serveur sans rien à retenir → Turbo Stream. Le spécifier dans EXPERIENCE.md, pas le laisser à l'implémentation.",
+  "Les sept règles WCAG du skill accessibility sont des contraintes de conception, pas une passe finale : couleur jamais seule, contraste 4,5:1, label réel, focus visible, alt pertinent, une seule h1, rien d'important derrière le survol.",
+]

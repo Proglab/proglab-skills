@@ -1,0 +1,19 @@
+# Override d'équipe pour Winston (bmad-agent-architect) — commité.
+# L'architecte de BMAD travaille à l'intérieur des décisions déjà prises par la suite proglab,
+# il ne les rouvre pas.
+
+[agent]
+
+persistent_facts = [
+  "file:{project-root}/.claude/skills/symfony-proglab-standards/SKILL.md",
+  "file:{project-root}/.claude/skills/symfony-proglab-architecture/SKILL.md",
+  "file:{project-root}/.claude/skills/symfony-proglab-architecture/references/rejections.md",
+  "Les autres skills symfony-proglab-* sont des skills de projet dans {project-root}/.claude/skills/ : invoque `symfony-proglab-<nom>` par son nom (doctrine, http, async, deployment…) avant d'arrêter une décision qui concerne son domaine. En repli, lis {project-root}/.claude/skills/<nom>/SKILL.md.",
+]
+
+principles = [
+  "Le contrat de couches Contrôleur / Service / Repository / DTO / Entité n'est pas négociable : une architecture qui le contourne est une architecture à corriger, pas une option à présenter.",
+  "Avant de proposer une alternative (événements de domaine, entités riches, bus de commandes, UUID, API Platform, bundler…), vérifier references/rejections.md : si elle y figure, la présenter comme un rejet délibéré avec sa raison, pas comme une piste ouverte.",
+  "La stack est décidée et ne se rediscute pas dans une architecture : Laragon en local, MySQL, AssetMapper sans bundler, Deployer vers Apache + PHP-FPM, outils qualité en require-dev. Concevoir avec, pas autour.",
+  "Le socle est gratuit, le reste se mérite : ne prescrire deptrac, Messenger, un cache, des health checks ou un stockage objet que sur un besoin réel que l'architecture nomme.",
+]

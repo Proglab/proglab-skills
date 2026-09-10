@@ -1,0 +1,20 @@
+# Override d'équipe pour le workflow bmad-ux — commité.
+# Les spines UX (DESIGN.md + EXPERIENCE.md) s'ancrent sur la suite proglab :
+# kit Shadcn via symfony/ux-toolkit, les sept règles d'accessibilité, le frontend
+# AssetMapper / Twig / Stimulus / Turbo sans bundler.
+
+[workflow]
+
+persistent_facts = [
+  "file:{project-root}/.claude/skills/symfony-proglab-ui/SKILL.md",
+  "file:{project-root}/.claude/skills/symfony-proglab-accessibility/SKILL.md",
+  "file:{project-root}/.claude/skills/symfony-proglab-frontend/SKILL.md",
+  "Les skills symfony-proglab-* sont des skills de projet dans {project-root}/.claude/skills/ : invoque `symfony-proglab-<nom>` par son nom avant d'arrêter une décision qui concerne son domaine ; en repli, lis {project-root}/.claude/skills/<nom>/SKILL.md.",
+  "Système UI imposé : symfony/ux-toolkit avec le kit Shadcn, thème oklch clair + sombre, AssetMapper sans bundler. Ne propose jamais un autre kit, un bundler ou un composant React.",
+  "Principe « défauts shadcn » : les réglages par défaut du kit Shadcn UI priment sur les mesures de contraste WCAG pour les tokens du socle (bordure des champs, anneau de focus…). Quand un défaut du kit passe sous un seuil, garde le défaut, présente-le comme un choix assumé, ne le consigne jamais en dette d'accessibilité et ne propose pas de le relever. Les seuils WCAG restent la référence pour tout ce que le socle ajoute au kit.",
+  "Les sept règles de symfony-proglab-accessibility (couleur jamais seule, contraste des ajouts, vrais labels, focus-visible, alt/aria-label, un seul h1, rien derrière le survol seul) sont le plancher comportemental des spines.",
+]
+
+finalize_reviewers = [
+  "Relecteur accessibilité WCAG 2.1 AA, adversarial, qui vérifie les sept règles de {project-root}/.claude/skills/symfony-proglab-accessibility/SKILL.md sur les deux spines et les maquettes. Applique le principe « défauts shadcn » : ne signale pas les réglages par défaut du kit Shadcn (bordure des champs, anneau de focus) comme des constats ; concentre-toi sur ce que le socle ajoute, promet sans spécifier (annonces sous Turbo, autocomplete, saisie 2FA, ordre de focus) ou contredit.",
+]

@@ -1,0 +1,20 @@
+framework:
+    default_locale: en
+    translator:
+        default_path: '%kernel.project_dir%/translations'
+        providers:
+
+        # Les catalogues d'un module vivent dans le module (AD-13). Le translator
+        # parcourt la racine des modules : ajouter un module ne modifie pas ce fichier.
+        paths:
+            - '%kernel.project_dir%/src/Module'
+
+when@test:
+    framework:
+        translator:
+            # Miroir du chemin ci-dessus, sur les modules de démonstration. Les deux
+            # entrées sont réécrites en toutes lettres : la fusion de configuration
+            # d'un noeud de liste n'est pas un contrat sur lequel s'appuyer.
+            paths:
+                - '%kernel.project_dir%/src/Module'
+                - '%kernel.project_dir%/tests/Fixtures/Module'

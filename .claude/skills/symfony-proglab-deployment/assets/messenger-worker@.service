@@ -1,0 +1,60 @@
+; Unité systemd de type template pour les workers Messenger.
+;
+; À installer comme /etc/systemd/system/messenger-worker@.service, puis :
+;
+;   systemctl daemon-reload
+;   systemctl enable --now messenger-worker@1 messenger-worker@2
+;
+; Le "@" en fait un template : un seul fichier d'unité, N processus indépendants,
+; chacun avec ses propres logs et son propre compteur de redémarrages. Pour monter en
+; charge, active davantage d'instances.
+;
+; À ADAPTER AVANT UTILISATION :
+;   User / Group        l'utilisateur qui possède var/ — jamais root
+;   WorkingDirectory    le symlink `current`, pas une release spécifique — voir plus bas
+;   ExecStart           les noms des transports, dans l'ordre de priorité
+;   Environment         APP_ENV, et tout ce qui n'est pas déjà dans .env.local.php
+
+[Unit]
+Description=Symfony Messenger worker %i
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+; Le symlink `current`, pas `releases/<n>`. WorkingDirectory est résolu une seule fois,
+; au démarrage du processus, donc pointer ici — même règle que opcache.preload et le
+; DocumentRoot d'Apache — est ce qui permet à `Restart=always`, après
+; `messenger:stop-workers`, de récupérer la release vers laquelle `current` pointe
+; *maintenant*, pas celle qui tournait au dernier démarrage de l'unité.
+WorkingDirectory=/var/www/app/current
+Environment=APP_ENV=prod
+Environment=APP_DEBUG=0
+
+; --time-limit et --memory-limit ne sont pas du réglage de performance, c'est une
+; protection. Un processus PHP longue durée accumule de la mémoire et retient des
+; connexions mortes ; les deux options le font sortir proprement *entre* deux messages,
+; le seul moment où sortir est sûr. Restart=always le ramène immédiatement.
+ExecStart=/usr/bin/php /var/www/app/current/bin/console messenger:consume async --time-limit=3600 --memory-limit=128M
+
+; Un worker qui s'arrête après --time-limit sort avec le code 0. Redémarrer en cas de
+; succès est donc requis, pas optionnel : "on-failure" laisserait la file sans
+; surveillance après la première heure.
+Restart=always
+RestartSec=5
+
+; SIGTERM laisse le worker terminer son message en cours. Laisse-lui de la marge : un
+; handler tué en plein traitement laisse le message ni acquitté ni rejeté, et ce qui se
+; passe ensuite est décidé par le transport, pas par toi.
+KillSignal=SIGTERM
+TimeoutStopSec=120
+
+; Envoie les logs à journald, qu'un log shipper peut collecter. N'ajoute pas de fichier
+; de log.
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=messenger-worker
+
+[Install]
+WantedBy=multi-user.target

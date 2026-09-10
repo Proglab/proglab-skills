@@ -1,0 +1,21 @@
+Logiciel propriétaire — usage interne
+
+Copyright (c) 2026 Fabrice Gyre. Tous droits réservés.
+
+Ce dépôt porte le socle ERP proglab et les dérivés qui en sont tirés. Il reste
+interne : il n'est ni vendu, ni distribué, ni publié sous licence libre.
+
+Aucune permission n'est accordée de copier, modifier, fusionner, publier,
+distribuer, sous-licencier ou vendre tout ou partie de ce logiciel, ni d'en
+autoriser l'usage par un tiers, sans l'accord écrit préalable du titulaire des
+droits.
+
+Un dérivé livré à un client lui donne le droit d'utiliser l'application déployée
+pour ses propres besoins. Il ne lui transfère aucun droit sur le socle, ni sur le
+code source, ni le droit de le redistribuer.
+
+Les dépendances tierces installées par Composer restent régies par leurs propres
+licences, listées dans `composer.lock` et sous `vendor/`.
+
+CE LOGICIEL EST FOURNI « EN L'ÉTAT », SANS GARANTIE D'AUCUNE SORTE, EXPRESSE OU
+IMPLICITE.
