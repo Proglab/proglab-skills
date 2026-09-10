@@ -149,7 +149,7 @@ Companion de `SPEC.md`. Pour chaque capacité, l'ensemble des conséquences test
 ## CAP-20 — Anonymiser un utilisateur désactivé
 
 - Les entrées d'audit et les objets créés par l'utilisateur subsistent et le désignent par l'identifiant neutre (« Utilisateur anonymisé #12 »).
-- L'opération réécrit, dans les seules entrées dont l'objet est ce compte, les valeurs et étiquettes portant son nom ou son email ; elle nomme le nombre d'entrées réécrites.
+- L'opération réécrit les valeurs et étiquettes portant son nom ou son email **partout où l'alias de type et la clé de ce compte apparaissent** (AD-12) ; elle nomme le nombre d'entrées réécrites, en ligne et en archive.
 - Elle atteint la table en ligne **et l'archive**. Sans cela, nom et email survivraient au-delà d'un mois et le droit à l'effacement serait faux.
 - Elle atteint **toute entrée où la personne apparaît**, pas seulement celles qui la prennent pour objet : son nom recopié dans l'étiquette d'une entrée décrivant un autre objet (« assigné à … ») est réécrit lui aussi.
 - Limitation nommée et acceptée : un email déjà mis en file part à l'ancienne adresse ; l'opération ne réécrit pas les envois en attente. Un message en échec attendant d'être rejoué est en revanche abandonné.

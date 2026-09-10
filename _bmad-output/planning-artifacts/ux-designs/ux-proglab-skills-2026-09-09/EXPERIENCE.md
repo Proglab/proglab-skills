@@ -48,37 +48,35 @@ sources:
 ## Information Architecture
 
 Principe : le plus simple possible. Peu d'écrans, un chemin évident par tâche, aucun
-réglage qui ne soit exigé par un FR. Les chemins ci-dessous sont indicatifs (nom de
-route Symfony en `app_*`, paramètres notés `:id` par convention de route) ;
-l'architecture fixe les chemins définitifs.
+réglage qui ne soit exigé par un FR.
 
-**Mise à jour du 2026-09-10.** Elle les a fixés, et en anglais : AD-6 de
-`../../architecture/architecture-proglab-skills-2026-09-09/ARCHITECTURE-SPINE.md`
-porte la table complète (`/users`, `/audit-log`, `/roles`, `/languages`,
-`/profile/{tab}`…), invariables quelle que soit la langue du lecteur. Les chemins
-français de la colonne ci-dessous sont donc périmés ; les noms de route `app_*` et
-tout le reste de la table restent valables.
+**Chemins fixés le 2026-09-10 par AD-6** de
+`../../architecture/architecture-proglab-skills-2026-09-09/ARCHITECTURE-SPINE.md`, qui en
+porte la table de référence : **en anglais et invariables quelle que soit la langue du
+lecteur**, sans préfixe de langue, paramètres notés `{…}` comme dans une route
+Symfony. Le `?lang=` de la page de connexion est la seule exception. La colonne
+ci-dessous les reprend telle quelle ; en cas d'écart, AD-6 fait foi.
 
 ### Surfaces
 
-| Surface | Route (indicatif) | Atteinte depuis | Rôle |
+| Surface | Route | Atteinte depuis | Rôle |
 |---|---|---|---|
-| Connexion | `app_login` `/connexion` | toute URL protégée sans session | email + mot de passe ; liens de langue (langues actives, règle Liens de langue) ; lien « Mot de passe oublié ? » |
-| Mot de passe oublié | `app_password_request` `/mot-de-passe/oublie` | Connexion | demande d'un lien à usage unique `[ASSUMPTION PRD]` valable une heure |
-| Réinitialisation du mot de passe | `app_password_reset` `/mot-de-passe/reinitialiser/:token` | email | nouveau mot de passe, deux saisies |
-| Acceptation d'invitation | `app_invitation_accept` `/invitation/:token` | email | création du mot de passe ; le compte devient actif avec le rôle prévu (FR-4) |
-| Vérification 2FA | `app_2fa_check` `/connexion/verification` | Connexion, quand la 2FA est active | second facteur (TOTP ou code par email `[ASSUMPTION PRD]`) dans un seul champ de code ; lien vers la page « Code de secours » (`/connexion/verification/secours`) |
-| Enrôlement 2FA | `app_2fa_enroll` `/profil/double-authentification/activer` | Banner, Profil, redirection forcée (FR-5) | choix de la méthode, vérification, codes de secours |
+| Connexion | `app_login` `/login` | toute URL protégée sans session | email + mot de passe ; liens de langue (langues actives, règle Liens de langue) ; lien « Mot de passe oublié ? » |
+| Mot de passe oublié | `app_password_request` `/password/forgot` | Connexion | demande d'un lien à usage unique `[ASSUMPTION PRD]` valable une heure |
+| Réinitialisation du mot de passe | `app_password_reset` `/password/reset/{token}` | email | nouveau mot de passe, deux saisies |
+| Acceptation d'invitation | `app_invitation_accept` `/invitation/{token}` | email | création du mot de passe ; le compte devient actif avec le rôle prévu (FR-4) |
+| Vérification 2FA | `app_2fa_check` `/login/2fa` | Connexion, quand la 2FA est active | second facteur (TOTP ou code par email `[ASSUMPTION PRD]`) dans un seul champ de code ; lien vers la page « Code de secours » (`app_2fa_backup` `/login/2fa/backup`) |
+| Enrôlement 2FA | `app_2fa_enroll` `/profile/2fa/enroll` | Banner, Profil, redirection forcée (FR-5) | choix de la méthode, vérification, codes de secours |
 | Roadmap (accueil) | `app_home` `/` | connexion réussie, Sidebar | epics en Accordion, tâches, dépendances, date du dernier déploiement (FR-14, FR-15, FR-16) |
-| Journal d'audit | `app_audit_index` `/journal-audit` | Sidebar | Table filtrée et paginée, archive comprise, export unique (FR-13, FR-23) |
-| Entrée d'audit (panneau) | `app_audit_show` `/journal-audit/:id` | ligne du journal | Sheet à droite : avant / après ou action métier ; URL partageable |
-| Utilisateurs | `app_user_index` `/utilisateurs` | Sidebar | Table des comptes, bouton « Inviter » (FR-4, FR-6) |
-| Inviter un utilisateur | `app_user_invite` `/utilisateurs/inviter` | Utilisateurs | email, prénom, nom, rôle |
-| Fiche utilisateur | `app_user_show` `/utilisateurs/:id` | ligne d'Utilisateurs | identité, rôle, grille des permissions avec origine (FR-8, FR-9), actions : désactiver / réactiver, anonymiser (FR-20), réinitialiser la 2FA (FR-5), renvoyer l'invitation (FR-4) |
+| Journal d'audit | `app_audit_index` `/audit-log` | Sidebar | Table filtrée et paginée, archive comprise, export unique (FR-13, FR-23) |
+| Entrée d'audit (panneau) | `app_audit_show` `/audit-log/{id}` | ligne du journal | Sheet à droite : avant / après ou action métier ; URL partageable |
+| Utilisateurs | `app_user_index` `/users` | Sidebar | Table des comptes, bouton « Inviter » (FR-4, FR-6) |
+| Inviter un utilisateur | `app_user_invite` `/users/invite` | Utilisateurs | email, prénom, nom, rôle |
+| Fiche utilisateur | `app_user_show` `/users/{id}` | ligne d'Utilisateurs | identité, rôle, grille des permissions avec origine (FR-8, FR-9), actions : désactiver / réactiver, anonymiser (FR-20), réinitialiser la 2FA (FR-5), renvoyer l'invitation (FR-4) |
 | Rôles | `app_role_index` `/roles` | Sidebar | liste des rôles ; création (FR-7) |
-| Fiche rôle | `app_role_show` `/roles/:id` | ligne de Rôles | grille des permissions : une ligne par ressource, une colonne par opération (créer, consulter, modifier, supprimer), plus les actions particulières que la ressource déclare |
-| Langues | `app_language_index` `/langues` | Sidebar | trois lignes, boutons « Désactiver » / « Réactiver » (FR-22) |
-| Profil | `app_profile` `/profil/:onglet` | menu compte | Tabs : Langue · Mot de passe · Double authentification · Jetons d'API — nom, date de création, état (FR-21, FR-17) |
+| Fiche rôle | `app_role_show` `/roles/{id}` | ligne de Rôles | grille des permissions : une ligne par ressource, une colonne par opération (créer, consulter, modifier, supprimer), plus les actions particulières que la ressource déclare |
+| Langues | `app_language_index` `/languages` | Sidebar | trois lignes, boutons « Désactiver » / « Réactiver » (FR-22) |
+| Profil | `app_profile` `/profile/{tab}` | menu compte | Tabs : Langue · Mot de passe · Double authentification · Jetons d'API — nom, date de création, état (FR-21, FR-17) |
 | Accès refusé | 403 | toute zone non permise | page courte, libellé traduit (FR-10) |
 | Page introuvable | 404 | objet inexistant ou non permis | même page pour les deux cas (FR-10) |
 | Erreur inattendue | 500 (et toute réponse que Turbo n'obtient pas) | n'importe où | même gabarit court que 403 : message Voice and Tone, lien « Retour à la roadmap », aucun détail technique ; rendue par le template d'erreur Symfony, donc aussi sans Turbo |
@@ -261,7 +259,7 @@ Champ de formulaire, Champ de code 2FA, DropdownMenu et Bouton « Lancer ».
 | Pagination | Journal d'audit, Utilisateurs | Précédent / Suivant + « Page n sur m », dans un `<nav aria-label="Pagination">`. Paramètre `page` dans l'URL. Pas de défilement infini. | Twig + Turbo Drive |
 | **Formulaires** | | | |
 | Button | partout | Un seul bouton primaire par écran. Un bouton inactif pour une raison métier n'est jamais `disabled` (il sortirait de l'ordre de tabulation) : `aria-disabled="true"`, focusable, `aria-describedby` vers sa raison visible, et le serveur ignore le clic. `destructive` n'apparaît que dans le pied d'un Dialog ; un bouton `size="icon"` a un `aria-label`. Désactivation pendant l'envoi : Champ de formulaire. | Twig (kit) ; Turbo Drive |
-| Tabs (Profil) | Profil | Balisage : `<nav aria-label="Sections du profil">` de liens vers `/profil/:onglet`, l'onglet courant en `aria-current="page"` — pas de `role="tab"` ni d'`aria-selected` (des liens qui naviguent ne sont pas des tabs ARIA) ; le visuel Tabs du kit reste. Pas d'état client : l'URL est l'état. | Twig + Turbo Drive |
+| Tabs (Profil) | Profil | Balisage : `<nav aria-label="Sections du profil">` de liens vers `/profile/{tab}`, l'onglet courant en `aria-current="page"` — pas de `role="tab"` ni d'`aria-selected` (des liens qui naviguent ne sont pas des tabs ARIA) ; le visuel Tabs du kit reste. Pas d'état client : l'URL est l'état. | Twig + Turbo Drive |
 | Dialog (confirmation destructive) | Fiche utilisateur (désactiver, anonymiser, réinitialiser 2FA), Profil (révoquer un jeton), Langues (désactiver) | Ouvert par le bouton d'action (`{{ ...dialog_trigger_attrs }}`), `aria-modal`, focus piégé, Échap = Annuler, focus rendu au déclencheur. Le bouton de confirmation soumet un `<form method="post">` porteur d'un jeton CSRF. Anonymiser exige en plus la saisie du mot « ANONYMISER ». Un seul Dialog à la fois. | Stimulus du kit ; POST Turbo Drive → redirection + Flash |
 | Liens de langue (Connexion) | Connexion | `<nav aria-label="Langue">` de liens `?lang=fr` / `?lang=en` / `?lang=nl`, un par langue active, chacun avec `lang` et `hreflang`, l'actif en `aria-current="true"`. **Jamais un `<select>` qui soumet au changement** (WCAG 3.2.2 : au clavier, chaque flèche rechargerait la page). Le choix est mémorisé en session ; après connexion, la langue du profil prend le relais. | Twig + Turbo Drive (GET) — aucun Stimulus |
 | Boutons de langue (Langues) — pas un Switch | Langues | Bouton « Désactiver » / « Réactiver » par ligne ; Désactiver ouvre un Dialog nommant le nombre d'utilisateurs concernés et la langue de repli. La dernière langue active n'a pas de bouton « Désactiver » et une note l'explique. | Twig ; POST Turbo Drive |
@@ -286,7 +284,7 @@ Où : Journal d'audit.
   ses propres objets.
 - **Ouverture / fermeture.** Les filtres et la pagination restent derrière et gardent
   leur état. Échap, bouton Fermer et clic sur le voile ferment. L'URL
-  `/journal-audit/:id` est partageable et rend la page complète avec le panneau ouvert.
+  `/audit-log/{id}` est partageable et rend la page complète avec le panneau ouvert.
 - **Focus.** `aria-modal`, focus piégé dans le panneau ; à la fermeture, rendu à la
   ligne.
 - **Où vit le comportement.** Turbo Frame `audit_entry` (chargement du contenu) ;
@@ -759,7 +757,7 @@ Desktop d'abord dans l'usage, plus petite largeur d'abord dans la construction.
 
 Navigateurs : versions courantes de Chrome, Edge, Firefox, Safari (desktop et iOS).
 Sans JavaScript, tout fonctionne en pleine page : Accordion en `<details>`, Sheet et
-Dialog rendus comme pages complètes (`/journal-audit/:id`), formulaires en POST +
+Dialog rendus comme pages complètes (`/audit-log/{id}`), formulaires en POST +
 redirection — Turbo et Stimulus n'ajoutent que le confort. Impression : le journal
 filtré et la roadmap s'impriment sans la Sidebar ni l'en-tête.
 
