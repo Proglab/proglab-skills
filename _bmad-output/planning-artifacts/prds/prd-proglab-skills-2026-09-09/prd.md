@@ -18,10 +18,18 @@ fonctionnelles (FR) numérotées globalement dans l'ordre de leur ajout ; les hy
 non confirmées sont balisées `[ASSUMPTION]` en ligne et indexées en §11. Les choix
 techniques (bundles, mécanismes) vivent dans `addendum.md`, pas ici.
 
-**Révision du 2026-09-10.** Le run d'architecture a contredit deux points de ce
-document, corrigés ici : FR-17 (l'API n'émet pas de jeton) et la règle de dérivation du
-§6 (un dérivé livré est maintenu). Les décisions correspondantes sont AD-5 et AD-1 de
+**Révision du 2026-09-10 (architecture).** Le run d'architecture a contredit deux points
+de ce document, corrigés ici : FR-17 (l'API n'émet pas de jeton) et la règle de dérivation
+du §6 (un dérivé livré est maintenu). Les décisions correspondantes sont AD-5 et AD-1 de
 `../../architecture/architecture-proglab-skills-2026-09-09/ARCHITECTURE-SPINE.md`.
+
+**Révision du 2026-09-10 (spec).** Fabrice a tranché quatre questions restées ouvertes
+pendant le run `bmad-spec`
+(`../../../specs/spec-proglab-skills/SPEC.md`), reportées ici : rétention du journal à un
+mois avec archivage (FR-23, OQ-2 close), permissions sous forme « ressource + opération »
+(FR-7 à FR-9, OQ-5 close), délai de grâce 2FA de sept jours (FR-5), et liste des jetons
+d'API réduite au nom et à la date de création avec mention de l'état (FR-17). Le budget de
+performance du §5 est reformulé en conséquence, et OQ-7 est ouverte.
 
 ## 1. Vision
 
@@ -117,8 +125,20 @@ Non-utilisateurs de la v1 : voir §7.
   des utilisateurs (Admin ou User), distingués par leurs permissions, pas par une
   nature différente.
 - **Rôle** — un ensemble nommé de **permissions** par défaut. Un utilisateur a un rôle.
-- **Permission** — le droit d'accomplir une action ou d'accéder à une zone, identifié
-  par un code stable.
+- **Permission** — le droit d'accomplir une **opération** sur une **ressource**,
+  identifié par un code stable.
+- **Ressource** — une chose sur laquelle des permissions portent (les utilisateurs, les
+  rôles, le journal d'audit, la roadmap, et chaque objet métier d'un module). Le socle et
+  chaque module déclarent les leurs.
+- **Opération** — l'une de : créer, consulter, modifier, supprimer. Une ressource ne
+  supporte pas nécessairement les quatre.
+- **Action particulière** — un droit qu'aucune des quatre opérations ne décrit (inviter,
+  anonymiser, exporter, lancer une tâche, voir les notes internes), déclaré par sa
+  ressource et accordé au même endroit qu'elles.
+- **Grille des permissions** — l'écran qui présente, pour un rôle ou pour un utilisateur,
+  une ligne par ressource et une colonne par opération, plus ses actions particulières.
+- **Délai de grâce** — la période, ouverte à la première connexion sous un rôle qui exige
+  la 2FA, pendant laquelle l'utilisateur est averti avant d'y être contraint.
 - **Surcharge** — l'ajout ou le retrait d'une permission pour un utilisateur donné, qui
   prime sur ce que son rôle prévoit.
 - **Origine d'une permission** — pour un utilisateur, l'une de : héritée du rôle,
@@ -131,7 +151,10 @@ Non-utilisateurs de la v1 : voir §7.
 - **Entrée d'audit** — un enregistrement immuable de qui a fait quoi et quand. De deux
   types : **modification** (changement d'un objet, avec les champs avant/après) ou
   **action métier** (événement nommé déclenché par le code, par exemple « devis
-  validé »).
+  validé »). **En ligne** tant qu'elle est dans la fenêtre de rétention, **archivée**
+  ensuite ; la distinction ne change ni son contenu ni la façon de la lire.
+- **Fenêtre en ligne** — la durée pendant laquelle une entrée d'audit reste dans le
+  journal en ligne avant d'être archivée. Un mois par défaut, réglable par dérivé.
 - **Roadmap** — la vue, dans le dérivé, des **epics** et des **tâches** du projet,
   lue depuis les fichiers BMAD du dépôt.
 - **Epic** — un regroupement de tâches portant un objectif ; a un avancement.
@@ -217,9 +240,15 @@ La double authentification est obligatoire pour les rôles Super admin et Admin,
 optionnelle pour les autres : un User peut l'activer depuis son profil.
 
 **Conséquences (testables) :**
-- Un Super admin ou un Admin sans 2FA activée est conduit à l'activation avant tout
-  autre écran ; un utilisateur qui reçoit l'un de ces rôles après coup y est conduit à
-  sa connexion suivante.
+- Aucun rôle n'est exempté du délai de grâce, Super admin compris : un compte qui porte
+  toutes les permissions n'échappe pas à la règle, il l'illustre.
+- Un Super admin ou un Admin dispose d'un délai de grâce de sept jours à compter de sa
+  première connexion sous ce rôle : pendant ce délai il est averti à chaque écran, après
+  quoi il est conduit à l'activation avant tout autre écran. La durée est un réglage du
+  dérivé, pas une valeur figée dans le code.
+- Un utilisateur qui reçoit l'un de ces rôles après coup entre dans le délai de grâce à
+  sa connexion suivante ; le délai repart de zéro si le rôle change.
+- Le profil et la déconnexion restent accessibles pendant tout le délai et après.
 - Un utilisateur dont la 2FA est active fournit son second facteur à chaque
   connexion, quel que soit son rôle.
 - Deux méthodes au moins sont proposées `[ASSUMPTION: application TOTP et code par
@@ -248,6 +277,16 @@ reste est conservé.
 **Conséquences (testables) :**
 - Les entrées d'audit et les objets créés par l'utilisateur subsistent et le désignent
   par l'identifiant neutre (« Utilisateur anonymisé #12 »).
+- L'opération atteint **aussi les entrées archivées** (FR-23) : sans cela le nom et
+  l'email survivraient au-delà d'un mois et le droit à l'effacement ne serait pas
+  satisfait. Elle rend compte du nombre d'entrées réécrites, en ligne et en archive.
+- **Limitation nommée et acceptée** : un email déjà mis en file avant l'anonymisation
+  part à l'ancienne adresse. L'opération ne réécrit pas les envois en attente. Un message
+  qui aurait échoué et attendrait d'être rejoué est en revanche abandonné, faute de quoi
+  ce ne serait plus « un dernier email ».
+- Elle atteint **toute entrée où la personne apparaît**, pas seulement celles qui la
+  prennent pour objet : son nom recopié dans une entrée qui décrit un autre objet
+  (« assigné à … ») est réécrit lui aussi. Sans cela l'effacement serait partiel.
 - L'opération est irréversible et crée elle-même une entrée d'audit.
 - Un utilisateur actif ne peut pas être anonymisé : il faut d'abord le désactiver.
 
@@ -269,6 +308,8 @@ ajuste par utilisateur, et l'origine de chaque permission reste visible.
 
 Le socle fournit des rôles prédéfinis avec leurs permissions ; un administrateur peut,
 depuis un écran de gestion des rôles, en créer d'autres et modifier leurs permissions.
+Les permissions sont systématiques : une ressource, quatre opérations — créer, consulter,
+modifier, supprimer.
 
 **Conséquences (testables) :**
 - Le socle livre trois rôles : Super admin (l'équipe de développement, toutes les
@@ -279,6 +320,21 @@ depuis un écran de gestion des rôles, en créer d'autres et modifier leurs per
 - Une modification des permissions d'un rôle s'applique immédiatement à tous les
   utilisateurs qui l'ont, sauf là où une surcharge existe.
 - Les permissions sont des codes stables que les modules métier des dérivés étendent.
+  La forme par défaut est « ressource + opération » : créer, consulter, modifier,
+  supprimer. Une action que ces quatre opérations ne décrivent pas garde un code nommé —
+  inviter un utilisateur, anonymiser, exporter le journal, lancer une tâche, voir les
+  notes internes.
+- L'écran de gestion d'un rôle présente une grille : une ligne par ressource, une colonne
+  par opération. La grille se dérive des ressources déclarées par le socle et par chaque
+  module ; aucune liste de permissions n'est tenue à la main. Une ressource qui ne
+  supporte pas une opération n'en propose pas la case.
+- **Les actions à code nommé sont accordables au même endroit** : chaque ressource porte,
+  à côté de ses quatre opérations, les actions particulières qu'elle déclare — inviter et
+  anonymiser sur les utilisateurs, exporter sur le journal d'audit, lancer une tâche et
+  voir les notes internes sur la roadmap. Sans elles dans la grille, aucun rôle ne
+  pourrait les recevoir.
+- Chaque dérivé compose ainsi ses rôles à partir de la même grille, au lieu d'hériter
+  d'une liste d'actions décidée en amont.
 
 #### FR-8 : Surcharger les permissions d'un utilisateur
 
@@ -296,9 +352,11 @@ Sur la fiche d'un utilisateur, chaque permission affiche son origine : héritée
 rôle, ajoutée, retirée. Réalise UJ-2.
 
 **Conséquences (testables) :**
-- La liste montre toutes les permissions existantes, avec pour chacune l'état effectif
-  et son origine.
+- La fiche présente la même grille ressources × opérations que l'écran de rôle, avec pour
+  chaque case l'état effectif et son origine.
 - Un administrateur peut annuler une surcharge pour revenir à l'héritage.
+- Une permission présente en base mais qu'aucune ressource ne déclare plus s'affiche
+  comme obsolète et ne s'accorde jamais.
 
 #### FR-10 : Appliquer les permissions partout
 
@@ -308,8 +366,13 @@ l'utilisateur.
 **Conséquences (testables) :**
 - Une tentative d'accès à une zone non permise est refusée (403) avec un libellé
   traduit.
-- Une tentative d'accès à un objet précis non permis reçoit la même réponse que pour
-  un objet inexistant (404), pour ne pas révéler son existence.
+- La vérification porte sur l'opération demandée, pas sur la ressource en bloc : un
+  utilisateur qui peut consulter une ressource sans pouvoir la modifier voit ses objets
+  et se voit refuser la modification.
+- Sans la permission de **consulter** un objet, la réponse est celle d'un objet
+  inexistant (404), pour ne pas révéler son existence. Sur un objet qu'il a le droit de
+  consulter, le refus d'une autre opération est un 403 : l'objet est déjà connu de lui,
+  le masquer n'apprendrait rien à personne.
 - Les éléments de navigation vers des zones non permises ne sont pas affichés.
 
 ### 4.4 Journal d'audit
@@ -357,9 +420,40 @@ l'exporter. Réalise UJ-4.
   ou action métier).
 - Chaque entrée se lit sans connaissance technique : libellés traduits, valeurs
   lisibles, pas d'identifiants internes bruts.
+- L'objet concerné par une entrée renvoie vers sa fiche lorsque le module qui le possède
+  a déclaré où elle se trouve, et que le lecteur a le droit de le consulter. Sinon —
+  objet supprimé, droit manquant, ou module qui n'a rien déclaré — l'objet reste du texte.
+  Le socle ne déclare aucune fiche pour ses propres objets.
 - L'export porte sur la sélection filtrée `[ASSUMPTION: format CSV]`.
 - Les entrées sont immuables : aucune interface ne permet de les modifier ni de les
   supprimer.
+- Les entrées archivées (FR-23) se consultent depuis le même écran, avec les mêmes
+  filtres et le même export : le lecteur n'a jamais à choisir où chercher. Une recherche
+  qui remonte au-delà de la fenêtre en ligne peut être plus lente, et l'écran le dit —
+  c'est une information sur l'attente, pas sur le rangement.
+- L'export du journal est le seul mécanisme d'export : il porte sur la sélection filtrée,
+  archive comprise, et demande la permission d'export de la ressource « journal d'audit ».
+
+#### FR-23 : Archiver le journal d'audit au-delà d'un mois
+
+Le journal ne garde en ligne qu'un mois d'entrées ; au-delà, elles sont déplacées vers
+une archive, sans jamais être supprimées.
+
+**Conséquences (testables) :**
+- Une entrée de plus d'un mois est déplacée vers l'archive. La fenêtre est un réglage du
+  dérivé, pas une valeur figée dans le code.
+- Une entrée archivée reste consultable et exportable par qui a la permission de lecture
+  correspondante, sous les mêmes filtres qu'en ligne : le journal en ligne et l'archive
+  donnent la même réponse à la même question. L'export reste celui de FR-13, il n'en
+  existe pas un second.
+- L'anonymisation de FR-20 atteint l'archive au même titre que la table en ligne.
+- Aucune entrée n'est supprimée. Archiver n'est pas purger, et le déplacement ne modifie
+  ni le contenu ni l'auteur ni l'horodatage d'une entrée.
+- Le déplacement s'exécute périodiquement, sans recouvrement avec lui-même, attribué à
+  l'acteur système, et rend compte du nombre d'entrées déplacées.
+- Un archivage interrompu ne laisse ni doublon ni entrée perdue : une entrée est soit en
+  ligne, soit archivée, jamais les deux ni aucune des deux.
+- Un archivage arrêté est visible : voir le health check (FR-18).
 
 ### 4.5 Roadmap
 
@@ -425,6 +519,9 @@ Un utilisateur actif crée ses jetons d'accès depuis son profil, dans l'applica
 peut les révoquer. L'API n'a aucun point d'entrée d'authentification.
 
 **Conséquences (testables) :**
+- La création demande un nom, qui sert à reconnaître le jeton par la suite.
+- La liste des jetons du profil porte ce nom et la date de création, plus une mention
+  visible quand le jeton est expiré ou révoqué — rien d'autre.
 - Le jeton n'est montré qu'une seule fois, à sa création ; l'application n'en conserve
   qu'une empreinte et ne peut pas le réafficher.
 - Le jeton porte une date d'expiration `[ASSUMPTION: durée configurable, par défaut une
@@ -449,6 +546,9 @@ service.
 **Conséquences (testables) :**
 - La réponse indique l'état du service et de sa base de données, sans détail interne.
 - Un état dégradé se traduit par un code HTTP distinct de celui de l'état nominal.
+- L'état est dégradé quand la file d'envoi cesse d'être traitée, et quand la plus vieille
+  entrée d'audit en ligne dépasse la fenêtre de rétention : sans ce second signal, un
+  archivage arrêté (FR-23) ne se verrait nulle part.
 
 ### 4.7 Langues
 
@@ -489,8 +589,13 @@ Un administrateur peut désactiver ou réactiver une langue d'interface pour le 
 - **Performance** : les écrans du socle (connexion, fiche utilisateur, journal
   d'audit, roadmap) répondent en moins d'une seconde au p95, en environnement de
   développement comme en production chez le client, pour un dérivé de taille courante
-  `[ASSUMPTION: jusqu'à 50 utilisateurs et 1 million d'entrées d'audit]` ; le journal
-  d'audit est paginé.
+  `[ASSUMPTION: jusqu'à 50 utilisateurs]` ; le journal d'audit est paginé. Ce budget
+  couvre la fenêtre en ligne d'un mois (FR-23), dimensionnée pour
+  `[ASSUMPTION: 50 000 entrées par mois]` ; une recherche qui plonge dans l'archive peut
+  être plus lente, et l'écran le dit au lecteur plutôt que de le laisser attendre.
+  L'archive est dimensionnée pour `[ASSUMPTION: 1 million d'entrées d'audit]`. La grille
+  des permissions tient le même budget pour `[ASSUMPTION: jusqu'à 40 ressources]` ;
+  au-delà, elle est paginée ou groupée comme le journal.
 - **Observabilité** : le dérivé expose un health check (FR-18) et des journaux
   applicatifs par canal, sans données personnelles.
 - **Qualité** : le socle passe l'analyse statique et les tests de la suite proglab ;
@@ -504,6 +609,8 @@ Un administrateur peut désactiver ou réactiver une langue d'interface pour le 
 - **Données personnelles** : le journal d'audit contient des noms et des actions ; la
   désactivation ne supprime rien (FR-6). Le droit à l'effacement est satisfait par
   l'anonymisation (FR-20) : l'historique reste, la personne n'y est plus identifiable.
+  Une limite est assumée plutôt que cachée : un email déjà en file au moment de
+  l'anonymisation part à l'ancienne adresse (FR-20). Le guide de dérivation la nomme.
 - **Coût** : le socle ne requiert aucun service externe payant `[ASSUMPTION: l'envoi
   d'email passe par le serveur SMTP du client ou de l'équipe]`.
 - **Dérivation et maintenance** : le socle se clone et diverge ; son code n'est pas
@@ -542,7 +649,7 @@ Ce que le socle n'est pas, et qui n'en est pas utilisateur, en v1 :
 
 ### 8.1 Dans le périmètre
 
-- FR-1 à FR-22 telles que décrites, et les écrans qui les portent : connexion,
+- FR-1 à FR-23 telles que décrites, et les écrans qui les portent : connexion,
   invitation, profil, liste et fiche des utilisateurs, gestion des rôles, langues,
   journal d'audit, roadmap.
 
@@ -552,14 +659,13 @@ Ce que le socle n'est pas, et qui n'en est pas utilisateur, en v1 :
   module commun, dès que deux dérivés l'auront réclamée.
 - Notifications (email ou autre) au client lors d'un changement de statut dans la
   roadmap — reportées, le déploiement rythme déjà la fraîcheur.
-- Rétention et purge du journal d'audit — reportées tant que le volume n'impose rien
-  (voir OQ-2).
+- La purge du journal d'audit : FR-23 archive, il ne supprime rien.
 
 ### 8.3 Ordre de livraison
 
 D'abord ce qui sert SM-1 et SM-2 — FR-1, FR-2, FR-3, FR-4, FR-7, FR-14, FR-15 ; puis
 le journal d'audit (SM-4) — FR-11 à FR-13 ; puis le reste (2FA, surcharges,
-anonymisation, profil, API, langues, lancement de tâche).
+anonymisation, profil, API, langues, lancement de tâche, archivage).
 
 ## 9. Métriques de succès
 
@@ -590,17 +696,36 @@ anonymisation, profil, API, langues, lancement de tâche).
 FR-20 ; OQ-4 (correspondance des statuts) → fixée dans FR-15.
 **Décisions prises pendant l'architecture, le 2026-09-10** : OQ-3 (champs BMAD) → close,
 le socle définit la convention d'en-tête qu'il attend (AD-10).
+**Décisions prises pendant le spec, le 2026-09-10** : OQ-2 (rétention) → un mois puis
+archivage, FR-23 ; OQ-5 (permissions par défaut) → forme « ressource + opération »,
+FR-7 ; OQ-6 (jeton expiré) → mention visible dans la liste, FR-17. Les questions ouvertes
+du run UX sont tranchées au même moment : délai de grâce 2FA à sept jours (FR-5), liste
+des jetons d'API réduite au nom et à la date de création (FR-17).
 
-- **OQ-2** — Rétention du journal d'audit : illimitée en v1, mais à partir de quel
-  volume ou de quelle durée archiver ?
+- ~~**OQ-2**~~ — *Close le 2026-09-10.* Rétention du journal d'audit : un mois en ligne,
+  archivage au-delà, aucune suppression. Voir FR-23. La lecture de l'archive passe par le
+  même écran et les mêmes filtres ; seul le budget de performance du §5 s'assouplit
+  au-delà de la fenêtre d'un mois.
 - ~~**OQ-3**~~ — *Close le 2026-09-10 (AD-10).* La question était de savoir si les
   stories BMAD portent priorité, difficulté, assignation et dépendances, ou s'il faut
   une convention propre au projet. Réponse : le socle définit et documente la convention
   d'en-tête YAML qu'il attend, traite les champs absents comme « non renseigné », et
   considère prête toute tâche « à faire » sans dépendance déclarée. La roadmap n'a donc
   plus de dépendance bloquante vers `bmad-create-epics-and-stories`.
-- **OQ-5** — Les permissions par défaut des rôles Admin et User (§4.3, FR-7)
-  suffisent-elles à tous les dérivés, ou chaque dérivé les ajustera-t-il ?
+- ~~**OQ-5**~~ — *Close le 2026-09-10.* La question était de savoir si les permissions par
+  défaut d'Admin et User suffisent à tous les dérivés. Réponse : la question ne se pose
+  plus sous cette forme. Les permissions prennent une forme systématique « ressource +
+  opération » (créer, consulter, modifier, supprimer), dérivée des ressources déclarées ;
+  chaque dérivé compose ses rôles depuis cette grille au lieu d'hériter d'une liste
+  d'actions décidée en amont. Voir FR-7 à FR-9.
+- ~~**OQ-6**~~ — *Ouverte et close le 2026-09-10.* La liste des jetons d'API ne portant
+  que le nom et la date de création (FR-17), un jeton expiré n'y était pas distinguable
+  d'un jeton valide. Réponse : la ligne porte une mention visible « expiré » ou
+  « révoqué », sans colonne de date supplémentaire.
+- ~~**OQ-7**~~ — *Ouverte et close le 2026-09-10.* Le délai de grâce de sept jours vaut
+  pour tout le monde, Super admin compris. Voir FR-5.
+- ~~**OQ-8**~~ — *Ouverte et close le 2026-09-10.* Un envoi déjà en file destiné à un
+  compte anonymisé part à l'ancienne adresse ; la limite est nommée en FR-20 et au §6.
 
 ## 11. Index des hypothèses
 
@@ -618,6 +743,8 @@ le socle définit la convention d'en-tête qu'il attend (AD-10).
 - §4.6 FR-17 — durée d'expiration d'un jeton d'accès configurable, une heure par défaut.
 - §4.7 FR-22 — langue de repli après désactivation : la première active dans l'ordre
   français, anglais, néerlandais.
-- §5 — dimensionnement : 50 utilisateurs, 1 million d'entrées d'audit.
+- §5 — dimensionnement : 50 utilisateurs ; 50 000 entrées d'audit par mois en ligne ;
+  1 million d'entrées dans l'archive ; jusqu'à 40 ressources dans la grille des
+  permissions.
 - §6 — envoi d'email par le SMTP du client ou de l'équipe, aucun service payant.
 - §7 — pas de connexion par fournisseur externe en v1.

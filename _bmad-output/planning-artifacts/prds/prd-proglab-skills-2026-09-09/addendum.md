@@ -36,6 +36,24 @@ Chaque puce suit le même schéma : choix · raison · FR concernée · statut.
   chaque permission (FR-9) exige de stocker l'héritage et la surcharge séparément ;
   Odoo est le seul produit trouvé qui autorise le retrait par utilisateur, et il le
   fait ainsi. FR-7 à FR-10. *Arrêté.*
+- **Forme des codes de permission** : **tranché le 2026-09-10 avec OQ-5.** Le code reste
+  une chaîne stable, mais sa forme par défaut est `<ressource>.create`, `.read`,
+  `.update`, `.delete`. Une action que le CRUD ne décrit pas garde un code nommé :
+  `user.invite`, `user.anonymize`, `audit.export`, `roadmap.launch`, `roadmap.notes`.
+  Le socle et chaque module déclarent leurs ressources et les opérations qu'elles
+  supportent ; la grille des écrans de rôle et de surcharge s'en dérive, et le catalogue
+  se projette en base comme prévu par AD-8. Le modèle à trois entités ci-dessus est
+  inchangé : la forme CRUD est une convention sur le code, pas une quatrième entité.
+  FR-7 à FR-9. *Arrêté.*
+- **Archivage du journal d'audit** : **tranché le 2026-09-10 avec OQ-2.** Fenêtre en
+  ligne d'un mois, réglée par un paramètre `app.` ; au-delà, les entrées passent dans un
+  magasin d'archive que la lecture de FR-13 interroge de façon transparente. Aucune
+  suppression, et le déplacement ne réécrit pas les entrées — il ne relève donc pas de
+  l'exception d'immuabilité que porte l'anonymisation (AD-12). Le déplacement est une
+  commande planifiée et verrouillée (`symfony-proglab-console`,
+  `symfony-proglab-async`). Le budget p95 du §5 ne couvre que la fenêtre en ligne :
+  la mécanique d'index et de résolution par lot d'AD-20 s'applique à la table en ligne,
+  l'archive assume une lecture plus lente et l'annonce à l'écran. FR-23. *Arrêté.*
 - **API** : sans API Platform (addendum du brief). Jeton d'accès opaque stocké en base,
   révocable par l'utilisateur et par un administrateur — la révocation exigée par
   FR-17 exclut un JWT sans état. FR-17, FR-18. *Arrêté.*

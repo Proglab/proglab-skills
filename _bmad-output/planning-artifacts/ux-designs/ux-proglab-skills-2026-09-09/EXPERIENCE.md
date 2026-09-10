@@ -70,15 +70,15 @@ tout le reste de la table restent valables.
 | Vérification 2FA | `app_2fa_check` `/connexion/verification` | Connexion, quand la 2FA est active | second facteur (TOTP ou code par email `[ASSUMPTION PRD]`) dans un seul champ de code ; lien vers la page « Code de secours » (`/connexion/verification/secours`) |
 | Enrôlement 2FA | `app_2fa_enroll` `/profil/double-authentification/activer` | Banner, Profil, redirection forcée (FR-5) | choix de la méthode, vérification, codes de secours |
 | Roadmap (accueil) | `app_home` `/` | connexion réussie, Sidebar | epics en Accordion, tâches, dépendances, date du dernier déploiement (FR-14, FR-15, FR-16) |
-| Journal d'audit | `app_audit_index` `/journal-audit` | Sidebar | Table filtrée et paginée, export (FR-13) |
+| Journal d'audit | `app_audit_index` `/journal-audit` | Sidebar | Table filtrée et paginée, archive comprise, export unique (FR-13, FR-23) |
 | Entrée d'audit (panneau) | `app_audit_show` `/journal-audit/:id` | ligne du journal | Sheet à droite : avant / après ou action métier ; URL partageable |
 | Utilisateurs | `app_user_index` `/utilisateurs` | Sidebar | Table des comptes, bouton « Inviter » (FR-4, FR-6) |
 | Inviter un utilisateur | `app_user_invite` `/utilisateurs/inviter` | Utilisateurs | email, prénom, nom, rôle |
-| Fiche utilisateur | `app_user_show` `/utilisateurs/:id` | ligne d'Utilisateurs | identité, rôle, permissions avec origine (FR-8, FR-9), actions : désactiver / réactiver, anonymiser (FR-20), réinitialiser la 2FA (FR-5), renvoyer l'invitation (FR-4) |
+| Fiche utilisateur | `app_user_show` `/utilisateurs/:id` | ligne d'Utilisateurs | identité, rôle, grille des permissions avec origine (FR-8, FR-9), actions : désactiver / réactiver, anonymiser (FR-20), réinitialiser la 2FA (FR-5), renvoyer l'invitation (FR-4) |
 | Rôles | `app_role_index` `/roles` | Sidebar | liste des rôles ; création (FR-7) |
-| Fiche rôle | `app_role_show` `/roles/:id` | ligne de Rôles | permissions du rôle, cases à cocher par groupe |
+| Fiche rôle | `app_role_show` `/roles/:id` | ligne de Rôles | grille des permissions : une ligne par ressource, une colonne par opération (créer, consulter, modifier, supprimer), plus les actions particulières que la ressource déclare |
 | Langues | `app_language_index` `/langues` | Sidebar | trois lignes, boutons « Désactiver » / « Réactiver » (FR-22) |
-| Profil | `app_profile` `/profil/:onglet` | menu compte | Tabs : Langue · Mot de passe · Double authentification · Jetons d'API (FR-21, FR-17) |
+| Profil | `app_profile` `/profil/:onglet` | menu compte | Tabs : Langue · Mot de passe · Double authentification · Jetons d'API — nom, date de création, état (FR-21, FR-17) |
 | Accès refusé | 403 | toute zone non permise | page courte, libellé traduit (FR-10) |
 | Page introuvable | 404 | objet inexistant ou non permis | même page pour les deux cas (FR-10) |
 | Erreur inattendue | 500 (et toute réponse que Turbo n'obtient pas) | n'importe où | même gabarit court que 403 : message Voice and Tone, lien « Retour à la roadmap », aucun détail technique ; rendue par le template d'erreur Symfony, donc aussi sans Turbo |
@@ -150,6 +150,7 @@ Se déconnecter.
 | FR-20 | Fiche utilisateur (anonymiser) |
 | FR-21 | Profil |
 | FR-22 | Langues |
+| FR-23 | Journal d'audit — l'archive n'a pas d'écran propre, elle se lit dans la même Table |
 
 ### Besoins → surfaces → parcours
 
@@ -279,6 +280,10 @@ Où : Journal d'audit.
   autres cellules restent sélectionnables. Contenu du panneau : auteur (avec « compte
   désactivé » ou « Utilisateur anonymisé #n » le cas échéant), horodatage complet,
   objet, puis Table avant / après champ par champ, ou le libellé de l'action métier.
+  L'objet est rendu en **lien vers sa fiche** quand son module a déclaré une route et que
+  le lecteur a le droit de le consulter ; en texte simple sinon — objet supprimé, droit
+  manquant, ou module qui n'a rien déclaré. Le socle ne déclare aucune route de fiche pour
+  ses propres objets.
 - **Ouverture / fermeture.** Les filtres et la pagination restent derrière et gardent
   leur état. Échap, bouton Fermer et clic sur le voile ferment. L'URL
   `/journal-audit/:id` est partageable et rend la page complète avec le panneau ouvert.
@@ -289,7 +294,7 @@ Où : Journal d'audit.
 
 ### Table
 
-Où : Utilisateurs, Journal d'audit, Fiche utilisateur (permissions), avant / après.
+Où : Utilisateurs, Journal d'audit, Fiche utilisateur et Fiche rôle (grille des permissions), avant / après.
 
 - **Balisage.** Toujours dans une Card (`DESIGN.md · Layout & Spacing`). Ligne
   cliquable = lien dans la première cellule, nommé complètement (« Ouvrir la fiche de
@@ -430,7 +435,7 @@ Où : Roadmap, ligne de tâche, **dev seulement**.
 
 | État | Surface | Traitement |
 |---|---|---|
-| Délai de grâce 2FA | toutes (Super admin / Admin) | `{components.banner}` avec jours restants. `[ASSUMPTION]` Délai de 7 jours après la première connexion, blocage ensuite — valeur à confirmer avec le pilote. |
+| Délai de grâce 2FA | toutes (Super admin / Admin) | `{components.banner}` avec jours restants. Délai de 7 jours après la première connexion, blocage ensuite. Aucun rôle n'en est exempt, Super admin compris. |
 | Délai de grâce expiré | toutes | Redirection vers Enrôlement 2FA avec `{components.alert}` « Pour continuer, activez… » ; seuls Profil et Déconnexion restent accessibles. |
 | Nouveau rôle exigeant la 2FA | connexion suivante | Même mécanisme : Banner et délai courent à partir de cette connexion. |
 
@@ -457,7 +462,7 @@ Où : Roadmap, ligne de tâche, **dev seulement**.
 | État | Surface | Traitement |
 |---|---|---|
 | Profil : désactiver sa 2FA quand le rôle l'exige | Profil › Double authentification | Bouton « Désactiver » non rendu ; note `{typography.meta}` « Votre rôle exige la double authentification. » Reste possible : régénérer les codes de secours, changer de méthode. |
-| Rôles : rôle par défaut, rôle utilisé | Rôles, Fiche rôle | Les rôles du socle (Super admin, Admin, User) n'ont pas de bouton « Supprimer » et une note l'explique ; supprimer un rôle créé et utilisé par n utilisateurs ouvre un Dialog nommant n et le rôle de repli (User). Enregistrement des cases : bouton « Enregistrer » explicite, POST, Flash. |
+| Rôles : rôle par défaut, rôle utilisé | Rôles, Fiche rôle | Les rôles du socle (Super admin, Admin, User) n'ont pas de bouton « Supprimer » et une note l'explique ; supprimer un rôle créé et utilisé par n utilisateurs ouvre un Dialog nommant n et le rôle de repli (User). Enregistrement de la grille : bouton « Enregistrer » explicite, POST, Flash. |
 | Langue désactivée pendant la session | toutes | Prochaine requête rendue dans la langue de repli ; Flash « Le néerlandais n'est plus disponible… » (Voice and Tone). |
 | Thème système sans préférence | toutes | `prefers-color-scheme` ; le DropdownMenu montre « Système » coché. |
 
@@ -764,7 +769,9 @@ filtré et la roadmap s'impriment sans la Sidebar ni l'en-tête.
   serveur à chaque requête : Information Architecture › Navigation et Component
   Patterns › Sidebar. Aucune règle métier en JavaScript (`symfony-proglab-frontend`).
 - Un **bouton absent n'est pas une protection** : chaque route vérifie la permission
-  (FR-10) ; 403 pour une zone, 404 pour un objet précis.
+  de l'**opération demandée** (FR-10) : 403 pour une zone, 404 pour un objet que le
+  lecteur n'a pas le droit de consulter, 403 pour une opération refusée sur un objet
+  qu'il peut déjà consulter — le masquer alors ne lui apprendrait rien.
 - **Notes internes** (contenu d'une tâche — story BMAD — au-delà du titre et du résumé,
   `[ASSUMPTION PRD]`) : rendues dans la ligne de tâche, sous les méta, seulement aux
   utilisateurs ayant la permission dédiée (`[ASSUMPTION PRD]` Super admin seul).
@@ -821,17 +828,19 @@ voit un écran en dev voit ce que le client verra.
 
 ## Questions ouvertes
 
-- **OQ-UX-1** — Durée du délai de grâce 2FA (7 jours en `[ASSUMPTION]`) : à fixer.
-- **OQ-UX-3** — Jetons d'API (Profil) : le socle affiche-t-il le jeton une seule fois à
-  la création (pratique usuelle) et quels champs porte la liste (nom, création,
-  expiration, dernière utilisation) ? Le PRD ne détaille pas l'écran ; ce spine ne
-  l'invente pas au-delà de « créer » et « révoquer » (Dialog).
+- ~~**OQ-UX-1**~~ — *Close le 2026-09-10.* Délai de grâce 2FA fixé à sept jours, porté
+  par un paramètre du dérivé et non par une constante (AD-19).
+
+- ~~**OQ-UX-3**~~ — *Close le 2026-09-10.* Le jeton est montré une seule fois à sa
+  création, qui demande un nom ; la liste porte ce nom, la date de création et une
+  mention visible quand il est expiré ou révoqué — rien d'autre.
+
 - ~~**OQ-UX-4**~~ — *Close le 2026-09-10.* Chemins d'URL fixés en anglais et
   invariables par AD-6, qui en porte la table complète ; le `?lang=` de la page de
   connexion est conservé.
-- **OQ-UX-5** — Contenu exact d'une entrée d'audit d'action métier dans le Sheet
-  (l'objet concerné est-il un lien vers sa fiche métier ?) : dépend des modules des
-  dérivés ; le socle affiche libellé, auteur, horodatage, objet.
+- ~~**OQ-UX-5**~~ — *Close le 2026-09-10.* L'objet d'une entrée est un lien vers sa fiche
+  quand son module a déclaré une route et que le lecteur peut le consulter, du texte
+  simple sinon (AD-12). Le socle ne déclare aucune route pour ses propres objets.
 
 Hypothèses à confirmer — chaque `[ASSUMPTION]` (posée par ce spine) et
 `[ASSUMPTION PRD]` (lue entre les lignes du PRD) du document, avec sa section :
@@ -850,8 +859,8 @@ Hypothèses à confirmer — chaque `[ASSUMPTION]` (posée par ce spine) et
   code 2FA et State Patterns › Code par email expiré.
 - `[ASSUMPTION PRD]` Ralentissement à partir du cinquième échec (mot de passe et code
   2FA) — State Patterns › Mot de passe erroné avec ralentissement.
-- `[ASSUMPTION]` Délai de grâce 2FA de 7 jours après la première connexion, blocage
-  ensuite (OQ-UX-1) — State Patterns › Délai de grâce 2FA et Key Flows › Flux 6.
+- *Tranché le 2026-09-10* : délai de grâce 2FA de 7 jours après la première connexion,
+  blocage ensuite — State Patterns › Délai de grâce 2FA et Key Flows › Flux 6.
 - `[ASSUMPTION]` Session glissante de 24 heures — State Patterns › Session expirée par
   inactivité.
 - `[ASSUMPTION PRD]` Langue de repli = première langue active dans l'ordre français,

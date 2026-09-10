@@ -4,12 +4,12 @@ type: architecture-spine
 purpose: build-substrate
 altitude: feature
 paradigm: 'couches proglab sur deux racines — un socle et des modules métier'
-scope: 'Le dépôt Symfony de référence cloné pour démarrer chaque ERP client, et le contrat que tout dérivé respecte : initialisation, comptes et 2FA, rôles et permissions, journal d''audit, roadmap lue depuis les fichiers BMAD, jetons d''API, trois langues.'
+scope: 'Le dépôt Symfony de référence cloné pour démarrer chaque ERP client, et le contrat que tout dérivé respecte : initialisation, comptes et 2FA, rôles et permissions, journal d''audit et son archivage, roadmap lue depuis les fichiers BMAD, jetons d''API, trois langues.'
 status: final
 created: '2026-09-09'
 updated: '2026-09-10'
 binds:
-  - FR-1..FR-22
+  - FR-1..FR-23
   - 'NFR §5 — sécurité, accessibilité, performance, observabilité, qualité, dérivabilité'
 sources:
   - ../../prds/prd-proglab-skills-2026-09-09/prd.md
@@ -20,7 +20,8 @@ sources:
   - ../../ux-designs/ux-proglab-skills-2026-09-09/EXPERIENCE.md
   - .claude/skills/symfony-proglab-standards/SKILL.md
   - .claude/skills/symfony-proglab-architecture/SKILL.md
-companions: []
+companions:
+  - ../../../specs/spec-proglab-skills/SPEC.md
 ---
 
 # Architecture Spine — Socle ERP custom (proglab)
@@ -82,19 +83,23 @@ graph LR
   se traite en ajoutant un contrat à `Core/Contract/` sur le socle, puis en reportant.
   Le report d'un correctif est donc un `git diff` sur `src/Core/`, et sur rien d'autre.
 
-### AD-3 — Un seul journal d'audit, et ses règles vivent dans un service
+### AD-3 — Un seul journal d'audit logique, et ses règles vivent dans un service
 
-- **Binds :** FR-11, FR-12, FR-13, et tout module.
-- **Prevents :** deux magasins d'audit, qui obligeraient chaque filtre, chaque page et
-  chaque export de FR-13 à fusionner deux sources ; et des règles d'audit dispersées
-  dans un listener, hors de toute couche qui puisse les tester.
+- **Binds :** FR-11, FR-12, FR-13, FR-23, et tout module.
+- **Prevents :** que le filtre, la page et l'export de FR-13 aient à connaître plus d'une
+  source ; et des règles d'audit dispersées dans un listener, hors de toute couche qui
+  puisse les tester.
 - **Rule :** un unique service d'audit dans `Core/Service/` porte toutes les règles :
   quels objets sont audités, quels champs sont exclus, quel acteur est attribué, quelle
   forme prennent les valeurs. Un listener Doctrine `onFlush` dans
   `Core/EventListener/Doctrine/` ne fait que lire les changesets de l'`UnitOfWork` et
   appeler ce service ; il ne décide rien. Les actions métier (FR-12) appellent le même
   service depuis la couche service. Aucun bundle d'audit n'entre dans le socle, et un
-  module n'écrit jamais dans la table.
+  module n'écrit jamais dans la table. **Le journal est unique en tant que contrat, pas
+  en tant que table :** AD-23 lui donne une seconde table d'archive de forme identique, et
+  le dépôt d'audit est le seul endroit du système qui sache qu'elle existe. Aucun service
+  appelant, aucun contrôleur, aucun template, aucun module ne distingue une entrée en
+  ligne d'une entrée archivée.
 - **Écart énoncé :** le standard proglab veut des appels directs plutôt que des
   événements. L'audit des modifications est la seule exception, et elle est structurelle :
   FR-11 exige d'auditer *tout* objet métier par défaut, y compris ceux que `Core` ne
@@ -117,6 +122,12 @@ graph LR
   dérivation nomme l'enfermement des administrateurs en 2FA par email comme la panne à
   surveiller. Le code 2FA par email porte sa date d'émission, et sa validité de dix
   minutes court depuis l'émission, pas depuis l'envoi.
+- **Limite énoncée :** un message porte des scalaires, donc l'adresse et le nom de son
+  destinataire, et l'anonymisation d'AD-12 ne les atteint pas. Un envoi déjà en file part
+  à l'ancienne adresse — limite acceptée et nommée par le guide de dérivation, pas un
+  oubli. Un message parvenu au transport d'échec et portant un compte anonymisé est
+  abandonné plutôt que rejoué : au-delà de la file courante, ce ne serait plus « un
+  dernier email ».
 
 ### AD-5 — L'API n'a pas d'endpoint d'authentification, et son jeton est vérifié à chaque requête
 
@@ -198,6 +209,25 @@ graph LR
   le code pour source de vérité : chaque module publie ses codes par service taggé, une
   commande de synchronisation projette le catalogue dans la table au déploiement. Un
   code présent en base mais plus déclaré s'affiche comme obsolète et ne s'accorde jamais.
+- **Forme des codes :** le code par défaut est `<ressource>.create`, `.read`, `.update`,
+  `.delete`. Une action que ces quatre opérations ne décrivent pas garde un code nommé —
+  `user.invite`, `user.anonymize`, `audit.export`, `roadmap.launch`, `roadmap.notes` — et
+  ces actions **s'accordent dans la même grille**, sous leur ressource : sans case, aucun
+  rôle ne pourrait les recevoir.
+- **Un registre, pas deux.** Ce qu'un module publie n'est ni une liste de codes ni un
+  second vocabulaire : **une déclaration par type, qui porte à la fois son alias de type
+  d'AD-12, son nom de ressource, les opérations qu'il supporte, ses actions particulières,
+  sa permission de lecture et, facultativement, la route de sa fiche (AD-12)** — un seul contrat de `Core/Contract/` (AD-13). Alias et
+  ressource sont **le même identifiant**, sinon le filtre par droits d'AD-12 et la grille
+  d'ici parlent de deux choses en croyant parler de la même. Le nom est préfixé par le
+  module qui le déclare, et **la commande de synchronisation échoue sur une collision**
+  plutôt que de laisser deux modules se partager un `quote.read` — `Module → Module` étant
+  interdit (AD-7), rien d'autre ne peut la voir. Un code exigé par `#[IsGranted]` sans
+  déclaration correspondante fait échouer la même commande.
+- Le catalogue et la grille se dérivent de ce registre. Aucune liste de permissions n'est
+  tenue à la main, et une ressource qui ne supporte pas une opération n'en produit pas le
+  code. C'est ce qui ferme OQ-5 : un dérivé compose ses rôles depuis cette grille au lieu
+  d'hériter d'une liste d'actions décidée en amont.
 
 ### AD-9 — Les sessions se ferment par comparaison d'utilisateur
 
@@ -271,7 +301,12 @@ graph LR
      propriétaire du type via `Core/Contract/` — jamais un nom de classe, jamais une
      classe de proxy Doctrine, ce qui survit à un renommage et donne au filtre de FR-13
      un libellé traduisible. L'étiquette figée existe parce qu'un objet supprimé n'a plus
-     rien à résoudre à la lecture.
+     rien à résoudre à la lecture. Le propriétaire du type peut déclarer **en plus la route
+     de la fiche** de ses objets. Le journal rend alors l'objet en lien plutôt qu'en texte,
+     mais **seulement** si l'objet existe encore et si le lecteur a le droit de le consulter
+     (AD-8) : un lien vers un 403 ou un 404 serait pire que du texte. Sans route déclarée,
+     l'objet reste du texte — le socle ne connaît aucun écran métier (AD-2) et n'en devine
+     aucun, et n'en déclare aucun pour ses propres objets.
   3. **Les valeurs avant et après** sont normalisées en scalaires ou `null`, avec le type
      déclaré du champ. Jamais un objet sérialisé. Une relation est enregistrée comme
      l'alias, la clé et l'étiquette de l'objet lié. Les champs sensibles sont exclus **à
@@ -287,12 +322,15 @@ graph LR
   « déclarée depuis la couche service » : elles sont déclarées par la couche sécurité, et
   un échec de connexion n'a **pas** d'acteur référencé — il enregistre l'identifiant
   tenté, qui n'est pas nécessairement un compte.
-- **Exception nommée à l'immuabilité :** l'anonymisation (FR-20) réécrit, dans les seules
-  entrées dont l'objet est ce compte, les valeurs et étiquettes qui portent son nom ou son
-  email. Sans cela le droit à l'effacement ne tient pas, puisque ces valeurs survivraient
-  dans une table que FR-13 déclare immuable. L'opération est elle-même auditée, nomme le
-  nombre d'entrées réécrites, et est le seul chemin d'écriture autorisé sur une entrée
-  existante.
+- **Exception nommée à l'immuabilité :** l'anonymisation (FR-20) réécrit les valeurs et
+  les étiquettes qui portent le nom ou l'email du compte — **partout où l'alias plus la
+  clé de ce compte apparaissent**, et non dans les seules entrées dont il est l'objet. La
+  distinction est décisive : l'étiquette figée du point 3 recopie ce nom dans les entrées
+  d'objets *tiers* (« assigné à … »), qui survivraient autrement à l'effacement. La
+  réécriture porte sur la table en ligne **et sur l'archive d'AD-23**, dans une seule
+  transaction, et rend compte des deux nombres. Elle vit dans le dépôt d'audit, seul
+  endroit qui connaisse les deux tables, et reste le seul chemin d'écriture autorisé sur
+  une entrée existante. L'opération est elle-même auditée.
 
 ### AD-13 — Un module se déclare, le socle ne l'accueille pas
 
@@ -385,22 +423,31 @@ graph LR
   rôle qui l'exige et remise à zéro si le rôle change. Un unique point d'application —
   un listener de requête dans `Core`, `scheb/2fa` n'en fournissant aucun — affiche le
   bandeau pendant le délai puis redirige vers l'enrôlement, en laissant toujours
-  accessibles le profil et la déconnexion. La durée du délai est un paramètre `app.`,
-  pas une constante.
+  accessibles le profil et la déconnexion. **Le délai vaut sept jours**, porté par un
+  paramètre `app.` et non par une constante, pour qu'un dérivé plus exposé le raccourcisse
+  sans toucher au code. **Aucun rôle n'en est exempt** : un booléen qui exige la 2FA
+  ouvre le délai, y compris pour le rôle qui porte toutes les permissions. Une exemption
+  serait un second test de rôle déguisé, qu'AD-8 interdit.
 
 ### AD-20 — Le journal d'audit a un budget, et les moyens qui vont avec
 
-- **Binds :** NFR performance, FR-13, AD-10, AD-12.
+- **Binds :** NFR performance, FR-13, FR-23, AD-10, AD-12, AD-23.
 - **Prevents :** que le journal tienne le budget p95 sous la seconde sur un jeu de test
   et l'explose chez le premier client à un million d'entrées.
+- **Portée :** ce budget couvre la **fenêtre en ligne** d'AD-23. Une requête qui déborde
+  sur l'archive en sort, et l'écran l'annonce ; les index ci-dessous existent malgré tout
+  sur les deux tables, pour que ce dépassement reste borné.
 - **Rule :** trois moyens, nommés parce qu'ils sont la seule raison pour laquelle le
   budget est tenable. La table porte des index déclarés pour les cinq axes de filtre de
   FR-13 : horodatage, acteur, alias de type d'objet, couple alias plus clé, type
   d'entrée. Les étiquettes et libellés d'une page sont résolus **par lot pour la page
   entière**, jamais ligne par ligne. L'export porte sur la sélection filtrée et est
-  **streamé** par lots, hors Turbo, sans charger la sélection en mémoire. Un test
-  d'intégration compte les requêtes d'une page de journal et échoue si le nombre croît
-  avec le nombre de lignes.
+  **streamé** par lots, hors Turbo, sans charger la sélection en mémoire ; il passe par la
+  **même lecture filtrée par les droits** que l'écran (AD-12 point 4) — `audit.export`
+  autorise à emporter ce que le lecteur voit déjà, jamais à voir plus. Un test
+  d'intégration compte les requêtes d'une page de journal, **sur une sélection qui
+  traverse les deux tables d'AD-23**, et échoue si le nombre croît avec le nombre de
+  lignes.
 
 ### AD-21 — Un cas d'usage, une transaction, et les effets après le commit
 
@@ -431,6 +478,59 @@ graph LR
   et l'exigence qu'elle ait été exécutée une fois avant la mise en service. Le socle ne
   fournit pas l'outil de sauvegarde ; il refuse seulement que la question reste muette.
 
+### AD-23 — L'archive est une seconde table que seul le dépôt d'audit connaît
+
+- **Binds :** FR-13, FR-20, FR-23, AD-3, AD-12, AD-20, AD-21, NFR performance.
+- **Prevents :** que la rétention se règle par une suppression, ce que FR-23 interdit ;
+  que la connaissance des deux tables remonte au-dessus du dépôt, ce qui obligerait chaque
+  appelant à choisir sa source ; qu'une entrée en cours de déplacement soit vue deux fois,
+  ou pas du tout, par une page ou un export ; et qu'un dérivé invente sa propre politique
+  de rétention.
+- **Rule :** cinq points, et aucun n'est décoratif.
+
+  1. **Forme et identité.** La table d'archive porte exactement la même forme que la table
+     en ligne — mêmes colonnes, même normalisation des valeurs, mêmes index qu'AD-20
+     déclare — et **l'entrée y garde sa clé primaire**. Une clé n'est jamais réattribuée.
+     C'est ce qui fait que `/audit-log/{id}` désigne une entrée et une seule, et que le
+     couple `(horodatage, id)` est un **ordre total** sur les deux tables réunies. Les
+     lignes de détail d'une entrée voyagent avec elle et gardent la leur.
+  2. **Où passe la frontière.** Nulle part dans un `if`. Chaque lecture résout **un point
+     de coupure une fois par requête**, interroge les deux tables avec le même prédicat de
+     filtre, et les réunit **en SQL** — union, tri sur `(horodatage, id)`, `LIMIT`/`OFFSET`
+     et comptage sur l'union, jamais une fusion en PHP. Une entrée déplacée pendant la
+     requête peut apparaître des deux côtés : la déduplication sur la clé primaire la
+     ramène à une occurrence. C'est ce qui rend l'offset de la convention *Listes* tenable
+     ici sans pagination par curseur.
+  3. **Le déplacement.** Les règles vivent dans un service ; la commande console n'est
+     qu'une couche de traduction, comme l'exige le standard. Le service travaille par lots
+     de taille fixée en paramètre `app.`, et **chaque lot est une seule transaction**
+     portant l'insertion et la suppression — deux transactions laisseraient des doublons
+     permanents au premier incident. Il écrit en SQL depuis le dépôt et **non par l'ORM** :
+     l'ORM ferait auditer l'audit par le listener d'AD-3, puis auditer sa propre
+     suppression. Les deux tables d'audit sont exclues de l'audit par construction. Le
+     critère est « plus vieux que la fenêtre », donc relancer la commande ne déplace que ce
+     qui reste. Le Scheduler la déclenche, dans son propre schedule et sur son propre
+     worker de superviseur — jamais mêlée à la file `async` d'AD-4, dont les pics
+     retarderaient le timer. Une crontab appelant `bin/console` reste un repli légitime sur
+     un dérivé sans superviseur.
+  4. **Ce que l'écran annonce.** Le budget d'AD-20 ne couvre que la fenêtre en ligne, et
+     une requête qui remonte plus loin peut en sortir. L'écran l'annonce — mais il annonce
+     **la période demandée**, qu'il lit dans le filtre, jamais la table atteinte. Le
+     contrôleur ne distingue donc toujours pas les deux sources, et le contrat d'AD-3
+     tient. Les index d'AD-20 existent sur les deux tables pour que ce dépassement reste
+     borné.
+  5. **Ce qui surveille.** Le health check de FR-18 passe en état dégradé quand la plus
+     vieille entrée en ligne dépasse la fenêtre d'une marge : sans cela, un worker mort
+     laisse la rétention silencieusement inappliquée, exactement la faiblesse qu'AD-4
+     surveille déjà sur la file d'emails.
+- **Écart énoncé :** AD-3 disait « un seul journal d'audit » ; il dit désormais « un seul
+  journal *logique* ». Ce qu'il interdisait — que le filtre, la page et l'export
+  connaissent deux sources — reste interdit, et c'est le dépôt qui l'absorbe. Le
+  partitionnement RANGE de MySQL aurait gardé une table unique, mais il impose une clé
+  primaire composite contraire à l'identifiant entier auto-incrémenté du standard, et il
+  parie sur la version et la configuration MySQL du serveur client qu'AD-1 laisse
+  indéterminées.
+
 ## Consistency Conventions
 
 | Concern | Convention |
@@ -442,9 +542,9 @@ graph LR
 | DTO | `Dto/Input/` porte la validation, `Dto/Read/` les projections `SELECT NEW`, `Dto/Output/` le contrat qui franchit la couche service. Le mapping passe par `ObjectMapperInterface` (`symfony/object-mapper`, stable depuis Symfony 7.4). |
 | Routes | Nom `app_<ressource>_<action>`, préfixe de chemin au niveau de la classe, chemins anglais (AD-6), une classe de contrôleur par ressource. |
 | Erreurs | Exceptions métier dans `Exception/` avec `#[WithHttpStatus]` et `#[WithLogLevel]`. API : Problem Details RFC 7807. Zone non permise : 403. Objet non permis : 404, identique à un objet inexistant. |
-| Listes | Enveloppe `items` + `meta` avec page, perPage, total, pages. Pas de pagination par curseur, pas de Pagerfanta. |
-| Permissions | Code stable en `snake_case` préfixé par son domaine (`user.invite`, `audit.read`, `roadmap.notes`). Un module préfixe par son nom. `access_control` par zone et `#[IsGranted]` par action, jamais l'un seul. |
-| Audit | Tout objet métier audité par défaut ; exclusion explicite déclarée par le propriétaire du type. Alias de type stable, étiquette figée, valeurs scalaires normalisées (AD-12). Action métier : code stable, libellé traduisible, déclarée depuis la couche service. |
+| Listes | Enveloppe `items` + `meta` avec page, perPage, total, pages. Pas de pagination par curseur, pas de Pagerfanta. Une liste bâtie sur plusieurs tables (AD-23) réunit, trie, compte et pagine **en SQL** sur un ordre total, jamais en PHP. |
+| Permissions | Code stable en `snake_case` préfixé par sa ressource, forme CRUD par défaut (`user.create`, `audit.read`). Hors CRUD, code nommé (`user.invite`, `audit.export`, `roadmap.notes`). Un module déclare ses ressources et leurs opérations, jamais une liste de codes. `access_control` par zone et `#[IsGranted]` par action, jamais l'un seul. |
+| Audit | Tout objet métier audité par défaut ; exclusion explicite déclarée par le propriétaire du type. Alias de type stable — **le même identifiant que le nom de ressource d'AD-8** —, étiquette figée, valeurs scalaires normalisées (AD-12). Action métier : code stable, libellé traduisible, déclarée depuis la couche service. Deux tables de forme identique, en ligne et archive, à clé primaire partagée, connues du seul dépôt d'audit (AD-23). |
 | Traduction | Catalogues par domaine, source française, clés en anglais pointées. Un module livre ses catalogues par AD-13. |
 | Configuration | Variable d'environnement quand cela dépend de la machine, paramètre `app.` pour un comportement identique partout, constante de classe pour ce qui ne bouge presque jamais. Secrets : `.env.local` en développement, **coffre de secrets Symfony en production parce que la cible est un serveur nu déployé par SSH et qu'il n'existe aucun magasin de plateforme** ; `SYMFONY_DECRYPTION_SECRET` devient alors le seul secret vivant hors du dépôt. |
 | Frontend | AssetMapper, Twig, Stimulus, Turbo. Aucun bundler, aucune étape Node. Aucune règle métier en JavaScript. Tout chemin fonctionne sans JavaScript (AD-17). |
@@ -463,6 +563,8 @@ Versions vérifiées sur `symfony.com/releases.json`, Packagist et les dépôts 
 | MySQL | version du serveur client |
 | scheb/2fa-bundle (totp, email, backup-code) | 8.6 |
 | symfony/messenger — transport Doctrine | 7.4 |
+| symfony/scheduler + dragonmantank/cron-expression — déclenche l'archivage (AD-23) | 7.4 |
+| symfony/lock — verrou de la commande d'archivage (AD-23) | 7.4 |
 | symfony/rate-limiter | 7.4 |
 | symfony/object-mapper | 7.4 |
 | symfony/asset-mapper | 7.4 |
@@ -509,7 +611,8 @@ _bmad-output/        # embarqué dans la release, lu seulement (AD-10)
 
 Entités du socle. Le journal d'audit désigne son objet par alias de type et clé primaire,
 sans clé étrangère, ce qui lui permet de viser une entité de module que le socle ne
-connaît pas (AD-12).
+connaît pas (AD-12). Les deux tables d'archive ont la forme exacte de leurs jumelles en
+ligne et n'existent que pour le dépôt d'audit (AD-23).
 
 ```mermaid
 erDiagram
@@ -524,6 +627,8 @@ erDiagram
     USER ||--o{ INVITATION : "a invité"
     USER ||--o{ AUDIT_ENTRY : "auteur de"
     AUDIT_ENTRY ||--o{ AUDIT_FIELD_CHANGE : "détaille"
+    AUDIT_ENTRY_ARCHIVE ||--o{ AUDIT_FIELD_CHANGE_ARCHIVE : "détaille"
+    USER ||--o{ AUDIT_ENTRY_ARCHIVE : "auteur de"
     LANGUAGE ||--o{ USER : "langue d'interface"
 ```
 
@@ -569,7 +674,8 @@ date de la release est la « date du dernier déploiement » qu'affiche FR-14.
 | FR-6, FR-20, FR-21 Cycle de vie du compte | `Core/Service/` | AD-9, AD-5, AD-12 |
 | FR-7 à FR-10 Rôles et permissions | `Core/Security/`, `Core/Entity/` | AD-8, AD-13, AD-19 |
 | FR-11, FR-12 Écriture de l'audit | `Core/Service/`, `Core/EventListener/Doctrine/` | AD-3, AD-12, AD-21 |
-| FR-13 Lecture de l'audit | `Core/Service/`, `Core/Repository/` | AD-12, AD-20 |
+| FR-13 Lecture de l'audit | `Core/Service/`, `Core/Repository/` | AD-12, AD-20, AD-23 |
+| FR-23 Archivage de l'audit | `Core/Service/`, `Core/Repository/`, `Core/Command/` | AD-23, AD-3, AD-12, AD-21 |
 | FR-14, FR-15 Roadmap | `Core/Service/` | AD-10, AD-20 |
 | FR-16 Lancer une tâche | `Core/Service/`, `Core/Controller/` | AD-11 |
 | FR-17 Jetons d'API | `Core/Security/`, Profil | AD-5 |
@@ -599,15 +705,15 @@ Ce que ce spine refuse de trancher, et ce qui rouvrirait la question.
 - **Noyau partagé sous forme de bundle plutôt que clonage.** Le PRD §6 assume le
   clonage. À rouvrir quand les dérivés se compteront en dizaines.
 - **Multi-tenant et compte valable sur plusieurs dérivés.** Hors périmètre (PRD §7).
-- **Rétention et purge du journal d'audit (OQ-2).** Quand le volume dépassera ce
-  qu'AD-20 tient, mesuré et non supposé.
+- **Purge du journal d'audit.** AD-23 archive et ne supprime rien ; quand et si une
+  suppression devient nécessaire, ce sera une décision de conservation légale, pas de
+  performance.
 - **Outil de sauvegarde fourni par le socle.** AD-22 nomme la responsabilité et la
   procédure ; l'outiller viendra quand deux dérivés auront le même hébergeur.
 - **Exécuteur d'agents côté serveur.** Quand le nombre de dérivés l'amortira.
 - **Transport Messenger autre que Doctrine.** Sous charge mesurée seulement.
 - **Cache HTTP et cache applicatif au-delà d'AD-10 et d'AD-20.** Sur lenteur mesurée.
-- **Durée du délai de grâce 2FA (OQ-UX-1), champs de la liste des jetons d'API
-  (OQ-UX-3), contenu d'une entrée d'action métier dans le panneau (OQ-UX-5).** Questions
-  produit ; AD-19 et AD-12 en portent déjà la forme, pas la valeur.
-- **Permissions par défaut des rôles Admin et User (OQ-5).** À observer sur les premiers
-  dérivés.
+- **Les routes de fiche que déclareront les modules d'un dérivé.** AD-12 fixe la forme —
+  une route facultative par type, un lien seulement si l'objet existe et si le lecteur
+  peut le consulter — et refuse d'en nommer une seule, le socle ne connaissant aucun écran
+  métier. Le premier module qui en déclare une n'a rien à rouvrir ici.
