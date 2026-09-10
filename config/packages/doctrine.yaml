@@ -1,0 +1,66 @@
+doctrine:
+    dbal:
+        url: '%env(resolve:DATABASE_URL)%'
+
+        # IMPORTANT: You MUST configure your server version,
+        # either here or in the DATABASE_URL env var (see .env file)
+        #server_version: '8.0.32'
+
+        profiling_collect_backtrace: '%kernel.debug%'
+    orm:
+        validate_xml_mapping: true
+        naming_strategy: doctrine.orm.naming_strategy.underscore
+        # false : les deux mappings ci-dessous sont le seul mecanisme de
+        # decouverte. auto_mapping en ajouterait un troisieme, implicite.
+        auto_mapping: false
+
+        # Mapping des deux racines (AD-13). Le mapping des modules vise la racine
+        # `src/Module` et non un module nommé : ajouter un module ne modifie pas ce
+        # fichier. Le driver par attributs y descend récursivement et ne retient que
+        # les classes portant `#[ORM\Entity]`.
+        mappings:
+            Core:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Core/Entity'
+                prefix: 'App\Core\Entity'
+                alias: Core
+            Module:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Module'
+                prefix: 'App\Module'
+                alias: Module
+
+when@test:
+    doctrine:
+        dbal:
+            # "TEST_TOKEN" is typically set by ParaTest
+            dbname_suffix: '_test%env(default::TEST_TOKEN)%'
+        orm:
+            # Miroir du mapping des modules ci-dessus, sur les modules de démonstration.
+            mappings:
+                FixtureModule:
+                    type: attribute
+                    is_bundle: false
+                    dir: '%kernel.project_dir%/tests/Fixtures/Module'
+                    prefix: 'App\Tests\Fixtures\Module'
+                    alias: FixtureModule
+
+when@prod:
+    doctrine:
+        orm:
+            query_cache_driver:
+                type: pool
+                pool: doctrine.system_cache_pool
+            result_cache_driver:
+                type: pool
+                pool: doctrine.result_cache_pool
+
+    framework:
+        cache:
+            pools:
+                doctrine.result_cache_pool:
+                    adapter: cache.app
+                doctrine.system_cache_pool:
+                    adapter: cache.system

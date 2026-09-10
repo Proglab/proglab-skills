@@ -1,0 +1,15 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Socle ERP{% endblock %}
+
+{% block body %}
+    <h1>Socle ERP</h1>
+
+    {% if modules is not empty %}
+        <ul data-modules>
+            {% for module in modules %}
+                <li>{{ module }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+{% endblock %}
