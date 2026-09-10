@@ -1,0 +1,191 @@
+# Porte de qualité — la façade en ligne.
+#
+# L'autre façade est le Makefile, et les deux vérifient la même liste de catégories : un
+# job par catégorie, nommé d'après elle, et le `name:` de chaque job est exactement la
+# valeur d'un commentaire `# qa-category:` du Makefile.
+# tests/Core/Quality/QualityGateParityTest.php refuse toute orpheline des deux côtés.
+#
+# Les jobs tournent en parallèle pour qu'une erreur de style ne se cache pas derrière une
+# suite de tests de cinq minutes — et pour qu'un défaut fasse échouer le job de sa
+# catégorie, et lui seul.
+#
+# Runners hébergés par GitHub (décision 3) : gratuits sur dépôt public, facturés au quota
+# sur dépôt privé. C'est la tension assumée avec « aucun service externe payant ».
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+# La decision 3 assume la facturation au quota sur depot prive : sans ce groupe, chaque
+# push sur une PR ouverte relance cinq jobs sans annuler les cinq precedents.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Le PHP du socle — composer.json exige ">=8.5".
+  PHP_VERSION: '8.5'
+
+jobs:
+  tests:
+    name: Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    # MySQL 8.4 LTS, le plancher contractuel des serveurs clients (décision 1). Tester
+    # sur SQLite et livrer sur MySQL revient à faire apparaître les différences chez le
+    # client plutôt qu'ici.
+    services:
+      database:
+        image: mysql:8.4
+        env:
+          MYSQL_USER: app
+          MYSQL_PASSWORD: app
+          MYSQL_DATABASE: app_test
+          MYSQL_ROOT_PASSWORD: root
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -uapp -papp"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+          --health-start-period=30s
+
+    env:
+      # Le dbname est « app » : le `dbname_suffix` de config/packages/doctrine.yaml y
+      # ajoute « _test » en environnement de test, ce qui vise la base « app_test » créée
+      # par le service ci-dessus. Le serverVersion est celui de .env et de .env.test.
+      DATABASE_URL: mysql://app:app@127.0.0.1:3306/app?serverVersion=8.4&charset=utf8mb4
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: ctype, iconv, intl, pdo_mysql
+          coverage: none
+
+      # Jamais --no-dev ici : l'isolation des tests vient de dama/doctrine-test-bundle,
+      # qui est un require-dev. Sans lui, l'extension PHPUnit ne trouve aucune connexion
+      # statique, chaque test valide en base, et la suite reste verte pendant qu'elle
+      # fuit. ramsey/composer-install installe les dépendances de dev par défaut.
+      - uses: ramsey/composer-install@v3
+
+      # L'unique erreur de configuration qui ne s'annonce pas d'elle-même : l'extension
+      # enregistrée dans phpunit.dist.xml alors que le bundle est absent de
+      # config/bundles.php. Cette commande sort en 1 dans ce cas, et elle passe avant la
+      # suite parce qu'une suite verte qui écrit en base ne se remarque pas.
+      - name: Check database isolation is actually enabled
+        run: php bin/console --env=test debug:config dama_doctrine_test
+
+      # Les migrations, jamais doctrine:schema:create. Une suite qui construit son schéma
+      # à partir du mapping n'exerce jamais les migrations, et les migrations sont la
+      # première chose que la production exécute : c'est ici qu'une migration cassée doit
+      # échouer.
+      - name: Prepare the test database
+        run: php bin/console --env=test doctrine:migrations:migrate --no-interaction --allow-no-migration
+
+      # phpunit.dist.xml porte failOnPhpunitNotice et l'extension DAMA.
+      - name: Run the test suite
+        run: php vendor/bin/phpunit
+
+  static-analysis:
+    name: Static analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: ctype, iconv, intl, pdo_mysql
+          coverage: none
+
+      - uses: ramsey/composer-install@v3
+
+      # L'extension Symfony résout les ids de service et les noms de route depuis le
+      # conteneur compilé. Sauter cette étape et la moitié des règles se taisent au lieu
+      # d'échouer, ce qui est pire qu'échouer.
+      - name: Compile the container
+        run: php bin/console cache:warmup --env=dev
+
+      - name: PHPStan
+        run: php vendor/bin/phpstan analyse --configuration=phpstan.dist.neon --memory-limit=1G --no-progress
+
+  code-style:
+    name: Code style
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          coverage: none
+
+      - uses: ramsey/composer-install@v3
+
+      # --diff : le job dit ce qu'il reproche, pas seulement qu'il reproche quelque chose.
+      - name: php-cs-fixer
+        run: php vendor/bin/php-cs-fixer fix --config=.php-cs-fixer.dist.php --dry-run --diff
+
+  layers:
+    name: Layer contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          coverage: none
+
+      - uses: ramsey/composer-install@v3
+
+      # --report-uncovered, jamais --fail-on-uncovered : vendor/ n'est couvert par
+      # aucune couche par conception, et l'option échouerait dès le premier
+      # AbstractController. Le rapport se lit, il ne bloque pas.
+      - name: deptrac
+        run: php vendor/bin/deptrac analyse --config-file=deptrac.yaml --report-uncovered --no-progress
+
+  lint:
+    name: Linters and audits
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: ctype, iconv, intl, pdo_mysql
+          coverage: none
+
+      - uses: ramsey/composer-install@v3
+
+      # `composer install` ne fait qu'avertir quand le lock a derive du json.
+      - run: composer validate --strict
+      - run: php bin/console lint:container
+      - run: php bin/console lint:twig templates/
+      - run: php bin/console lint:yaml config/ .github/
+      - run: php bin/console doctrine:schema:validate --skip-sync
+
+      # composer audit sans option : le socle refuse toute vulnérabilité connue, y
+      # compris dans un require-dev, puisque ce sont ces paquets-là qui exécutent la
+      # porte.
+      - name: Known vulnerabilities (PHP)
+        run: composer audit
+
+      # `php bin/console importmap:audit` manque volontairement : AssetMapper n'entre au
+      # socle qu'à la story 1.3, et la commande échouerait aujourd'hui faute de bundle.
+      # Elle se rajoute ici et dans la cible `audit` du Makefile ce jour-là — jamais
+      # gardée derrière une condition, qui ne ferait que masquer son absence.

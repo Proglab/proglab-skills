@@ -19,6 +19,9 @@ final class HomeController extends AbstractController
     {
     }
 
+    /**
+     * @return array{modules: list<string>}
+     */
     #[Route('/', name: 'app_home', methods: ['GET'])]
     #[Template('home/index.html.twig')]
     public function index(): array

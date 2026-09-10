@@ -63,3 +63,68 @@ Entrees ajoutees par bmad-build. Append-only : ne pas modifier les entrees exist
     est close.
 
     À traiter avant la première livraison chez un client, pas avant.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-2-bloquer-les-regressions-en-integration-continue.md`
+  summary: Le gabarit `.claude/skills/symfony-proglab-quality/assets/phpstan.dist.neon` liste `phpstan-phpunit/rules.neon` sans `extension.neon`, ce qui fait echouer PHPStan au demarrage sur `CoversHelper introuvable`.
+  evidence: Reproduit pendant la story 1.2, et corrige dans le `phpstan.dist.neon` du projet. Le gabarit du skill reste faux : tout projet proglab qui le copiera tel quel rencontrera la meme panne. La spec interdit de toucher `.claude/skills/`, donc la remontee amont est une decision de standard maison, distincte de cette story.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-2-bloquer-les-regressions-en-integration-continue.md`
+  summary: `php bin/console importmap:audit` manque a la cible `audit` du Makefile et au job « Linters and audits », faute d'AssetMapper.
+  evidence: Retire volontairement avec un commentaire nommant la story 1.3 dans les deux fichiers. Sans npm dans la boucle, rien d'autre ne signale une dependance JavaScript vulnerable : la ligne doit revenir des qu'AssetMapper entre au socle, sinon la categorie « audit » ne couvre plus que PHP en silence.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-2-bloquer-les-regressions-en-integration-continue.md`
+  summary: Trois lignes de la matrice de la story 1.2 n'ont aucun test — « Test qui ecrit » (le critere d'acceptation n3), « Test rouge » et « Paquet vulnerable ».
+  evidence: |
+    **Tranche par Fabrice le 2026-09-10 : reporte a la story 1.6.**
+
+    « Test qui ecrit » n'a pas de sujet aujourd'hui : le socle n'a ni entite ni migration,
+    donc aucun test fonctionnel n'ecrit en base. Le mecanisme d'isolation est verifie trois
+    fois indirectement (les deux lignes DAMA tenues ensemble par un test, `debug:config
+    dama_doctrine_test` ordonne avant la suite dans le job, et la meme commande sortant en 1
+    quand on retire le bundle), mais le rollback lui-meme n'est jamais exerce. L'option
+    ecartee etait de creer la table de l'entite de fixture `DemoWidget` au bootstrap PHPUnit
+    par le SchemaTool. **A rouvrir a la story 1.6**, avec l'entite Utilisateur et sa
+    migration : c'est la que le critere se referme.
+
+    « Test rouge » est tautologique — une assertion cassee fait echouer PHPUnit, donc le job.
+    « Paquet vulnerable » exigerait d'installer un paquet reellement vulnerable pour prouver
+    que `composer audit` echoue. Les deux sont documentes comme verifies par construction.
+
+    Consequence assumee : la story 1.2 se cloture avec un critere d'acceptation ouvert.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-2-bloquer-les-regressions-en-integration-continue.md`
+  summary: Rien dans le depot ne rend la CI bloquante : il faut declarer les cinq jobs en « required status checks » dans la branch protection GitHub.
+  evidence: |
+    L'Intent de la story annonce « une CI bloquante en ligne » et le README presente la
+    porte comme bloquante. Le workflow ne declare que ses declencheurs (`push` sur main,
+    `pull_request`) : en l'etat, un job rouge n'empeche aucun merge. Le correctif n'est pas
+    du code — c'est un reglage de depot, a poser sur github.com/Proglab/proglab-skills, sur
+    les cinq noms de jobs : Tests, Static analysis, Code style, Layer contract, Linters and
+    audits. Tant que ce n'est pas fait, la story livre une porte qui rapporte sans bloquer.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-2-bloquer-les-regressions-en-integration-continue.md`
+  summary: Ajouter au workflow un job hors categorie — typiquement le check agrege qu'appelle la branch protection — fera echouer le test de parite.
+  evidence: |
+    `QualityGateParityTest::both_facades_check_the_same_list_of_categories` compare
+    l'ensemble des `name:` de jobs a l'ensemble des categories du Makefile : tout job
+    supplementaire devient une « orpheline dans la CI ». C'est le comportement voulu
+    aujourd'hui, et il deviendra genant des que l'entree ci-dessus sera traitee, un check
+    agrege etant la facon usuelle de n'exiger qu'un seul status. Ce qui trancherait : un
+    marqueur d'exemption explicite sur le job, plutot qu'un assouplissement de la
+    comparaison. A traiter avec la branch protection, pas avant.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-2-bloquer-les-regressions-en-integration-continue.md`
+  summary: Complement a l'entree « Test qui ecrit » : `enable_static_connection: false` couperait l'isolation DAMA sans qu'aucune verification actuelle ne bronche.
+  evidence: |
+    Append-only, donc consigne ici plutot que dans l'entree du dessus. La relecture a lu
+    `vendor/dama/doctrine-test-bundle/src/DependencyInjection/Configuration.php:13,27-28` :
+    `enable_static_connection` est un noeud a `true` par defaut qu'un
+    `config/packages/test/dama_doctrine_test.yaml` peut passer a `false`. Dans ce cas
+    `DatabaseIsolationTest` passe (les deux lignes sont toujours declarees) **et** le
+    garde-fou `debug:config dama_doctrine_test` sort en 0 en affichant simplement la valeur.
+    L'isolation serait coupee, chaque test fonctionnel commiterait dans `app_test`, et rien
+    n'echouerait.
+
+    Consequence pour la story 1.6 : le test qui fermera le critere n3 doit exercer le
+    rollback **par le comportement** — ecrire une ligne, puis affirmer la table vide — et
+    non se contenter de verifier une declaration de plus.

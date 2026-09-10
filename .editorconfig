@@ -12,3 +12,11 @@ trim_trailing_whitespace = true
 
 [*.md]
 trim_trailing_whitespace = false
+
+# GNU make exige des tabulations : un editeur qui applique `indent_style = space`
+# ci-dessus casse le Makefile avec « missing separator ».
+[Makefile]
+indent_style = tab
+
+[*.{yml,yaml}]
+indent_size = 2

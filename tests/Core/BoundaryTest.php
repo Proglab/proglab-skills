@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Core;
 
+use Generator;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -53,18 +54,18 @@ final class BoundaryTest extends TestCase
     protected function tearDown(): void
     {
         if (null !== $this->sandbox) {
-            (new Filesystem())->remove($this->sandbox);
+            new Filesystem()->remove($this->sandbox);
             $this->sandbox = null;
         }
     }
 
-    #[Test]
-    public function the_delivered_code_base_has_no_layer_violation(): void
-    {
-        [$exitCode, $output] = self::deptrac(self::projectDir(), reportUncovered: true);
-
-        self::assertSame(0, $exitCode, $output);
-    }
+    // Le depot lui-meme n'est pas analyse ici : c'est le job « Layer contract » de la CI
+    // qui le fait, et la cible `deptrac` du Makefile en local. Le dupliquer dans la suite
+    // ferait rougir « Tests » en meme temps que « Layer contract » sur une seule et meme
+    // violation, alors que la porte promet que le job de la categorie fautive echoue, et
+    // lui seul. Le test « uncovered » ci-dessous reste, lui : le job deptrac se contente
+    // de rapporter les classes non couvertes (--report-uncovered sans
+    // --fail-on-uncovered), donc c'est le seul endroit qui echoue dessus.
 
     /**
      * Le rapport « uncovered » liste les dépendances qu'aucune couche ne juge. Y voir une
@@ -79,11 +80,23 @@ final class BoundaryTest extends TestCase
         $report = json_decode($output, true, flags: \JSON_THROW_ON_ERROR);
         self::assertIsArray($report);
 
+        $files = $report['files'] ?? [];
+        self::assertIsArray($files);
+
         $escaping = [];
 
-        foreach ($report['files'] ?? [] as $file) {
-            foreach ($file['messages'] ?? [] as $message) {
-                if (preg_match('/uncovered dependency on (App\\\\\S+)/', $message['message'], $matches)) {
+        foreach ($files as $file) {
+            $messages = \is_array($file) ? $file['messages'] ?? [] : [];
+            self::assertIsArray($messages);
+
+            foreach ($messages as $message) {
+                $text = \is_array($message) ? $message['message'] ?? null : null;
+
+                if (!\is_string($text)) {
+                    continue;
+                }
+
+                if (1 === preg_match('/uncovered dependency on (App\\\\\S+)/', $text, $matches)) {
                     $escaping[] = $matches[1];
                 }
             }
@@ -129,9 +142,9 @@ final class BoundaryTest extends TestCase
     }
 
     /**
-     * @return \Generator<string, array{array<string, string>, string}>
+     * @return Generator<string, array{array<string, string>, string}>
      */
-    public static function forbiddenDependencies(): \Generator
+    public static function forbiddenDependencies(): Generator
     {
         yield 'un module atteint une classe interne du socle' => [
             [

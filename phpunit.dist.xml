@@ -41,4 +41,12 @@
         </deprecationTrigger>
     </source>
 
+    <!-- Isolation de la base de données. Cette ligne seule ne suffit pas : le bundle
+         doit aussi être dans config/bundles.php sous 'test', sinon l'extension
+         s'exécute, ne trouve aucune connexion statique à envelopper, et chaque test
+         valide (commit) — la suite reste verte pendant qu'elle remplit la base. -->
+    <extensions>
+        <bootstrap class="DAMA\DoctrineTestBundle\PHPUnit\PHPUnitExtension"/>
+    </extensions>
+
 </phpunit>
