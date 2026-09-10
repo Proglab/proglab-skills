@@ -35,12 +35,24 @@ help: ## Liste les cibles disponibles
 
 qa: cs-check stan deptrac lint audit test ## Exécute la porte complète, exactement comme la CI
 
-# Les trois memes etapes que le job « Tests » de la CI, dans le meme ordre : sans le
-# garde-fou et sans les migrations, la facade locale verifierait moins que la facade en
-# ligne — exactement le desalignement que cette porte existe pour empecher.
+# Les memes etapes que le job « Tests » de la CI, dans le meme ordre : sans le garde-fou,
+# sans les migrations et sans le theme compile, la facade locale verifierait moins que la
+# facade en ligne — exactement le desalignement que cette porte existe pour empecher.
+#
+# `tailwind:build` n'est pas une commodite. En environnement de test, le compilateur du
+# bundle s'efface quand la feuille compilee manque (`strict_mode` vaut false en test) :
+# `@import 'tailwindcss'` retombe alors sur AssetMapper, qui ne connait pas cet asset et
+# echoue en `missing_import_mode: strict`. Sur un clone frais — un runner de CI, par
+# exemple — chaque test fonctionnel qui rend une page tombe. La feuille se construit donc
+# avant la suite, comme le schema se monte avant elle.
+#
+# Sans `--env=test`, contrairement aux deux lignes au-dessus : la sortie ne depend pas de
+# l'environnement, elle ne depend que d'`input_css`. C'est le meme fichier que produit le
+# deploiement.
 test: ## Exécute la suite de tests, comme le job « Tests » de la CI
 	php bin/console --env=test debug:config dama_doctrine_test > /dev/null
 	php bin/console --env=test doctrine:migrations:migrate --no-interaction --allow-no-migration
+	php bin/console tailwind:build
 	php vendor/bin/phpunit
 
 container-cache: ## Compile le conteneur pour que PHPStan puisse lire les ids de service
@@ -67,16 +79,17 @@ deptrac: ## Vérifie le contrat de couches des deux racines
 # composer audit sans option, et pas local-php-security-checker : celui-là est archivé
 # et son propre dépôt renvoie ici.
 #
-# `php bin/console importmap:audit` manque volontairement : AssetMapper n'entre au socle
-# qu'à la story 1.3, et la commande échouerait aujourd'hui faute de bundle. Elle se
-# rajoute ici et dans le job « Linters and audits » ce jour-là — jamais gardée derrière
-# une condition, qui ne ferait que masquer son absence.
+# `importmap:audit` interroge la base d'avis de GitHub pour les versions épinglées dans
+# `importmap.php`. Il n'y a pas de `npm audit` sur cette stack : sans cette ligne, rien
+# ne signalerait jamais qu'un paquet JavaScript du socle a une faille publiée. Elle sort
+# en 1 sur un avis connu, et c'est ce qu'on lui demande.
 #
 # Ces lignes sont au-dessus de la règle, pas dedans : make echo les lignes du corps d'une
 # recette avant de les passer au shell, si bien qu'un commentaire indente s'affiche comme
 # une commande qui aurait tourne.
-audit: ## Vulnérabilités connues
+audit: ## Vulnérabilités connues, en PHP et en JavaScript
 	composer audit
+	php bin/console importmap:audit
 
 # `composer install` ne fait qu'avertir quand le lock a derive du json : sans
 # `composer validate --strict`, « meme version en local et en CI » n'est verifie par rien.

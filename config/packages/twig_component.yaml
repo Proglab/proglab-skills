@@ -1,0 +1,15 @@
+# Les composants du kit shadcn, copiés par `php bin/console ux:install <nom> --kit shadcn`.
+#
+# Ils sont anonymes : un fichier Twig sous `templates/components/`, appelé
+# `<twig:Button>`, sans classe PHP. Une classe n'arrive que le jour où un composant a
+# besoin de logique — et elle prend alors des DTO, jamais des entités
+# (`symfony-proglab-frontend`, references/components.md).
+#
+# Couture assumée : `defaults` est une table namespace → répertoire, sans glob. Le jour
+# où un module du client aura besoin d'un composant **avec classe**, il faudra une ligne
+# ici — c'est le seul point de câblage des deux racines qui ne se fasse pas par glob.
+# Rien de tel n'existe dans le socle aujourd'hui, donc rien n'est écrit d'avance.
+twig_component:
+    anonymous_template_directory: 'components/'
+    defaults:
+        App\Core\Twig\Components\: 'components/'

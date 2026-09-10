@@ -35,7 +35,7 @@ make cs       # corrige le style plutôt que de le signaler
 | **Code style** | `cs-check` | php-cs-fixer, jeu `@PHP85Migration` par-dessus `@Symfony:risky` et `@PER-CS` |
 | **Layer contract** | `deptrac` | La frontière des deux racines — `Core → Module` interdit, `Module → Module` interdit, `Module → Core` hors `Core\Contract` interdit |
 | **Tests** | `test` | PHPUnit, chaque test fonctionnel isolé dans une transaction annulée par `dama/doctrine-test-bundle` |
-| **Linters and audits** | `lint`, `audit` | Conteneur, Twig, YAML, mapping Doctrine, et `composer audit` |
+| **Linters and audits** | `lint`, `audit` | Conteneur, Twig, YAML, mapping Doctrine, puis `composer audit` et `importmap:audit` — sans `npm` dans la chaîne, c'est la seule vérification de vulnérabilité côté JavaScript |
 
 Tous les outils sont des `require-dev` épinglés par `composer.lock` et lancés par le PHP
 du projet depuis `vendor/` : même version en local et en CI, aucune installation globale,
@@ -66,6 +66,46 @@ php bin/console --env=test doctrine:migrations:migrate --no-interaction
 
 Une surcharge locale du DSN se met dans `.env.local` **et** dans `.env.test.local` :
 Symfony ne charge pas `.env.local` en environnement de test.
+
+### Le frontend, sans Node
+
+AssetMapper sert les assets en modules ES natifs et Tailwind 4 est compilé par un binaire
+autonome que `symfonycasts/tailwind-bundle` télécharge dans `var/`. **Ni `npm`, ni
+`node_modules`, ni bundler** — et donc ni JSX, ni composants monofichiers, ni TypeScript :
+c'est le marché, et il ne se renégocie pas fonctionnalité par fonctionnalité.
+
+```bash
+php bin/console tailwind:build --watch   # à laisser tourner pendant le développement
+php bin/console debug:asset-map          # ce qui est réellement mappé
+
+php bin/console tailwind:build --minify  # au déploiement, dans cet ordre
+php bin/console asset-map:compile        # digère et écrit dans public/assets/
+```
+
+**Les deux commandes de déploiement vont dans cet ordre.** Le bundle Tailwind ne
+s'accroche à aucun événement d'`asset-map:compile` : il intercepte la feuille d'entrée et
+sert son résultat compilé. Lancer la seconde sans la première sur une release neuve
+avorte sur « Built Tailwind CSS file does not exist ».
+
+**« Mes classes Tailwind ne font rien » est presque toujours un `--watch` qui ne tourne
+pas.** La sortie de compilation vit dans `var/`, ignorée par git ; `public/assets/` l'est
+aussi. `assets/vendor/`, en revanche, est **commité** : un `composer install` sur le
+serveur n'a pas besoin d'aller rechercher les dépendances JavaScript. Le binaire Tailwind,
+lui, se télécharge au premier build — la chaîne est sans Node, elle n'est pas hors ligne.
+
+Le thème est en deux feuilles. `assets/styles/theme.css` porte tout le socle — rôles de
+couleur en clair et en sombre, typographie, rayons, espacement, mouvement — et n'est
+jamais édité par un dérivé. `assets/styles/brand.css` est livré vide : c'est le seul
+fichier qu'un dérivé touche, et il ne contient que les variables qu'il a le droit de
+redéfinir. `tests/Core/Theme/` refuse un rôle sans variante sombre, une couleur codée en
+dur dans un template, un second kit de composants et un binaire Tailwind non épinglé.
+
+Les composants viennent du kit shadcn de Symfony UX Toolkit, **copiés** dans le dépôt :
+
+```bash
+php bin/console ux:install <nom> --kit shadcn   # un seul kit, jamais un second
+php bin/console ux:icons:lock                   # verrouille les icônes Tabler utilisées
+```
 
 ## Les skills
 

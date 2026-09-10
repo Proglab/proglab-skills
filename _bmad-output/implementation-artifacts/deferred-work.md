@@ -128,3 +128,86 @@ Entrees ajoutees par bmad-build. Append-only : ne pas modifier les entrees exist
     Consequence pour la story 1.6 : le test qui fermera le critere n3 doit exercer le
     rollback **par le comportement** — ecrire une ligne, puis affirmer la table vide — et
     non se contenter de verifier une declaration de plus.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-3-installer-le-kit-de-composants-et-poser-le-theme-du-socle.md`
+  summary: `--sidebar-accent` est livré sans `--sidebar-accent-foreground`, alors que tous les autres rôles de fond vont par paire.
+  evidence: |
+    Vérifié dans `assets/styles/theme.css` : `--card`/`--card-foreground`,
+    `--primary`/`--primary-foreground`, `--status-done`/`--status-done-foreground` vont
+    par paire ; `--sidebar-accent` est seul. `DESIGN.md` ne donne pas ce jeton, et le bloc
+    gelé de la story 1.3 interdit d'en inventer un — c'est pourquoi il n'a pas été ajouté.
+    La story 2.3, qui pose la coque et l'entrée de navigation courante, aura un fond
+    d'item actif sans rôle de texte associé : elle devra soit faire ajouter le jeton à
+    `DESIGN.md`, soit s'appuyer sur `--sidebar-foreground` et le documenter.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-3-installer-le-kit-de-composants-et-poser-le-theme-du-socle.md`
+  summary: Les douze rôles typographiques du socle ne sont consommés par aucun composant du kit, qui emploie les paliers Tailwind par défaut.
+  evidence: |
+    Vérifié dans les six composants copiés : `text-xs`, `text-sm`, `text-base`, que
+    `theme.css` ne remappe pas. Le corps à 15 px n'existe que sur `<body>`, et
+    `ThemeTokensTest` vérifie que les jetons existent, jamais qu'ils servent. Deux
+    exceptions déjà refermées par la story 1.3 : `Card:Title` et `Alert:Title` portent
+    maintenant `text-heading` et `text-subheading`.
+
+    Ce qui trancherait : décider si le socle remappe les paliers Tailwind (`--text-sm`
+    devient le rôle `body-sm`, etc.) ou s'il édite chaque composant copié. Le premier
+    change le sens de classes que tout développeur croit connaître ; le second se paie à
+    chaque `ux:install`. À trancher à la story 1.4, qui rend les premiers écrans réels.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-3-installer-le-kit-de-composants-et-poser-le-theme-du-socle.md`
+  summary: Un serveur client réellement coupé du réseau sortant ne peut pas construire la feuille de style : le binaire Tailwind se télécharge au premier build.
+  evidence: |
+    `assets/vendor/` est commité, donc les dépendances JavaScript n'ont pas besoin du
+    réseau. Le binaire Tailwind, lui, est téléchargé par `symfonycasts/tailwind-bundle`
+    dans `var/` au premier `tailwind:build`, et le déploiement construit sur le serveur.
+    Le README a été corrigé pour ne plus promettre l'inverse.
+
+    Ce qui trancherait : décider à la story 3.1 si le socle commite la feuille compilée,
+    si `var/tailwind/` devient un répertoire partagé de Deployer, ou si le binaire est
+    déposé une fois à la main sur le serveur client.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-3-installer-le-kit-de-composants-et-poser-le-theme-du-socle.md`
+  summary: `asset-map:compile` n'est exercé par aucune façade de la porte : le chemin `when@prod` n'est jamais parcouru en CI.
+  evidence: |
+    `config/packages/asset_mapper.yaml` bascule `missing_import_mode` en `warn` sous
+    `when@prod`, et rien dans le `Makefile` ni dans le workflow ne lance
+    `asset-map:compile`. Un import cassé qui ne casse plus en production se découvrirait
+    au premier déploiement client — exactement ce que `strict` en développement cherche à
+    éviter. Non corrigé ici parce qu'ajouter cette étape change la forme de la porte et
+    demande de décider à quelle catégorie elle appartient.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-3-installer-le-kit-de-composants-et-poser-le-theme-du-socle.md`
+  summary: `HardcodedColorTest` déclenche un faux positif sur un fragment d'URL de trois caractères hexadécimaux, sans mécanisme de suppression.
+  evidence: |
+    Le motif `#[0-9a-f]{3}…` attrape `href="#add"`, `"#face"`, `"#fee"`. Aucune occurrence
+    aujourd'hui, et la story 1.4 pose un lien d'évitement vers `#main`, qui passe. Le
+    correctif demande d'exiger un contexte de couleur (attribut `style`, valeur arbitraire
+    Tailwind, propriété CSS) et un marqueur d'exemption — plus de complexité que le défaut
+    n'en justifie aujourd'hui.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-3-installer-le-kit-de-composants-et-poser-le-theme-du-socle.md`
+  summary: `KitIntegrityTest` refusera le premier composant anonyme propre au socle placé dans `templates/components/`.
+  evidence: |
+    `every_copied_component_belongs_to_the_declared_kit()` exige que chaque composant du
+    répertoire appartienne au catalogue shadcn. Le socle n'a aucun composant maison
+    aujourd'hui, donc la liste d'exceptions qui refermerait l'écart n'aurait rien à
+    contenir. À traiter le jour où le premier arrive — vraisemblablement la story 1.4 ou
+    la 2.3.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-3-installer-le-kit-de-composants-et-poser-le-theme-du-socle.md`
+  summary: Le binaire Tailwind est retéléchargé à chaque exécution du job « Tests », sans `actions/cache`.
+  evidence: |
+    Le job construit la feuille avant la suite, et le bundle télécharge le CLI autonome
+    dans `var/` — un répertoire que le runner ne conserve pas. Coût en temps à chaque
+    exécution, et une dépendance de plus à une panne de GitHub Releases. Le correctif
+    ajoute un bloc de cache clé sur `binary_version`, à maintenir avec lui.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-3-installer-le-kit-de-composants-et-poser-le-theme-du-socle.md`
+  summary: `--motion-fade` et `--motion-panel` ne sont dans aucun namespace Tailwind : aucun utilitaire n'est généré.
+  evidence: |
+    Vérifié sur la sortie compilée : `--motion-*` n'est pas un namespace que Tailwind
+    reconnaît, donc il n'existe pas de classe `duration-fade`. Sans conséquence — les
+    jetons se lisent en valeur arbitraire (`duration-[var(--motion-panel)]`), et leur
+    remise à zéro sous `prefers-reduced-motion` fonctionne de la même façon. Ce qui
+    trancherait : la story 1.4, qui écrira les premières transitions à la main, dira si
+    un namespace `--transition-duration-*` vaut le renommage.

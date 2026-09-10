@@ -1,0 +1,72 @@
+/*
+ * La marque du dérivé — le seul fichier de thème qu'un dérivé édite.
+ *
+ * Il est livré vide, et c'est voulu : le socle n'a pas de marque. Décommentez ce dont
+ * vous avez besoin, laissez le reste hériter de `theme.css`, et ne touchez jamais
+ * `theme.css` lui-même — c'est ce qui permet de reporter un correctif de thème du socle
+ * vers ce dérivé par un `git diff` propre.
+ *
+ * Deux choses se rebrandent, et seulement deux (DESIGN.md l.398-409) :
+ *
+ *   1. les variables ci-dessous ;
+ *   2. le logo de la sidebar — un carré `rounded-md` aux couleurs de `--primary`,
+ *      portant les initiales du dérivé (il arrive avec la coque, story 2.3).
+ *
+ * Aucun réglage de marque n'existe dans l'administration : la marque est du code,
+ * versionnée avec le dérivé.
+ *
+ * ⚠ Après chaque changement, **remesurez le contraste** (`symfony-proglab-accessibility`,
+ * règle 2 ; tableau de ratios en DESIGN.md § Colors). Les valeurs du socle passent les
+ * seuils — 4,5:1 sur le texte, 3:1 sur les composants ; rien ne garantit qu'une charte
+ * client les passe. Le contraste se mesure sur des pixels rendus : aucun test de ce
+ * dépôt ne le fera à votre place.
+ *
+ * Chaque variable se redéfinit **trois fois** : dans `:root` pour le clair, et dans les
+ * deux blocs sombres — celui que le système déclenche et celui que la classe `dark`
+ * force. Les oublier, c'est un thème juste dans un seul des deux chemins.
+ */
+
+:root {
+    /* Le premier que l'on recolore. Socle : oklch(0.205 0 0) — le bouton primaire est
+       simplement noir. Boutons, liens, badge « Terminé » suivent. */
+    /* --primary: oklch(0.205 0 0); */
+    /* Socle : oklch(0.985 0 0). Doit garder 4,5:1 sur `--primary`. */
+    /* --primary-foreground: oklch(0.985 0 0); */
+
+    /* Anneau de focus. Socle : oklch(0.708 0 0) — défaut du kit, ≈ 2,05:1, conservé
+       comme choix assumé. Le renforcer est légitime ; le supprimer ne l'est jamais. */
+    /* --ring: oklch(0.708 0 0); */
+
+    /* Bordure des champs. Socle : oklch(0.922 0 0) — l'autre défaut du kit sous le
+       seuil (1,26:1 sur `--card`), conservé pour la même raison. Un dérivé qui veut un
+       contour plus marqué le change ici. */
+    /* --input: oklch(0.922 0 0); */
+
+    /* La seule couleur chromatique du socle : erreurs et confirmation d'une action
+       irréversible. Jamais « en retard », jamais « priorité haute ».
+       Socle : oklch(0.577 0.245 27.325) / oklch(1 0 0). */
+    /* --destructive: oklch(0.577 0.245 27.325); */
+    /* --destructive-foreground: oklch(1 0 0); */
+
+    /* La barre latérale. Socle : oklch(0.985 0 0), oklch(0.145 0 0), oklch(0.94 0 0).
+       `--muted-foreground` porte les titres de groupe à 4,54:1 sur `--sidebar` : c'est
+       la marge la plus fine du thème, remesurez-la si vous recolorez `--sidebar`. */
+    /* --sidebar: oklch(0.985 0 0); */
+    /* --sidebar-foreground: oklch(0.145 0 0); */
+    /* --sidebar-accent: oklch(0.94 0 0); */
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not(.light) {
+        /* Socle sombre : --primary oklch(0.922 0 0), --primary-foreground
+           oklch(0.205 0 0), --ring oklch(0.556 0 0), --input oklch(0.269 0 0),
+           --destructive oklch(0.704 0.191 22.216), --destructive-foreground
+           oklch(0.145 0 0), --sidebar oklch(0.205 0 0), --sidebar-foreground
+           oklch(0.985 0 0), --sidebar-accent oklch(0.269 0 0). */
+    }
+}
+
+:root.dark {
+    /* Les mêmes valeurs qu'au-dessus : ce bloc est celui que la bascule de l'Epic 5
+       force, l'autre celui que le système déclenche. */
+}

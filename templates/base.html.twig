@@ -6,12 +6,22 @@
 <html lang="{{ app.request ? app.request.locale : 'en' }}">
     <head>
         <meta charset="UTF-8">
+        {# Même raisonnement que le `lang` ci-dessus : sans cette ligne, un navigateur
+           mobile rend la page à 980 px puis la réduit, et les paliers responsive comme
+           les cibles tactiles du thème sont inertes. Une ligne, un écart d'accessibilité
+           en moins. #}
+        <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>{% block title %}Welcome!{% endblock %}</title>
         <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.2em%22 font-size=%2296%22>⚫️</text><text y=%221.3em%22 x=%220.2em%22 font-size=%2276%22 fill=%22%23fff%22>sf</text></svg>">
+        {# Ce bloc reste vide, et ce n'est pas un oubli : `assets/app.js` importe
+           `styles/app.css`, donc `importmap()` génère lui-même le `<link rel="stylesheet">`
+           du thème. Le CSS n'est pas injecté par du JavaScript — pas de flash de contenu
+           non stylé. #}
         {% block stylesheets %}
         {% endblock %}
 
         {% block javascripts %}
+            {% block importmap %}{{ importmap('app') }}{% endblock %}
         {% endblock %}
     </head>
     <body>
