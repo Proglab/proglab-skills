@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Validation UX : proglab-skills</title>
+<style>
+  :root {
+    --bg: #fafaf9;
+    --surface: #ffffff;
+    --border: #e7e5e4;
+    --text: #1c1917;
+    --muted: #78716c;
+
+    --verdict-strong: #16a34a;
+    --verdict-adequate: #65a30d;
+    --verdict-thin: #d97706;
+    --verdict-broken: #dc2626;
+
+    --sev-low: #64748b;
+    --sev-medium: #ca8a04;
+    --sev-high: #ea580c;
+    --sev-critical: #dc2626;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    font-size: 15px;
+  }
+  .container { max-width: 960px; margin: 0 auto; padding: 32px 24px 64px; }
+
+  header.report-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+  .title h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+  .title .subtitle { color: var(--muted); font-size: 13px; margin-top: 4px; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+
+  .synthesis {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--muted);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin-bottom: 24px;
+    font-size: 15.5px;
+  }
+  .synthesis p { margin: 0 0 10px; }
+  .synthesis p:last-child { margin-bottom: 0; }
+
+  .dimension-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+  .dim-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .dim-card .dim-name { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .dim-card .dim-verdict { font-size: 14px; font-weight: 600; }
+
+  section.dimension, section.reviewer-section { margin-bottom: 14px; }
+  section.dimension details, section.reviewer-section details {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  section summary {
+    padding: 14px 20px;
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  section summary::-webkit-details-marker { display: none; }
+  section summary::before {
+    content: "▸";
+    display: inline-block;
+    color: var(--muted);
+    transition: transform 0.15s ease;
+  }
+  section details[open] summary::before { transform: rotate(90deg); }
+  section summary h2 {
+    display: inline;
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    flex: 1;
+  }
+  .verdict-pill {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: white;
+  }
+  .verdict-strong { background: var(--verdict-strong); }
+  .verdict-adequate { background: var(--verdict-adequate); }
+  .verdict-thin { background: var(--verdict-thin); }
+  .verdict-broken { background: var(--verdict-broken); }
+
+  .dim-body { padding: 4px 20px 18px; }
+  .dim-judgment { color: var(--text); font-size: 14.5px; }
+  .dim-judgment p { margin: 0 0 10px; }
+
+  .findings-list { padding: 0 20px 4px; }
+  article.finding {
+    padding: 14px 0;
+    border-top: 1px solid var(--border);
+  }
+  article.finding:first-child { border-top: none; }
+  article.finding header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
+  .badge {
+    font-size: 10.5px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    line-height: 1.4;
+  }
+  .badge-sev-low { background: rgba(100, 116, 139, 0.12); color: var(--sev-low); }
+  .badge-sev-medium { background: rgba(202, 138, 4, 0.14); color: var(--sev-medium); }
+  .badge-sev-high { background: rgba(234, 88, 12, 0.14); color: var(--sev-high); }
+  .badge-sev-critical { background: rgba(220, 38, 38, 0.14); color: var(--sev-critical); }
+  .finding-title { margin: 0; font-size: 15px; font-weight: 500; flex: 1; min-width: 200px; }
+  .finding-location { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; color: var(--muted); }
+  .finding-note, .finding-fix { margin-top: 6px; font-size: 14px; }
+  .finding-fix strong { color: var(--muted); font-weight: 500; }
+
+  .reviewer-source {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  .mechanical {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-top: 24px;
+    font-size: 14px;
+  }
+  .mechanical h3 { margin: 0 0 10px; font-size: 14px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .mechanical ul { margin: 0; padding-left: 20px; }
+  .mechanical li { margin-bottom: 4px; color: var(--text); }
+
+  footer.report-footer {
+    margin-top: 40px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--muted);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  footer .meta { display: flex; gap: 24px; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+  <div class="container">
+
+    <header class="report-header">
+      <div class="title">
+        <h1>proglab-skills — Rapport de validation UX</h1>
+        <div class="subtitle">_bmad-output/planning-artifacts/ux-designs/ux-proglab-skills-2026-09-09/DESIGN.md · EXPERIENCE.md</div>
+      </div>
+    </header>
+
+    <div class="synthesis">
+      <p>La paire <code>DESIGN.md</code> + <code>EXPERIENCE.md</code> est un contrat exploitable en aval : les cinq parcours UJ-1..UJ-5 sont repris verbatim avec protagoniste, étapes numérotées, point culminant et cas limite ; les 22 FR sont tous rattachés à une surface ou déclarés sans interface ; chaque jeton de couleur a son hex en clair et en sombre et toutes les références <code>{…}</code> des deux fichiers se résolvent ; l'ordre canonique des sections est respecté et toutes les décisions du memlog sont placées. Trois points méritent une correction avant que l'architecture et le dev ne s'y appuient : les bordures des badges « À faire » / « Non lisible » référencent <code>{colors.border}</code> (≈ 1,3:1) alors que la forme de bordure est présentée comme porteuse de l'information de statut ; le niveau de titre des Dialog se contredit entre les deux fichiers (h2 / h3) ; et, la direction Aéré venant d'être promue dans <code>mockups/</code>, les liens vers les deux directions rejetées ne résolvent plus tandis que les trois écrans clés en cours de rendu ne sont référencés nulle part. Quelques états (vérification 2FA, invitation d'un email déjà connu, erreur serveur) manquent encore.</p>
+      <p>La revue accessibilité (WCAG 2.1 AA, sept règles de <code>symfony-proglab-accessibility</code>) déplace le curseur : elle confirme que les spines tiennent leurs règles là où elles sont explicites (statuts icône + libellé, labels réels, <code>:focus-visible</code>, un seul <code>h1</code>, rien derrière le survol, thème sombre conforme partout) mais relève un défaut <strong>critique</strong> que la rubrique n'a pas vu — la bordure des champs de formulaire à 1,26:1 en clair et 1,18:1 en sombre, seul indice du contour du champ, sur toutes les surfaces à formulaire, connexion comprise (WCAG 1.4.11) — et cinq constats <strong>élevés</strong> sur ce que les spines <em>promettent sans le spécifier</em> : annonces au lecteur d'écran sous Turbo, <code>autocomplete</code> (1.3.5, critère AA oublié), saisie du code 2FA, sélecteur de langue qui soumet au changement, et <code>muted-foreground</code> / <code>destructive</code> sous 4,5:1 hors d'une carte blanche. Rien n'est structurel : chaque constat se corrige par une ligne de spine ou un jeton. Cinq constats communs aux deux revues ont été fusionnés et portés à la sévérité la plus haute des deux (bordures de badge, <code>muted-foreground</code> hors carte, 2FA, expiration de session, niveaux de titre).</p>
+    </div>
+
+    <div class="dimension-summary">
+      <div class="dim-card">
+        <div class="dim-name">1. Couverture des flux</div>
+        <div class="dim-verdict" style="color: var(--verdict-strong)">Solide</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">2. Complétude des jetons</div>
+        <div class="dim-verdict" style="color: var(--verdict-strong)">Solide</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">3. Couverture des composants</div>
+        <div class="dim-verdict" style="color: var(--verdict-adequate)">Adéquat</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">4. Couverture des états</div>
+        <div class="dim-verdict" style="color: var(--verdict-adequate)">Adéquat</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">5. Références visuelles</div>
+        <div class="dim-verdict" style="color: var(--verdict-adequate)">Adéquat</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">6. Bloat &amp; surspécification</div>
+        <div class="dim-verdict" style="color: var(--verdict-adequate)">Adéquat</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">7. Discipline d'héritage</div>
+        <div class="dim-verdict" style="color: var(--verdict-strong)">Solide</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">8. Conformité de forme</div>
+        <div class="dim-verdict" style="color: var(--verdict-strong)">Solide</div>
+      </div>
+    </div>
+
+    <!-- 1. Flow coverage -->
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>1. Couverture des flux</h2>
+          <span class="verdict-pill verdict-strong">Solide</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>Extrait du PRD §2.2 : UJ-1 « Fabrice démarre l'ERP d'un nouveau client. », UJ-2 « Sophie, responsable administrative de la PME, fait entrer un collègue. », UJ-3 « Marc, gérant, regarde où en est son ERP. », UJ-4 « Sophie cherche qui a modifié un tarif. », UJ-5 « Léa, développeuse, prend la prochaine tâche. » — les cinq titres sont repris à l'identique dans <code>EXPERIENCE.md · Key Flows</code>, chacun avec protagoniste nommé, étapes numérotées, un « Point culminant » explicite et le cas limite du PRD. Les 22 FR extraits du PRD §4 sont tous couverts : FR-3..FR-10, FR-13..FR-17, FR-19..FR-22 dans la table « Exigences → surfaces », FR-1, FR-2, FR-11, FR-12, FR-18 déclarés sans interface avec justification. Les flux 6 à 9 ajoutés couvrent l'invitation + 2FA, la réinitialisation, la désactivation d'une langue et le thème sombre, chacun avec un chemin d'échec.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">FR-7, FR-17 et FR-20 n'ont aucun flux</h3>
+              <span class="finding-location">EXPERIENCE.md · Information Architecture, Voice and Tone, Questions ouvertes › OQ-UX-3</span>
+            </header>
+            <div class="finding-note">FR-7 (Rôles / Fiche rôle), FR-20 (anonymiser) et FR-17 (jetons d'API) ne vivent que par une ligne d'IA, une copie de Dialog ou un état.</div>
+            <div class="finding-fix"><strong>Correction :</strong> un court flux 10 « Sophie crée un rôle et ajuste ses permissions » et un flux 11 « Léa crée un jeton d'API » suffiraient, ou noter explicitement que ces écrans sont « spine-only, tables seules » comme le memlog le décide.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">UJ-2 renvoie au flux 6 dont le protagoniste ne correspond pas</h3>
+              <span class="finding-location">EXPERIENCE.md · Key Flows › UJ-2 étape 2, Flux 6</span>
+            </header>
+            <div class="finding-note">UJ-2 étape 2 renvoie à « Flux 6 » pour l'acceptation de Karim, mais le flux 6 a Sophie pour protagoniste.</div>
+            <div class="finding-fix"><strong>Correction :</strong> écrire « Karim accepte (même mécanisme que le flux 6) » ou rendre le flux 6 générique.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <!-- 2. Token completeness -->
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>2. Complétude des jetons</h2>
+          <span class="verdict-pill verdict-strong">Solide</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>Frontmatter de <code>DESIGN.md</code> : 29 rôles de couleur, tous avec hex, tous appariés clair / <code>-dark</code> (aucun orphelin dans un sens ou l'autre) ; 12 rôles typographiques complets (famille, taille, graisse, interligne) ; <code>rounded</code> 6 crans ; <code>spacing</code> 11 niveaux + 10 jetons nommés ; 33 objets <code>components</code>. Les 84 références <code>{…}</code> distinctes de <code>DESIGN.md</code> et les 25 d'<code>EXPERIENCE.md</code> se résolvent toutes (les <code>{id}</code>, <code>{token}</code>, <code>{onglet}</code>, <code>{statut}</code> d'<code>EXPERIENCE.md</code> sont des gabarits d'URL / de texte, pas des jetons — voir notes mécaniques). Tableau de contraste présent pour les sept combinaisons porteuses ; l'écart de l'anneau de focus (≈ 2,05:1) est consigné comme dette assumée, conformément au memlog.</p>
+            <p>Deux constats ci-dessous fusionnent une observation de la rubrique et une de la revue accessibilité (les ratios de cette dernière sont recalculés depuis les hex du frontmatter).</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Bordures des badges « À faire » / « Non lisible » invisibles (≈ 1,3:1) alors que la forme de bordure est déclarée porteuse du statut — Jetons · Accessibilité</h3>
+              <span class="finding-location">DESIGN.md · frontmatter l. 289-302 (badge-todo.border, badge-unreadable.border, track), § Colors « Statuts lisibles » ; mockups/direction-aere.html l. 136, 138, 148, 160</span>
+            </header>
+            <div class="finding-note"><code>components.badge-todo.border</code> = <code>1px dashed {colors.border}</code> et <code>components.badge-unreadable.border</code> = <code>1px dotted {colors.border}</code>, alors que les commentaires des jetons <code>status-todo</code> / <code>status-unreadable</code> les décrivent comme « contour tireté / pointillé (= muted-strong) » et que <code>§ Colors</code> fait de la forme de bordure l'un des trois porteurs obligatoires du statut (« jamais la couleur seule »). <code>#e5e5e5</code> sur blanc ≈ 1,3:1 : le tireté et le pointillé sont invisibles, la distinction repose de fait sur l'icône seule ; la maquette (<code>.badge.todo</code>, <code>.badge.err</code>, <code>.ico.todo</code>, <code>details.card.broken</code>) reproduit le même défaut et le code aval le recopiera. La revue accessibilité ajoute que le rail de Progress (<code>track</code> <code>#e5e5e5</code>, 1,26:1) disparaît à 0 % ; l'icône et le libellé portant l'information, WCAG passe, mais la promesse écrite est fausse.</div>
+            <div class="finding-fix"><strong>Correction :</strong> faire pointer les deux bordures sur <code>{colors.status-todo}</code> / <code>{colors.status-unreadable}</code> (<code>#525252</code>, ≈ 7:1) ; dessiner le rail de Progress en <code>oklch(0.80 0 0)</code> ≈ <code>#c4c4c4</code> (1,6:1, suffisant pour un rail décoratif) ; ajouter la ligne « bordure de Badge de statut sur card ≥ 3:1 » au tableau de contraste — ou retirer « forme de bordure » de la règle.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title"><code>muted-foreground</code> et <code>destructive</code> passent sous 4,5:1 hors d'une Card, et rien ne garantit que tableaux et formulaires y restent — Jetons · Accessibilité</h3>
+              <span class="finding-location">DESIGN.md · § Colors (tableau de contraste, « jamais sur {colors.page} »), Layout &amp; Spacing, Components ligne Table, frontmatter input.help-color, table.header-color, input.error-color ; mockups/direction-aere.html l. 157, 284</span>
+            </header>
+            <div class="finding-note"><code>{colors.muted-foreground}</code> est autorisé pour les en-têtes de tableau « sur carte uniquement », mais ni <code>Layout &amp; Spacing</code> ni la ligne <strong>Table</strong> de <code>Components</code> ne disent que les tableaux (Utilisateurs, Journal d'audit) sont rendus dans une Card. Recalcul de la revue accessibilité : <code>muted-foreground</code> <code>#737373</code> sur <code>page</code> <code>#f5f5f5</code> = <strong>4,35:1</strong> ; <code>destructive</code> <code>#e7000b</code> sur <code>page</code> = <strong>4,38:1</strong>. Le mock le fait déjà : <code>.foot-note</code> (<code>color: var(--muted-foreground)</code>) est posée directement sur <code>--page</code> (<code>.content</code> n'a pas de fond carte). Et <code>components.input.help-color</code> = <code>muted-foreground</code>, <code>components.table.header-color</code> = <code>muted-foreground</code>, <code>components.input.error-color</code> = <code>destructive</code>, alors que rien ne dit si un formulaire (Connexion, Inviter, filtres du journal) ou un tableau vit dans une Card ou à nu sur la page.</div>
+            <div class="finding-fix"><strong>Correction :</strong> écrire dans <code>Layout &amp; Spacing</code> et dans la ligne Table « tout formulaire et tout tableau est rendu dans une <code>{components.card}</code> » ; passer <code>foot-note</code> et <code>help-color</code> en <code>muted-strong</code> (ou <code>table.header-color</code> en <code>{colors.muted-strong}</code>) ; ajouter un jeton <code>destructive-text</code> <code>oklch(0.50 0.22 27)</code> ≈ <code>#c4000a</code> (≈ 5,4:1 sur <code>#f5f5f5</code>) pour le texte d'erreur, <code>destructive</code> restant réservé aux fonds de bouton.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Objets <code>badge-*</code> et <code>alert-destructive</code> partiels sans règle d'héritage explicite</h3>
+              <span class="finding-location">DESIGN.md · frontmatter l. 260-271, 294-306</span>
+            </header>
+            <div class="finding-note"><code>badge-ready</code> et <code>badge-deactivated</code> n'ont pas de clé <code>border</code> ; <code>alert-destructive</code> et <code>flash</code> sont des objets partiels dont l'héritage n'est explicite que pour <code>flash</code> (<code>extends</code>, clé hors spec design.md).</div>
+            <div class="finding-fix"><strong>Correction :</strong> soit une clé <code>border</code> explicite, soit une phrase en <code>§ Components</code> : « les objets <code>badge-*</code> et <code>alert-destructive</code> héritent de <code>badge</code> / <code>alert</code> pour toute clé absente ».</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <!-- 3. Component coverage -->
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>3. Couverture des composants</h2>
+          <span class="verdict-pill verdict-adequate">Adéquat</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p><code>DESIGN.md · Components</code> spécifie 17 lignes (Button, Card, Accordion, Progress, Sidebar, Sheet, Dialog, Alert, Banner, Flash, Badge, Table, Tabs, Champ de formulaire, DropdownMenu, Avatar, Pagination) ; <code>EXPERIENCE.md · Component Patterns</code> en spécifie 22, dont les 17 précédentes sous le même nom plus Bouton « Lancer », Colonnes prioritaires, Filtres du journal, Sélecteur de langue, Interrupteur de langue. Les règles sont réelles des deux côtés (pas de descriptions en un mot). Les manques sont des variantes et des compositions apparues dans les flux sans ligne visuelle.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">États de compte et de langue rendus par Badge sans variante visuelle</h3>
+              <span class="finding-location">EXPERIENCE.md · State Patterns, Key Flows › UJ-2 ; DESIGN.md · Components ligne Badge</span>
+            </header>
+            <div class="finding-note">Les états de compte « Invité », « Invitation en attente » (+ date d'expiration), « Invitation expirée », « Actif », et l'état de langue « Inactif » sont rendus par Badge ou colonne État, mais la ligne <strong>Badge</strong> de <code>DESIGN.md</code> ne connaît que <code>done / doing / todo / ready / unreadable / deactivated</code> et l'origine de permission.</div>
+            <div class="finding-fix"><strong>Correction :</strong> ajouter <code>badge-invited</code> et <code>badge-expired</code> (icône + forme) au frontmatter et à la ligne Badge, ou dire que l'État est un texte <code>{typography.body}</code> sans Badge.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Ligne de tâche en environnement de développement sans spécification visuelle</h3>
+              <span class="finding-location">EXPERIENCE.md · Component Patterns › Bouton « Lancer », Permissions et visibilité ; DESIGN.md · Layout &amp; Spacing</span>
+            </header>
+            <div class="finding-note">Le bouton « Lancer » (actif / <code>disabled</code> + raison sous le bouton) et l'Accordion imbriqué « Notes internes » n'ont aucune spécification visuelle : la grille <code>36px 1fr 150px</code> ne prévoit pas de colonne pour le bouton, et la maquette retenue ne montre que la production.</div>
+            <div class="finding-fix"><strong>Correction :</strong> une variante « ligne de tâche (dev) » dans <code>Components</code> : position du bouton (<code>outline</code>, colonne badge ou sous les méta), style de la raison (<code>{typography.meta}</code> <code>{colors.muted-strong}</code>), rendu du bouton « Notes internes ».</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Les deux « pastilles » n'ont ni ligne propre ni jeton</h3>
+              <span class="finding-location">DESIGN.md · Shapes, Components ligne Accordion ; EXPERIENCE.md · Component Patterns</span>
+            </header>
+            <div class="finding-note">Les pastilles « En attente de … » (dépendance) et « dernier déploiement » sont décrites en passant, sans ligne propre ni jeton, et sont absentes de <code>Component Patterns</code>.</div>
+            <div class="finding-fix"><strong>Correction :</strong> une ligne <strong>Pill</strong> (ou les intégrer explicitement à Badge comme variante <code>outline</code> sans icône).</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">« Interrupteur de langue » évoque un Switch alors que le comportement est deux boutons + Dialog</h3>
+              <span class="finding-location">EXPERIENCE.md · Component Patterns, Information Architecture › Langues</span>
+            </header>
+            <div class="finding-note">« Interrupteur de langue » et « interrupteur actif / inactif » évoquent un Switch shadcn, alors que le comportement décrit est deux boutons « Désactiver » / « Réactiver » + Dialog.</div>
+            <div class="finding-fix"><strong>Correction :</strong> renommer « Boutons de langue » ou préciser « pas un Switch ».</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Actions en ligne de la Table des permissions sans variante visuelle</h3>
+              <span class="finding-location">EXPERIENCE.md · Key Flows › UJ-2 étapes 4-5 ; DESIGN.md · Components lignes Table / Button</span>
+            </header>
+            <div class="finding-note">« Ajouter », « Retirer », « Revenir à l'héritage » n'ont pas de variante visuelle dans la ligne Table (<code>ghost</code> ? <code>outline</code> ?).</div>
+            <div class="finding-fix"><strong>Correction :</strong> une phrase dans la ligne Table ou Button.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <!-- 4. State coverage -->
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>4. Couverture des états</h2>
+          <span class="verdict-pill verdict-adequate">Adéquat</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>Surfaces parcourues (17 lignes de l'IA) contre <code>State Patterns</code>, <code>Voice and Tone</code> et les flux : chargement (barre Turbo, Frame du Sheet), vides (roadmap, journal, utilisateurs), roadmap partielle, erreurs de champ, ralentissement, compte désactivé (deux points de vue), anonymisé, invitation en attente / expirée, lien expiré, délai 2FA / expiré / nouveau rôle, Lancer inactif / échoué, 403 / 404, session close, langue désactivée en session, thème système, dernière langue active — tous couverts. Les manques touchent la 2FA, l'invitation et l'erreur serveur.</p>
+            <p>Deux constats ci-dessous fusionnent une observation de la rubrique et une de la revue accessibilité (2FA, expiration de session).</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Vérification et enrôlement 2FA : ni états, ni saisie du code spécifiés — États · Accessibilité</h3>
+              <span class="finding-location">EXPERIENCE.md · Information Architecture (Vérification 2FA, Enrôlement 2FA), State Patterns, Voice and Tone, Key Flows › UJ-1 étape 3, Flux 6 étape 5</span>
+            </header>
+            <div class="finding-note">Aucun état : code erroné, code email expiré / « Renvoyer un code », utilisation d'un code de secours, échec de la vérification à l'enrôlement, épuisement des codes de secours. La revue accessibilité ajoute que la saisie du second facteur n'est spécifiée nulle part : ni le type de champ (un seul <code>&lt;input&gt;</code> ou six cases), ni <code>inputmode="numeric"</code>, ni le label, ni l'association de l'erreur « code incorrect », ni le chemin « utiliser un code de secours », ni, pour le code par email, sa durée de validité et le bouton « Renvoyer ». Le composant « InputOTP » à six cases, tentant dans un kit shadcn, est notoirement hostile aux lecteurs d'écran (six champs sans label, focus qui saute).</div>
+            <div class="finding-fix"><strong>Correction :</strong> trois lignes de State Patterns + les phrases correspondantes en Voice and Tone (« Code incorrect. Vérifiez l'heure de votre téléphone ou utilisez un code de secours. ») ; un seul champ texte, label visible « Code à 6 chiffres de votre application », <code>inputmode="numeric"</code> <code>autocomplete="one-time-code"</code> <code>pattern="[0-9]{6}"</code>, espaces tolérés ; lien « Je n'ai pas accès à mon application — utiliser un code de secours » vers un champ distinct ; pour le code par email : « valable 10 minutes » + bouton « Renvoyer un code » ; erreur en <code>aria-invalid</code> + <code>aria-describedby</code> comme les autres champs.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Inviter un utilisateur : email déjà connu non traité</h3>
+              <span class="finding-location">EXPERIENCE.md · State Patterns, Voice and Tone</span>
+            </header>
+            <div class="finding-note">Email déjà associé à un compte actif, désactivé ou déjà invité — le cas le plus fréquent de ce formulaire — n'est pas traité.</div>
+            <div class="finding-fix"><strong>Correction :</strong> une ligne par cas ; pour un compte désactivé, proposer « Réactiver » plutôt que ré-inviter.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Aucune page d'erreur serveur</h3>
+              <span class="finding-location">EXPERIENCE.md · Information Architecture, State Patterns › Sans permission</span>
+            </header>
+            <div class="finding-note">Pas de page 500 / Turbo sans réponse alors que le memlog classe « pages d'erreur » en spine-only et que seules 403 et 404 sont spécifiées.</div>
+            <div class="finding-fix"><strong>Correction :</strong> une surface « Erreur inattendue » avec le même gabarit court que 403 (« Quelque chose n'a pas fonctionné. Réessayez ; si cela persiste, prévenez votre administrateur. »).</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Durée de session et expiration par inactivité non spécifiées — États · Accessibilité</h3>
+              <span class="finding-location">EXPERIENCE.md · State Patterns › Session close</span>
+            </header>
+            <div class="finding-note">« Session close » ne couvre que la désactivation / le changement de mot de passe ; l'expiration par inactivité n'est pas nommée. Une session qui expire sans avertissement fait perdre un formulaire en cours (Inviter, Fiche rôle) et relève de WCAG 2.2.1 Timing Adjustable sauf si la limite dépasse 20 h.</div>
+            <div class="finding-fix"><strong>Correction :</strong> fixer la durée de session (≥ 20 h glissantes, ou « se souvenir de moi ») et le comportement d'un POST après expiration : reconnexion puis retour sur la même URL, avec Flash « Votre session avait expiré ; vos modifications n'ont pas été enregistrées. » ; l'ajouter à la ligne « Session close » avec le même Flash.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Lien d'invitation déjà accepté non couvert par « expiré »</h3>
+              <span class="finding-location">EXPERIENCE.md · State Patterns › Invitation expirée</span>
+            </header>
+            <div class="finding-note">Lien d'invitation déjà accepté (second clic) et lien de réinitialisation déjà consommé sont regroupés sous « expiré » côté réinitialisation mais pas côté invitation.</div>
+            <div class="finding-fix"><strong>Correction :</strong> étendre la ligne à « expirée ou déjà utilisée ».</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Rôles / Fiche rôle et Profil sans état</h3>
+              <span class="finding-location">EXPERIENCE.md · State Patterns</span>
+            </header>
+            <div class="finding-note">Rôles / Fiche rôle : aucun état (rôle par défaut non supprimable, rôle utilisé par n utilisateurs, enregistrement des cases) ; Profil : un Admin qui voudrait désactiver sa propre 2FA alors que son rôle l'exige.</div>
+            <div class="finding-fix"><strong>Correction :</strong> deux lignes de State Patterns ou une note « spine-only » assumée.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <!-- 5. Visual reference coverage -->
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>5. Couverture des références visuelles</h2>
+          <span class="verdict-pill verdict-adequate">Adéquat</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>Fichiers : <code>mockups/direction-aere.html</code> (promu à 16:10) ; <code>.working/direction-aere.html</code>, <code>.working/direction-compact.html</code>, <code>.working/direction-editorial.html</code> ; <code>imports/</code> vide ; pas de <code>wireframes/</code>. <code>direction-aere.html</code> est lié en ligne à trois endroits pertinents (<code>DESIGN.md · Brand &amp; Style</code>, <code>Components</code> avec la liste de ce qu'il illustre — Sidebar, Accordion d'epic, Badge, Alert, Progress, bouton compte, clair + sombre — et <code>EXPERIENCE.md · Inspiration &amp; Anti-patterns</code>). « Les spines l'emportent » est dit dans l'intro d'<code>EXPERIENCE.md</code>. Aucun orphelin au moment de la revue.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Liens vers les deux directions rejetées ne résolvent pas</h3>
+              <span class="finding-location">EXPERIENCE.md · Inspiration &amp; Anti-patterns ; DESIGN.md · Brand &amp; Style</span>
+            </header>
+            <div class="finding-note"><code>mockups/direction-compact.html</code> et <code>mockups/direction-editorial.html</code> restent dans <code>.working/</code> (memlog 16:10 : rejetés, non promus). <code>DESIGN.md · Brand &amp; Style</code> affirme de même que « les trois directions … sont dans <code>mockups/</code> ».</div>
+            <div class="finding-fix"><strong>Correction :</strong> soit pointer sur <code>.working/…</code>, soit retirer les liens et ne garder que la description en une phrase (les directions rejetées n'ont pas besoin d'un fichier navigable).</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Les trois écrans clés en cours de rendu ne sont référencés nulle part</h3>
+              <span class="finding-location">EXPERIENCE.md · Information Architecture ; DESIGN.md · Components lignes Tabs / Champ de formulaire / Dialog</span>
+            </header>
+            <div class="finding-note"><code>key-fiche-utilisateur</code>, <code>key-profil</code>, <code>key-connexion-invitation</code>, décidés dans le memlog, ne sont référencés dans aucun des deux spines ; ils seront orphelins dès leur arrivée dans <code>mockups/</code>.</div>
+            <div class="finding-fix"><strong>Correction :</strong> un lien inline « → Composition : <code>mockups/key-….html</code> » dans <code>EXPERIENCE.md · Information Architecture</code> (lignes Fiche utilisateur, Profil, Connexion / Acceptation d'invitation) et dans les lignes Tabs / Champ de formulaire / Dialog de <code>DESIGN.md · Components</code>, avec ce que chacun illustre.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">« Le spine l'emporte » répété trois fois</h3>
+              <span class="finding-location">DESIGN.md · Brand &amp; Style, Components ; EXPERIENCE.md · intro</span>
+            </header>
+            <div class="finding-note">La rubrique demande une seule mention.</div>
+            <div class="finding-fix"><strong>Correction :</strong> garder celle de l'intro d'<code>EXPERIENCE.md</code> et une seule dans <code>DESIGN.md</code>.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">La maquette retenue diverge du spine sur deux points non signalés</h3>
+              <span class="finding-location">DESIGN.md · Components ligne Alert ; EXPERIENCE.md · Inspiration ; mockups/direction-aere.html</span>
+            </header>
+            <div class="finding-note">Le titre de l'Alert « Roadmap partielle » est un <code>h2</code> (spine : <code>h3</code>) et le Banner 2FA est montré à Marc qui, dans UJ-3, a déjà sa 2FA active. Le spine l'emporte, mais un lecteur de la maquette ne le saura pas.</div>
+            <div class="finding-fix"><strong>Correction :</strong> une parenthèse dans la ligne Alert (« la maquette le rend en h2 ; c'est h3 ») et dans <code>Inspiration</code> (« le Banner y est illustratif »).</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <!-- 6. Bloat & overspecification -->
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>6. Bloat &amp; surspécification</h2>
+          <span class="verdict-pill verdict-adequate">Adéquat</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p><code>DESIGN.md</code> (580 l.) garde une voix éditoriale justifiée ; les grilles en pixels (<code>1fr 240px 28px</code>) sont des décisions de mise en page relevées sur la maquette, pas de la surspécification. <code>EXPERIENCE.md</code> (557 l.) est dense mais chaque table sert : la table Voice and Tone est du texte d'interface réel, State Patterns et Component Patterns sont extractibles tels quels.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Règles comportementales dupliquées entre DESIGN.md et EXPERIENCE.md</h3>
+              <span class="finding-location">DESIGN.md · Components ; EXPERIENCE.md · Component Patterns</span>
+            </header>
+            <div class="finding-note">Banner « non fermable tant que la condition tient », Tabs « chaque onglet est un lien vers sa propre URL », Pagination « pas de défilement infini », Flash « pas de disparition automatique », Sidebar « les entrées non permises ne sont pas rendues ». Deux sources pour la même règle = deux endroits à maintenir et un conflit possible.</div>
+            <div class="finding-fix"><strong>Correction :</strong> ne garder dans <code>DESIGN.md</code> que l'anatomie et les variantes, renvoyer à <code>EXPERIENCE.md</code> pour le comportement.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">« Besoins → surfaces → parcours » restitue le PRD §2.1</h3>
+              <span class="finding-location">EXPERIENCE.md · Information Architecture</span>
+            </header>
+            <div class="finding-note">La table « Exigences → surfaces » suffit à un consommateur.</div>
+            <div class="finding-fix"><strong>Correction :</strong> supprimer ou réduire à une ligne de renvoi.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Fioritures narratives dans les flux</h3>
+              <span class="finding-location">EXPERIENCE.md · Key Flows</span>
+            </header>
+            <div class="finding-note">« avant midi », « personne n'a ouvert un fichier YAML », « Charmant, mais… » ; la rubrique réserve la voix éditoriale à <code>DESIGN.md</code>.</div>
+            <div class="finding-fix"><strong>Correction :</strong> garder les faits vérifiables dans le point culminant.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title"><code>typography.*.fontFamily</code> répète douze fois la même pile système</h3>
+              <span class="finding-location">DESIGN.md · frontmatter l. 83-144</span>
+            </header>
+            <div class="finding-note">Douze rôles, une seule pile (sauf <code>mono</code>).</div>
+            <div class="finding-fix"><strong>Correction :</strong> un commentaire « pile système sur tous les rôles sauf <code>mono</code> » et la pile écrite une fois, <code>mono</code> à part — ou accepter la répétition comme prix de la résolution plate.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <!-- 7. Inheritance discipline -->
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>7. Discipline d'héritage</h2>
+          <span class="verdict-pill verdict-strong">Solide</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>Les deux chemins <code>sources</code> résolvent (<code>../../briefs/brief-proglab-skills-2026-09-09/brief.md</code>, <code>../../prds/prd-proglab-skills-2026-09-09/prd.md</code>) ; <code>design: ./DESIGN.md</code> résout. UJ-1..UJ-5 verbatim. Les termes du glossaire PRD §3 sont réutilisés à l'identique (Socle, Dérivé, Surcharge, Origine d'une permission, Tâche prête, Statut lisible, Entrée d'audit, Notes internes, Environnement de développement / production) ; les statuts lisibles « À faire / En cours / Terminé » gardent le vocabulaire du glossaire, et le jargon BMAD est proscrit conformément au memlog. Noms de composants identiques entre les sections des deux fichiers. Toutes les références de jetons d'<code>EXPERIENCE.md</code> résolvent par nom dans <code>DESIGN.md</code>.</p>
+            <p>Le constat sur les niveaux de titre fusionne l'observation de la rubrique et celle, plus large, de la revue accessibilité.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Niveaux de titre contradictoires entre les documents et la maquette (Dialog h2 / h3, Alert h3 / h2) — Héritage · Accessibilité</h3>
+              <span class="finding-location">DESIGN.md · Typography (tableau, ligne Sous-titre, paragraphe), Do's and Don'ts, Components lignes Dialog / Alert ; EXPERIENCE.md · Accessibility Floor règle 6 ; mockups/direction-aere.html l. 109, 217</span>
+            </header>
+            <div class="finding-note"><code>DESIGN.md · Typography</code> et <code>Do's and Don'ts</code> disent « <code>h3</code> pour les Alert et Dialog » ; la ligne <strong>Dialog</strong> de <code>Components</code> dit « titre <code>h2</code> » (Dialog et Sheet) ; <code>EXPERIENCE.md · Accessibility Floor</code> règle 6 dit « Sheet et Dialog en <code>h2</code>, Alert en <code>h3</code> » ; le mock rend l'Alert en <code>h2</code>, au même niveau que les cartes d'epic. Le développeur choisira l'un des quatre ; la règle 6 de <code>symfony-proglab-accessibility</code> en dépend.</div>
+            <div class="finding-fix"><strong>Correction :</strong> une seule règle, partout : <code>h1</code> page ; <code>h2</code> carte d'epic, section de fiche, Dialog et Sheet (contexte modal, argument déjà donné dans Accessibility Floor) ; <code>h3</code> Alert, Flash, groupe de permissions ; corriger le tableau Typography, la ligne Do's et le mock.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Numérotation des questions ouvertes : OQ-UX-2 manque</h3>
+              <span class="finding-location">EXPERIENCE.md · Questions ouvertes</span>
+            </header>
+            <div class="finding-note">OQ-UX-1, 3, 4, 5 — pas d'OQ-UX-2 alors que le memlog en compte cinq.</div>
+            <div class="finding-fix"><strong>Correction :</strong> renuméroter ou restaurer l'entrée manquante.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <!-- 8. Shape fit -->
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>8. Conformité de forme</h2>
+          <span class="verdict-pill verdict-strong">Solide</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p><code>DESIGN.md</code> : les huit sections présentes dans l'ordre canonique. <code>EXPERIENCE.md</code> : les huit sections requises présentes ; <code>Inspiration &amp; Anti-patterns</code> présente (le memlog documente trois directions dont deux rejetées) ; <code>Responsive &amp; Platform</code> présente (multi-largeur). Sections inventées — « Permissions et visibilité », « Environnement de développement vs production », « Internationalisation », « Questions ouvertes » — chacune adossée à une décision du memlog ou à un FR transverse (FR-10, FR-16, FR-19/22) ; elles méritent leur place.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title"><code>Key Flows</code> placé avant les sections qui fixent les règles qu'ils appliquent</h3>
+              <span class="finding-location">EXPERIENCE.md</span>
+            </header>
+            <div class="finding-note"><code>Key Flows</code> précède <code>Responsive &amp; Platform</code>, <code>Permissions et visibilité</code>, <code>Environnement…</code>, <code>Internationalisation</code> et <code>Inspiration</code> ; l'ordre n'est pas verrouillé pour <code>EXPERIENCE.md</code>, mais un lecteur linéaire rencontre le bouton « Lancer » avant la table dev / prod qui le conditionne.</div>
+            <div class="finding-fix"><strong>Correction :</strong> déplacer les quatre sections inventées et <code>Inspiration</code> avant <code>Key Flows</code>, <code>Questions ouvertes</code> en dernier.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <!-- Accessibility reviewer -->
+    <section class="reviewer-section">
+      <details>
+        <summary>
+          <h2>Revue accessibilité (WCAG 2.1 AA)</h2>
+          <span class="reviewer-source">review-accessibility.md</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>Lentille : WCAG 2.1 AA, lue à travers les sept règles de <code>symfony-proglab-accessibility</code>. Sources : <code>DESIGN.md</code>, <code>EXPERIENCE.md</code>, <code>.memlog.md</code>, <code>.working/direction-aere.html</code> (CSS et DOM réels). Les ratios sont recalculés depuis les hex du frontmatter de <code>DESIGN.md</code> (formule WCAG), pas repris des annotations.</p>
+            <p>Les deux spines tiennent les sept règles maison là où elles sont explicites : statuts icône + libellé, labels réels, <code>:focus-visible</code> conservé, un seul <code>h1</code>, rien derrière le survol, Flash non auto-fermants, secours sans JavaScript. Le thème sombre passe partout (texte ≥ 6:1, anneau ≥ 3,19:1). Ce qui fera échouer un audit se trouve dans ce que les spines <em>promettent sans le spécifier</em> — annonces au lecteur d'écran sous Turbo, <code>autocomplete</code> (1.3.5, critère AA oublié), saisie du code 2FA, sélecteur de langue qui soumet au changement — et dans deux paires de contraste que le thème neutre shadcn rate hors d'une carte blanche : la bordure des champs (1,26:1) et <code>muted-foreground</code> / <code>destructive</code> sur le fond de page (4,35:1 et 4,38:1). Rien n'est structurel : chaque constat se corrige par une ligne de spine ou un jeton.</p>
+            <p><strong>Fusionnés avec la rubrique</strong> (voir les sections correspondantes) : bordures de statut et rail de Progress (§2, élevé), <code>muted-foreground</code> / <code>destructive</code> hors carte (§2, élevé), saisie et états du second facteur (§4, élevé), durée de session (§4, moyen), niveaux de titre (§7, moyen).</p>
+            <p><strong>Ce qui est solide :</strong> la règle 1 est tenue jusque dans les détails (chaque statut est icône + libellé, l'origine d'une permission est un Badge libellé, l'erreur de champ est bordure + icône + texte + <code>aria-invalid</code> + <code>aria-describedby</code>, le test « niveaux de gris » est nommé comme critère) ; le thème sombre passe intégralement (texte secondaire 7,1–10,3:1 sur carte, <code>destructive-dark</code> 6,2–6,9:1, anneau 3,2–4,2:1) ; focus <code>:focus-visible</code> conservé partout, retour du focus au déclencheur après Sheet / Dialog / tiroir, Échap ferme toujours la couche la plus haute, une seule couche flottante à la fois ; pas de toast qui disparaît, pas d'action au survol, pas de défilement infini, pas de raccourci inventé, pas de capitales forcées ; secours sans JavaScript spécifié (Accordion en <code>&lt;details&gt;</code>, Sheet et Dialog en pages complètes, formulaires POST + redirection) ; messages d'erreur qui disent quoi faire ensuite, messages génériques qui ne révèlent pas l'existence d'un compte, Dialog destructif qui nomme la personne et la conséquence ; corps à 15 px, chiffres tabulaires, largeur de lecture bornée, <code>aria-current="page"</code> sur la navigation, <code>lang</code> qui suit la langue d'interface, Progress toujours doublée d'une phrase ; la dette de l'anneau de focus est consignée avec sa valeur et son déclencheur de revérification (rebranding) — c'est exactement ainsi qu'un écart doit être documenté.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-critical">critical</span>
+              <h3 class="finding-title">La bordure des champs de formulaire est à 1,26:1 en clair et 1,18:1 en sombre — seul indice du contour du champ (WCAG 1.4.11)</h3>
+              <span class="finding-location">DESIGN.md · frontmatter input, components.input.border, § Components « Champ de formulaire »</span>
+            </header>
+            <div class="finding-note">La bordure des champs est le seul indice de leur contour, et elle est à <strong>1,26:1</strong> en clair (<code>input</code> <code>#e5e5e5</code> sur <code>background</code> <code>#ffffff</code>) comme en sombre (<strong>1,18:1</strong>, <code>#262626</code> sur <code>card-dark</code> <code>#171717</code>). Le fond du champ est identique à celui de la carte, sans ombre ni fond différencié : un utilisateur malvoyant ne voit pas où cliquer ni où s'arrête le champ (≥ 3:1 exigé pour un composant d'interface). C'est le défaut du kit shadcn neutre, et il touche toutes les surfaces à formulaire, connexion comprise.</div>
+            <div class="finding-fix"><strong>Correction :</strong> fixer <code>--input</code> à <code>oklch(0.60 0 0)</code> ≈ <code>#8a8a8a</code> (3,4:1 sur blanc) et <code>--input-dark</code> à <code>oklch(0.55 0 0)</code> ≈ <code>#7a7a7a</code> (3,3:1 sur <code>#171717</code>), ou donner aux champs un fond <code>{colors.muted}</code> + bordure 2 px <code>{colors.muted-strong}</code> ; ajouter la paire <code>input / background</code> à la table des combinaisons porteuses pour qu'elle soit remesurée au rebranding.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Flash et Alert « annoncés » ne le seront pas : régions live présentes au chargement, navigation Turbo sans annonce ni focus</h3>
+              <span class="finding-location">EXPERIENCE.md · Accessibility Floor « En plus », Component Patterns « Flash », « Alert », Interaction Primitives « Focus » ; mock l. 214</span>
+            </header>
+            <div class="finding-note">« Les Flash sont annoncés (<code>role="status"</code> / <code>role="alert"</code>) » ne tiendra pas : le Flash est rendu côté serveur après une redirection 303, et une région live <em>présente au chargement</em> n'est pas annoncée — seuls ses changements le sont. Même chose pour l'Alert « Roadmap partielle » (<code>role="alert"</code> statique, un contresens ARIA). Sous Turbo Drive, la navigation ne recharge pas la page : ni le nouveau <code>&lt;title&gt;</code>, ni le <code>h1</code> ne sont annoncés d'eux-mêmes, et « après une redirection, le focus va au <code>h1</code> » n'est pas un comportement de Turbo — il faut l'écrire.</div>
+            <div class="finding-fix"><strong>Correction :</strong> (1) un contrôleur Stimulus sur <code>turbo:load</code> qui met le focus sur le Flash s'il existe (<code>tabindex="-1"</code>, il porte déjà <code>role</code>), sinon sur le <code>h1</code> (<code>tabindex="-1"</code>) ; (2) un <code>&lt;title&gt;</code> par page « {page} — {dérivé} » (2.4.2) ; (3) l'Alert roadmap partielle en <code>role="region"</code> + <code>aria-labelledby</code> sur son <code>h3</code>, pas <code>role="alert"</code>.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Le sélecteur de langue de la Connexion soumet au changement d'un <code>&lt;select&gt;</code> (échec F37, WCAG 3.2.2)</h3>
+              <span class="finding-location">EXPERIENCE.md · Component Patterns « Sélecteur de langue (Connexion) », Internationalisation</span>
+            </header>
+            <div class="finding-note">« Soumet immédiatement (GET <code>?lang=</code>) » : c'est l'échec canonique F37 (changement de contexte à la saisie). Au clavier sous Windows, chaque flèche change la valeur et recharge la page — impossible d'atteindre la troisième langue sans deux rechargements, et le lecteur d'écran bascule de langue en cours de route.</div>
+            <div class="finding-fix"><strong>Correction :</strong> un groupe de trois liens <code>?lang=fr|en|nl</code> (chacun avec <code>lang="…"</code> et <code>hreflang</code>, l'actif en <code>aria-current="true"</code>), ou le <code>&lt;select&gt;</code> avec un bouton « Changer » explicite ; jamais un <code>onchange</code> qui navigue.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Aucune mention d'<code>autocomplete</code> alors que 1.3.5 Identify Input Purpose est un critère AA</h3>
+              <span class="finding-location">EXPERIENCE.md · Component Patterns « Champ de formulaire » ; DESIGN.md · Components « Champ de formulaire »</span>
+            </header>
+            <div class="finding-note">Email, prénom, nom, mot de passe actuel, nouveau mot de passe, code à usage unique doivent porter leur jeton (<code>email</code>, <code>given-name</code>, <code>family-name</code>, <code>current-password</code>, <code>new-password</code>, <code>one-time-code</code>). Sans lui, les gestionnaires de mots de passe et les outils d'assistance cognitive ne remplissent pas Connexion, Invitation, Réinitialisation ni Vérification 2FA.</div>
+            <div class="finding-fix"><strong>Correction :</strong> ajouter à la règle « Champ de formulaire » : « chaque champ qui concerne la personne porte son jeton <code>autocomplete</code> HTML (liste ci-dessus), posé dans le FormType ».</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Repères de page et saut de blocs (2.4.1) : <code>&lt;aside&gt;</code> pour la navigation, deux <code>&lt;nav&gt;</code> sans nom, pas de <code>&lt;main&gt;</code>, pas de lien d'évitement</h3>
+              <span class="finding-location">EXPERIENCE.md · Interaction Primitives « Clavier d'abord » ; mock l. 180, 183, 188, 206</span>
+            </header>
+            <div class="finding-note">Le mock enveloppe la navigation dans un <code>&lt;aside&gt;</code> (repère <em>complementary</em>, faux pour la navigation principale), contient deux <code>&lt;nav&gt;</code> sans nom (annoncés « navigation, navigation »), les intitulés de groupe « Suivi » / « Administration » sont des <code>&lt;div&gt;</code> non reliés, il n'y a pas de <code>&lt;main&gt;</code> (<code>.content</code> est un <code>div</code>) et aucun lien d'évitement n'est prévu : l'ordre « Sidebar, en-tête, <code>h1</code> » impose cinq liens et un bouton à traverser au clavier sur chaque page.</div>
+            <div class="finding-fix"><strong>Correction :</strong> <code>&lt;nav aria-label="Navigation principale"&gt;</code> contenant des <code>&lt;ul&gt;</code> groupés avec <code>aria-labelledby</code> sur leur intitulé ; <code>&lt;main id="contenu" tabindex="-1"&gt;</code> ; un lien « Aller au contenu » premier dans le DOM, visible au focus ; l'ajouter à Interaction Primitives.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Tabs du Profil : <code>aria-selected</code> sur des liens qui naviguent (4.1.2)</h3>
+              <span class="finding-location">EXPERIENCE.md · Component Patterns « Tabs (Profil) »</span>
+            </header>
+            <div class="finding-note">« Chaque onglet un lien vers sa propre URL ; l'onglet courant a <code>aria-selected</code> » — <code>aria-selected</code> n'est valide que sur <code>role="tab"</code>, et des liens qui naviguent ne sont pas des tabs ARIA ; axe le signalera.</div>
+            <div class="finding-fix"><strong>Correction :</strong> <code>&lt;nav aria-label="Sections du profil"&gt;</code> avec des liens et <code>aria-current="page"</code> sur l'onglet courant ; le visuel Tabs du kit reste, la sémantique change.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Filtres du journal : période et type d'entrée sans étiquetage de groupe</h3>
+              <span class="finding-location">EXPERIENCE.md · Component Patterns « Filtres du journal » ; Accessibility Floor 3</span>
+            </header>
+            <div class="finding-note">Deux <code>&lt;input type="date"&gt;</code> sous un seul mot « Période » donnent deux champs sans nom distinct ; des radios sans <code>&lt;fieldset&gt;</code>/<code>&lt;legend&gt;</code> perdent leur question au lecteur d'écran. Accessibility Floor 3 ne cite que la recherche d'objet.</div>
+            <div class="finding-fix"><strong>Correction :</strong> <code>&lt;fieldset&gt;&lt;legend&gt;Période&lt;/legend&gt;</code> avec labels « Du » / « Au » ; <code>&lt;fieldset&gt;&lt;legend&gt;Type d'entrée&lt;/legend&gt;</code> pour les radios ; le nombre de résultats (« 3 entrées ») rendu dans le <code>h1</code> ou juste sous lui, pour être lu après le focus post-soumission.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">« Lien couvrant la ligne » : vingt liens au nom identique ou vide dans le Journal (2.4.4)</h3>
+              <span class="finding-location">EXPERIENCE.md · Component Patterns « Sheet (entrée d'audit) », « Table »</span>
+            </header>
+            <div class="finding-note">Sans règle de nommage, le Journal expose vingt liens au nom identique ou vide, et un lien étiré en <code>::after</code> par-dessus la ligne rend les autres cellules non sélectionnables et hors du nom du lien.</div>
+            <div class="finding-fix"><strong>Correction :</strong> le lien vit dans la première cellule et porte un nom complet — « Ouvrir l'entrée du 8 septembre 14 h 12, Karim Benali, Tarif Chêne massif » (texte visible = date, reste en <code>sr-only</code>) ; la zone cliquable étendue se fait en <code>::after</code> sur ce lien seulement ; même règle pour la ligne d'utilisateur.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Erreur de connexion sans champ en erreur : « focus sur le premier champ en erreur » n'a pas de cible</h3>
+              <span class="finding-location">EXPERIENCE.md · State Patterns « Mot de passe erroné avec ralentissement », « Compte désactivé » ; Voice and Tone</span>
+            </header>
+            <div class="finding-note">Quand le message est générique (« Email ou mot de passe incorrect », compte désactivé, ralentissement), aucun champ ne porte l'erreur. Le message « Patientez 40 secondes » n'est ni annoncé ni rafraîchi.</div>
+            <div class="finding-fix"><strong>Correction :</strong> un bloc <code>role="alert"</code> <code>tabindex="-1"</code> au-dessus du formulaire qui reçoit le focus au rendu 422 ; à chaque nouvelle soumission pendant le délai, le message est re-rendu avec les secondes restantes (pas de compte à rebours JS, pas de bouton désactivé) ; préciser que le délai est exempté de 2.2.1 (sécurité).</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Titre d'epic à l'intérieur du déclencheur d'Accordion : nom accessible concaténé, navigabilité par titres perdue</h3>
+              <span class="finding-location">DESIGN.md · Components « Accordion » ; EXPERIENCE.md · Accessibility Floor 6 ; mock l. 117, 225-232</span>
+            </header>
+            <div class="finding-note">Le mock place <code>&lt;h2&gt;</code> + Badge + description + phrase d'avancement + pourcentage dans <code>&lt;summary&gt;</code> : le nom accessible du bouton est toute la concaténation, et un titre à l'intérieur d'un bouton perd sa navigabilité par titres sous certains couples navigateur / lecteur d'écran. Par ailleurs, l'Accordion du kit shadcn rend son propre en-tête (souvent <code>h3</code>) autour du trigger, ce qui contredit « cartes d'epic en <code>h2</code> » si la prop de niveau n'est pas fixée.</div>
+            <div class="finding-fix"><strong>Correction :</strong> spécifier <code>&lt;h2&gt;&lt;button aria-expanded aria-controls&gt;Gestion des devis&lt;/button&gt;&lt;/h2&gt;</code> — le bouton ne contient que le titre — avec Badge et bloc d'avancement hors du bouton mais dans le résumé cliquable ; fixer le niveau de titre du composant Accordion à 2 dans la règle d'usage.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Anneau de focus — dette connue : 2,05:1 sur blanc, 1,88:1 sur page, 1,96:1 sur sidebar</h3>
+              <span class="finding-location">DESIGN.md · § Colors</span>
+            </header>
+            <div class="finding-note"><code>#b5b5b5</code> donne 2,05:1 sur blanc, et 1,88:1 sur <code>page</code> / 1,96:1 sur <code>sidebar</code>, c'est-à-dire précisément sur les surfaces où le clavier circule le plus (navigation, en-tête). Mentionné une fois pour que la fiche de dette porte les trois valeurs, sans rediscuter la décision.</div>
+            <div class="finding-fix"><strong>Correction :</strong> porter les trois valeurs dans la fiche de dette.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Le mock anime la barre d'avancement que le spine interdit, sans bloc <code>prefers-reduced-motion</code></h3>
+              <span class="finding-location">mock l. 14-15, 128, 129 ; DESIGN.md · progress.animation</span>
+            </header>
+            <div class="finding-note"><code>.bar i { transition: width .6s }</code> anime la barre d'avancement que <code>DESIGN.md</code> interdit (<code>progress.animation: none</code>), et malgré le commentaire d'en-tête il n'existe aucun bloc <code>@media (prefers-reduced-motion: reduce)</code> dans le fichier.</div>
+            <div class="finding-fix"><strong>Correction :</strong> supprimer la transition de <code>.bar i</code>, ajouter le bloc <code>prefers-reduced-motion</code> mettant <code>.chev</code> à <code>transition: none</code>, et rappeler dans <code>DESIGN.md</code> que la maquette est périmée sur ce point.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Progress : ni <code>role="progressbar"</code> ni <code>aria-valuenow</code>, et risque de double lecture</h3>
+              <span class="finding-location">EXPERIENCE.md · Component Patterns « Progress » ; mock l. 127-128, 230</span>
+            </header>
+            <div class="finding-note">Si le spine les ajoute <em>et</em> garde la phrase visible « 6 sur 10 tâches terminées », le lecteur d'écran lit la valeur deux fois.</div>
+            <div class="finding-fix"><strong>Correction :</strong> <code>role="progressbar" aria-valuemin="0" aria-valuemax="10" aria-valuenow="6" aria-labelledby="{id de la phrase}"</code>, ou plus simple : la barre en <code>aria-hidden="true"</code>, la phrase et le pourcentage portent tout ; « — » sur une epic non lisible = pas de progressbar.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Menu compte et langue : bouton sans indication de menu, entrées de langue sans <code>menuitemradio</code> ni <code>lang</code>, thème sans script inline</h3>
+              <span class="finding-location">EXPERIENCE.md · Component Patterns « DropdownMenu (compte) » ; Flux 9 ; mock l. 199-203</span>
+            </header>
+            <div class="finding-note">Le bouton d'en-tête s'appelle « Marc Dubois » (avatar <code>aria-hidden</code>) — rien ne dit que c'est un menu ; les entrées de langue doivent être des <code>menuitemradio</code> avec <code>aria-checked</code> et porter chacune leur <code>lang</code> (« English » <code>lang="en"</code>, « Nederlands » <code>lang="nl"</code>, 3.1.2) ; la bascule de thème doit aussi poser <code>color-scheme</code> sur <code>&lt;html&gt;</code> et lire la préférence dans un script inline avant le premier rendu pour éviter le flash clair → sombre.</div>
+            <div class="finding-fix"><strong>Correction :</strong> <code>&lt;span class="sr-only"&gt;Menu du compte —&lt;/span&gt; Marc Dubois</code> ; préciser <code>menuitemradio</code> + <code>lang</code> par option ; ajouter le script inline de thème à la coque.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Cibles tactiles : 44 px promis mais <code>size="icon"</code> à 36 px et entrées de Sidebar ≈ 40 px</h3>
+              <span class="finding-location">DESIGN.md · frontmatter spacing.touch-target-min, sidebar.item-padding ; EXPERIENCE.md · Interaction Primitives « Tactile »</span>
+            </header>
+            <div class="finding-note"><code>touch-target-min</code> 44 px n'est promis que pour « boutons, champs, lignes, entrées de menu » ; les boutons <code>size="icon"</code> (fermer un Sheet, hamburger, fermer un Flash) font 36 px dans le kit et les entrées de Sidebar ≈ 40 px (<code>item-padding</code> 9 px + 22 px de ligne). AA en 2.1 n'exige pas 44 px (2.5.5 est AAA), mais le spine s'y engage.</div>
+            <div class="finding-fix"><strong>Correction :</strong> étendre la règle aux <code>size="icon"</code> et aux entrées de navigation sur pointeur grossier (<code>@media (pointer: coarse)</code>), ou reformuler l'engagement en « ≥ 24 px, 44 px sur les actions principales ».</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Espacement du texte (1.4.12) : hauteurs fixes sur badge, bouton et en-tête</h3>
+              <span class="finding-location">DESIGN.md · frontmatter badge.height, button-primary.height, header-height ; mock l. 93, 132</span>
+            </header>
+            <div class="finding-note"><code>badge</code> et <code>button</code> sont en <code>height</code> fixe (26 px, 38 px) avec <code>line-height: 1</code> et <code>white-space: nowrap</code>, l'en-tête en <code>height: 60px</code>. Une feuille utilisateur qui impose <code>line-height: 1.5</code> et <code>letter-spacing: 0.12em</code> fera déborder le texte hors du badge.</div>
+            <div class="finding-fix"><strong>Correction :</strong> <code>min-height</code> partout, <code>line-height</code> normal sur les badges ; vérifier avec le bookmarklet « text spacing » une fois par écran clé.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Bouton « Lancer » inactif en <code>disabled</code> : sort de l'ordre de tabulation</h3>
+              <span class="finding-location">EXPERIENCE.md · Component Patterns « Bouton "Lancer" »</span>
+            </header>
+            <div class="finding-note">Un élément <code>disabled</code> sort de l'ordre de tabulation, donc l'utilisateur clavier ne rencontre jamais le bouton et ne sait pas qu'une action existe sur cette ligne ; la raison est bien un texte visible, mais n'est pas reliée.</div>
+            <div class="finding-fix"><strong>Correction :</strong> <code>aria-disabled="true"</code> seul (focusable), <code>aria-describedby</code> vers la raison, clic ignoré côté serveur.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Reflow : la promesse vise 200 % alors que 1.4.10 exige 320 px CSS (400 %)</h3>
+              <span class="finding-location">EXPERIENCE.md · Accessibility Floor « En plus »</span>
+            </header>
+            <div class="finding-note">« Le zoom navigateur à 200 % ne casse aucune mise en page » — 1.4.10 exige l'absence de défilement bidimensionnel à <strong>320 px CSS</strong> (soit 400 % sur 1280 px), pas à 200 %. Les points de rupture prévus le couvrent très probablement (tiroir, colonnes prioritaires, Sheet plein écran), mais la promesse doit viser la bonne cible.</div>
+            <div class="finding-fix"><strong>Correction :</strong> remplacer « 200 % » par « jusqu'à 320 px de large (zoom 400 %) sans défilement horizontal » et l'ajouter au tableau Responsive.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <div class="mechanical">
+      <h3>Notes mécaniques</h3>
+      <ul>
+        <li><strong>Frontmatter.</strong> <code>DESIGN.md</code> : <code>name</code>, <code>description</code>, <code>colors</code>, <code>typography</code>, <code>rounded</code>, <code>spacing</code>, <code>components</code> complets ; <code>version</code>, <code>status</code>, <code>updated</code>, <code>sources</code> ajoutés au-delà de la spec design.md (acceptable). <code>EXPERIENCE.md</code> : <code>name</code>, <code>version</code>, <code>status</code>, <code>updated</code>, <code>design</code>, <code>sources</code> — complet. <code>rounded.lg</code> = <code>rounded.DEFAULT</code> = 10px (redondant, pas faux). Clé <code>components.flash.extends</code> hors spec design.md — un résolveur strict l'ignorera.</li>
+        <li><strong>Références.</strong> 0 référence <code>{…}</code> non résolue sur 109. Les gabarits <code>{id}</code>, <code>{token}</code>, <code>{onglet}</code>, <code>{statut}</code> d'<code>EXPERIENCE.md</code> utilisent la même syntaxe que les jetons ; un extracteur naïf les signalera. Suggestion : <code>:id</code>, <code>:token</code>, <code>:onglet</code> (convention de route) ou « {tâche} » en français entre guillemets.</li>
+        <li><strong>Chemins visuels.</strong> <code>mockups/direction-aere.html</code> résout (promu 16:10) ; <code>mockups/direction-compact.html</code> et <code>mockups/direction-editorial.html</code> ne résolvent pas (restés dans <code>.working/</code>). <code>imports/</code> vide, conforme au memlog. Fichiers <code>key-*.html</code> non encore présents et non référencés.</li>
+        <li><strong>Noms.</strong> « Interrupteur de langue » vs comportement à boutons (voir §3). « Bouton « Lancer » » conditionné à « permission de développement » (<code>Component Patterns</code>) et à « Super admin » (<code>Environnement…</code>) — cohérent par le glossaire (Super admin = permissions de développement), mais deux formulations.</li>
+        <li><strong>Niveaux de titre.</strong> Dialog h2 / h3 contradictoire (voir §7). Alert h3 dans le spine, h2 dans la maquette retenue.</li>
+        <li><strong>Contraste.</strong> Bordures <code>badge-todo</code> / <code>badge-unreadable</code> ≈ 1,3:1 (voir §2). <code>sidebar.group-label-color</code> = <code>{colors.muted-foreground}</code> sur <code>{colors.sidebar}</code> (#fafafa) ≈ 4,54:1 — passe, de justesse, à noter dans le tableau de contraste si la sidebar est recolorée au rebranding. Bordure des champs <code>input</code> 1,26:1 / 1,18:1 (revue accessibilité, critique).</li>
+        <li><strong>Mermaid.</strong> Aucun diagramme dans les deux fichiers ; rien à vérifier.</li>
+      </ul>
+    </div>
+
+    <footer class="report-footer">
+      <div class="meta">
+        <span>DESIGN.md : D:\laragon\www\proglab-skills\_bmad-output\planning-artifacts\ux-designs\ux-proglab-skills-2026-09-09\DESIGN.md</span>
+        <span>EXPERIENCE.md : D:\laragon\www\proglab-skills\_bmad-output\planning-artifacts\ux-designs\ux-proglab-skills-2026-09-09\EXPERIENCE.md</span>
+        <span>Revues : review-rubric.md · review-accessibility.md</span>
+        <span>Généré : 2026-09-09T14:16:43Z</span>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>

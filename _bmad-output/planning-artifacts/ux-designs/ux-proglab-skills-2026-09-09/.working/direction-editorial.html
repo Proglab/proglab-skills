@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Direction « Éditorial » — Roadmap, accueil de Marc (Admin, production)</title>
+<style>
+/* =====================================================================
+   DIRECTION « ÉDITORIAL » — la roadmap se lit comme un compte rendu
+   ---------------------------------------------------------------------
+   Thème : shadcn « neutral » par défaut (white-label), tokens oklch.
+   Aucune couleur de marque. Titres en serif système (ui-serif / Georgia),
+   corps en sans système. Un rail vertical relie les epics comme les
+   chapitres d'un rapport ; les tâches s'y accrochent comme des étapes.
+   Mouvement suggéré : aucun (page statique qui se lit) — le seul retour
+   est le dépliage instantané et l'anneau de focus.
+
+   Tokens clair (shadcn neutral)             ≈ hex
+   --background          oklch(1 0 0)          #ffffff
+   --foreground          oklch(0.145 0 0)      #0a0a0a
+   --card                oklch(1 0 0)          #ffffff
+   --muted               oklch(0.97 0 0)       #f5f5f5
+   --muted-foreground    oklch(0.556 0 0)      #737373  (4,74:1 sur blanc)
+   --muted-strong        oklch(0.439 0 0)      #525252
+   --primary             oklch(0.205 0 0)      #171717
+   --primary-foreground  oklch(0.985 0 0)      #fafafa
+   --border              oklch(0.922 0 0)      #e5e5e5
+   --ring                oklch(0.708 0 0)      #b5b5b5
+   --sidebar             oklch(0.985 0 0)      #fafafa
+
+   Tokens sombre (shadcn neutral)            ≈ hex
+   --background          oklch(0.145 0 0)      #0a0a0a
+   --foreground          oklch(0.985 0 0)      #fafafa
+   --card                oklch(0.205 0 0)      #171717
+   --muted               oklch(0.269 0 0)      #262626
+   --muted-foreground    oklch(0.708 0 0)      #a3a3a3
+   --muted-strong        oklch(0.80 0 0)       #c4c4c4
+   --primary             oklch(0.922 0 0)      #e5e5e5
+   --primary-foreground  oklch(0.205 0 0)      #171717
+   --border              oklch(1 0 0 / 10%)
+   --ring                oklch(0.556 0 0)      #737373
+   --sidebar             oklch(0.205 0 0)      #171717
+   ===================================================================== */
+
+:root {
+  --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --serif: ui-serif, Georgia, "Iowan Old Style", "Times New Roman", serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: var(--font); background: #e8e8e8; color: #0a0a0a; padding: 32px; }
+.doc-intro { max-width: 1280px; margin: 0 auto 24px; font-size: 15px; line-height: 1.5; }
+.doc-intro .kicker { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: #525252; margin: 0 0 4px; }
+.doc-intro p { margin: 0 0 6px; }
+.doc-label { max-width: 1280px; margin: 28px auto 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: #525252; }
+
+.frame {
+  --background: oklch(1 0 0); --foreground: oklch(0.145 0 0); --card: oklch(1 0 0);
+  --muted: oklch(0.97 0 0); --muted-foreground: oklch(0.556 0 0); --muted-strong: oklch(0.439 0 0);
+  --primary: oklch(0.205 0 0); --primary-foreground: oklch(0.985 0 0);
+  --border: oklch(0.922 0 0); --ring: oklch(0.708 0 0); --sidebar: oklch(0.985 0 0); --sidebar-accent: oklch(0.94 0 0);
+  --rail: oklch(0.85 0 0);
+}
+.frame.dark {
+  --background: oklch(0.145 0 0); --foreground: oklch(0.985 0 0); --card: oklch(0.205 0 0);
+  --muted: oklch(0.269 0 0); --muted-foreground: oklch(0.708 0 0); --muted-strong: oklch(0.80 0 0);
+  --primary: oklch(0.922 0 0); --primary-foreground: oklch(0.205 0 0);
+  --border: oklch(1 0 0 / 10%); --ring: oklch(0.556 0 0); --sidebar: oklch(0.205 0 0); --sidebar-accent: oklch(0.269 0 0);
+  --rail: oklch(0.35 0 0);
+}
+
+.frame { width: 1280px; margin: 0 auto; border-radius: 10px; overflow: hidden; box-shadow: 0 8px 30px rgba(0,0,0,.18); background: var(--background); color: var(--foreground); font-size: 15px; line-height: 1.55; }
+.chrome { height: 38px; background: #d9d9d9; display: flex; align-items: center; gap: 8px; padding: 0 12px; }
+.frame.dark .chrome { background: #2b2b2b; }
+.chrome i { width: 11px; height: 11px; border-radius: 50%; background: #b3b3b3; display: inline-block; }
+.chrome .url { flex: 1; margin-left: 10px; height: 24px; border-radius: 6px; background: #f2f2f2; color: #444; font-size: 12px; display: flex; align-items: center; padding: 0 10px; }
+.frame.dark .chrome .url { background: #1c1c1c; color: #bdbdbd; }
+
+.app { display: grid; grid-template-columns: 232px 1fr; min-height: 840px; }
+.app.short { min-height: 520px; }
+
+/* Sidebar */
+.sidebar { background: var(--sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 14px 12px; }
+.brand { display: flex; align-items: center; gap: 10px; padding: 4px 8px 16px; font-family: var(--serif); font-size: 16px; }
+.brand .logo { width: 30px; height: 30px; border-radius: 6px; background: var(--primary); color: var(--primary-foreground); display: grid; place-items: center; font-family: var(--serif); font-size: 13px; }
+.brand small { display: block; font-family: var(--font); color: var(--muted-foreground); font-size: 12px; }
+.nav-group { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted-foreground); padding: 12px 10px 6px; }
+.nav a { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 6px; color: var(--foreground); text-decoration: none; font-size: 14px; }
+.nav a[aria-current="page"] { background: var(--sidebar-accent); font-weight: 600; }
+.nav a svg { width: 16px; height: 16px; flex: none; }
+.sidebar-foot { margin-top: auto; border-top: 1px solid var(--border); padding-top: 12px; display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--primary); color: var(--primary-foreground); display: grid; place-items: center; font-size: 11px; font-weight: 600; flex: none; }
+.sidebar-foot small { display: block; color: var(--muted-foreground); font-size: 12px; }
+
+/* Header */
+.main { min-width: 0; display: flex; flex-direction: column; }
+.header { height: 56px; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 40px; gap: 12px; }
+.header .crumb { font-size: 13px; color: var(--muted-foreground); }
+.header .spacer { flex: 1; }
+.btn { font: inherit; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; border: 1px solid transparent; background: transparent; color: var(--foreground); border-radius: 6px; height: 36px; padding: 0 10px; cursor: pointer; }
+.btn svg { width: 15px; height: 15px; }
+a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+
+/* Bandeau 2FA — pleine largeur, sous l'en-tête */
+.banner { display: flex; align-items: center; gap: 14px; padding: 12px 40px; background: var(--muted); border-bottom: 1px solid var(--border); font-size: 14px; }
+.banner svg { width: 18px; height: 18px; flex: none; }
+.banner b { font-weight: 600; }
+.banner span { color: var(--muted-strong); }
+.banner a { margin-left: auto; color: var(--foreground); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; }
+
+/* Contenu éditorial */
+.content { padding: 36px 40px 48px; max-width: 880px; }
+.date { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted-foreground); margin: 0 0 10px; }
+h1 { font-family: var(--serif); font-weight: 400; font-size: 40px; letter-spacing: -0.01em; line-height: 1.1; margin: 0 0 14px; }
+.lede { font-size: 17px; color: var(--muted-strong); margin: 0 0 8px; max-width: 640px; }
+.lede b { color: var(--foreground); font-weight: 600; }
+.deploy { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--muted-strong); margin: 4px 0 36px; padding-bottom: 6px; border-bottom: 1px dotted var(--rail); }
+.deploy svg { width: 14px; height: 14px; }
+.deploy b { color: var(--foreground); font-weight: 500; }
+
+/* Rail vertical */
+.rail { position: relative; padding-left: 44px; }
+.rail::before { content: ""; position: absolute; left: 13px; top: 10px; bottom: 10px; width: 2px; background: var(--rail); }
+details.chapter { position: relative; margin-bottom: 26px; }
+details.chapter summary { list-style: none; cursor: pointer; border-radius: 6px; }
+details.chapter summary::-webkit-details-marker { display: none; }
+.node { position: absolute; left: -44px; top: 4px; width: 28px; height: 28px; border-radius: 50%; background: var(--background); border: 2px solid var(--foreground); display: grid; place-items: center; }
+.node svg { width: 14px; height: 14px; }
+.node.done { background: var(--primary); color: var(--primary-foreground); border-color: var(--primary); }
+.node.todo { border-color: var(--rail); color: var(--muted-foreground); border-style: dashed; }
+.chead { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+.chead h2 { font-family: var(--serif); font-weight: 400; font-size: 26px; margin: 0; line-height: 1.2; }
+.chead .num { font-family: var(--serif); font-size: 26px; color: var(--muted-foreground); }
+.chead .status { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+.chead .status svg { width: 13px; height: 13px; }
+.chead .toggle { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--muted-strong); text-decoration: underline; text-underline-offset: 3px; }
+.chead .toggle svg { width: 14px; height: 14px; transition: transform .1s linear; }
+details[open] .chead .toggle svg { transform: rotate(180deg); }
+.cline { display: flex; align-items: center; gap: 16px; margin-top: 8px; font-size: 14px; color: var(--muted-strong); }
+.cline .meter { flex: 0 0 200px; height: 4px; background: var(--muted); border-radius: 2px; overflow: hidden; }
+.cline .meter i { display: block; height: 100%; background: var(--foreground); }
+.cline b { color: var(--foreground); font-weight: 600; font-variant-numeric: tabular-nums; }
+.cline .dep { display: inline-flex; align-items: center; gap: 6px; }
+.cline .dep svg { width: 13px; height: 13px; }
+.csum { margin: 6px 0 0; font-size: 15px; color: var(--muted-strong); max-width: 640px; }
+
+/* Étapes (tâches) */
+.steps { margin: 18px 0 0; padding: 0; list-style: none; border-left: 1px solid var(--rail); margin-left: 6px; }
+.steps li { position: relative; padding: 10px 0 10px 26px; display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: baseline; }
+.steps li::before { content: ""; position: absolute; left: -5px; top: 17px; width: 9px; height: 9px; border-radius: 50%; background: var(--background); border: 1.5px solid var(--rail); }
+.steps li.done::before { background: var(--foreground); border-color: var(--foreground); }
+.steps li.wip::before { border-color: var(--foreground); border-width: 2.5px; }
+.steps li + li { border-top: 1px dotted var(--border); }
+.steps .t { font-size: 15.5px; }
+.steps li.done .t { color: var(--muted-strong); }
+.steps .who { display: block; font-size: 13px; color: var(--muted-foreground); margin-top: 2px; }
+.steps .who .na { font-style: italic; }
+.steps .dep { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--foreground); margin-top: 4px; }
+.steps .dep svg { width: 13px; height: 13px; }
+.badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; }
+.badge svg { width: 12px; height: 12px; }
+.badge.done { color: var(--muted-strong); }
+.badge.wip { color: var(--foreground); }
+.badge.todo { color: var(--muted-foreground); }
+.badge.ready { color: var(--foreground); border: 1px solid var(--foreground); border-radius: 999px; padding: 2px 8px; }
+
+.foot-note { margin-top: 12px; font-size: 13px; color: var(--muted-foreground); font-style: italic; }
+
+/* État vide */
+.empty { margin: 24px 0 0; border: 1px dashed var(--rail); border-radius: 10px; padding: 40px; text-align: center; max-width: 640px; }
+.empty svg { width: 36px; height: 36px; color: var(--muted-foreground); }
+.empty h2 { font-family: var(--serif); font-weight: 400; font-size: 24px; margin: 12px 0 6px; }
+.empty p { margin: 0; color: var(--muted-strong); font-size: 15px; }
+</style>
+</head>
+<body>
+
+<div class="doc-intro">
+  <p class="kicker">Direction 3 / 3 — « Éditorial »</p>
+  <p><strong>Le rationnel.</strong> Marc lit sa roadmap comme il lirait le compte rendu hebdomadaire de son prestataire : un titre, une phrase qui dit l'essentiel (« 16 tâches sur 34 »), puis les epics comme des chapitres numérotés le long d'un rail. Les titres en serif système et la typographie large donnent un ton posé, sans chrome ; l'information est portée par la hiérarchie du texte, pas par des boîtes.</p>
+  <p>Variantes montrées : <em>bandeau de rappel 2FA</em> en mode sombre ; <em>état vide</em> (« Votre roadmap est encore vide », premier jour du dérivé) en mode clair, en écran secondaire. Production : pas de bouton « Lancer », pas de notes internes.</p>
+</div>
+
+<!-- ===================================================================
+     MODE CLAIR — état nominal
+     =================================================================== -->
+<p class="doc-label">Mode clair — état nominal, epic « Gestion des devis » dépliée</p>
+<article class="frame" aria-label="Maquette en mode clair">
+  <div class="chrome"><i></i><i></i><i></i><div class="url">https://erp.menuiserie-delcourt.example/</div></div>
+  <div class="app">
+
+    <aside class="sidebar" aria-label="Navigation principale">
+      <div class="brand"><span class="logo" aria-hidden="true">D</span><span>Menuiserie Delcourt<small>ERP · production</small></span></div>
+      <div class="nav-group">Suivi</div>
+      <nav class="nav">
+        <a href="#" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Roadmap</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Journal d'audit</a>
+      </nav>
+      <div class="nav-group">Administration</div>
+      <nav class="nav">
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4a3.5 3.5 0 0 1 0 7M21.5 20a6.5 6.5 0 0 0-5-6.3"/></svg>Utilisateurs</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/></svg>Rôles</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>Langues</a>
+      </nav>
+      <div class="sidebar-foot"><span class="avatar" aria-hidden="true">MD</span><span>Marc Dubois<small>Admin</small></span></div>
+    </aside>
+
+    <div class="main">
+      <header class="header">
+        <span class="crumb">Roadmap</span>
+        <span class="spacer"></span>
+        <button class="btn" type="button" aria-haspopup="menu" aria-expanded="false">
+          <span class="avatar" style="width:26px;height:26px;font-size:11px" aria-hidden="true">MD</span>
+          Marc Dubois
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+      </header>
+
+      <div class="content">
+        <p class="date">Vendredi 11 septembre 2026</p>
+        <h1>Bonjour Marc, voici où en est votre ERP.</h1>
+        <p class="lede"><b>16 tâches sur 34</b> sont terminées. Le catalogue produits est livré, la gestion des devis avance à 60 % et attend la validation par le client ; la facturation démarrera quand les devis seront terminés.</p>
+        <span class="deploy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v3h16v-3"/></svg>État au dernier déploiement : <b>mardi 8 septembre 2026, 18 h 42</b> — pas le temps réel.</span>
+
+        <div class="rail">
+
+          <details class="chapter">
+            <summary>
+              <span class="node done" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L19 7"/></svg></span>
+              <div class="chead"><span class="num" aria-hidden="true">1</span><h2>Catalogue produits</h2><span class="status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg>Terminé</span><span class="toggle">Voir les 8 tâches<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></span></div>
+              <div class="cline"><span class="meter"><i style="width:100%"></i></span><span><b>8 / 8</b> tâches terminées · 100 %</span></div>
+            </summary>
+          </details>
+
+          <details class="chapter" open>
+            <summary>
+              <span class="node" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" stroke="none"/></svg></span>
+              <div class="chead"><span class="num" aria-hidden="true">2</span><h2>Gestion des devis</h2><span class="status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" stroke="none"/></svg>En cours</span><span class="toggle">Masquer les tâches<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></span></div>
+              <div class="cline"><span class="meter"><i style="width:60%"></i></span><span><b>6 / 10</b> tâches terminées · 60 %</span></div>
+              <p class="csum">Créer, envoyer et faire valider un devis. La prochaine étape attend que la signature par le client soit terminée.</p>
+            </summary>
+            <ol class="steps">
+              <li class="done"><div><span class="t">Créer un devis depuis une fiche client</span><span class="who">Léa Martin · priorité normale · simple</span></div><span class="badge done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg>Terminé</span></li>
+              <li class="done"><div><span class="t">Ajouter des lignes de produits au devis</span><span class="who">Léa Martin · priorité normale · moyenne</span></div><span class="badge done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg>Terminé</span></li>
+              <li class="done"><div><span class="t">Calculer les remises et la TVA</span><span class="who">Karim Benali · priorité haute · complexe</span></div><span class="badge done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg>Terminé</span></li>
+              <li class="done"><div><span class="t">Générer le devis en PDF</span><span class="who">Léa Martin · priorité normale · moyenne</span></div><span class="badge done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg>Terminé</span></li>
+              <li class="done"><div><span class="t">Envoyer le devis par email au client</span><span class="who">Karim Benali · priorité normale · simple</span></div><span class="badge done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg>Terminé</span></li>
+              <li class="done"><div><span class="t">Historique des versions d'un devis</span><span class="who">Léa Martin · priorité basse · moyenne</span></div><span class="badge done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg>Terminé</span></li>
+              <li class="wip"><div><span class="t">Validation du devis par le client (signature)</span><span class="who">Karim Benali · priorité haute · complexe</span></div><span class="badge wip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" stroke="none"/></svg>En cours</span></li>
+              <li><div><span class="t">Transformer un devis validé en commande</span><span class="who"><span class="na">Personne assignée non renseignée</span> · priorité haute · moyenne</span><span class="dep"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>En attente de : Validation du devis par le client (en cours)</span></div><span class="badge todo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="8"/></svg>À faire</span></li>
+              <li><div><span class="t">Relancer automatiquement un devis sans réponse</span><span class="who"><span class="na">Personne assignée non renseignée</span> · priorité basse · simple</span><span class="dep"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg>Dépend de : Envoyer le devis par email au client (terminée)</span></div><span class="badge ready"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M10 9l5 3-5 3z" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="8"/></svg>Tâche prête</span></li>
+              <li><div><span class="t">Tableau de bord des devis en attente</span><span class="who"><span class="na">Personne assignée non renseignée</span> · priorité normale · moyenne</span><span class="dep"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>En attente de : Transformer un devis validé en commande (à faire)</span></div><span class="badge todo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="8"/></svg>À faire</span></li>
+            </ol>
+          </details>
+
+          <details class="chapter">
+            <summary>
+              <span class="node" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" stroke="none"/></svg></span>
+              <div class="chead"><span class="num" aria-hidden="true">3</span><h2>Suivi des livraisons</h2><span class="status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" stroke="none"/></svg>En cours</span><span class="toggle">Voir les 9 tâches<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></span></div>
+              <div class="cline"><span class="meter"><i style="width:22%"></i></span><span><b>2 / 9</b> tâches terminées · 22 %</span></div>
+            </summary>
+          </details>
+
+          <details class="chapter">
+            <summary>
+              <span class="node todo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="8"/></svg></span>
+              <div class="chead"><span class="num" aria-hidden="true">4</span><h2>Facturation et relances</h2><span class="status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="8"/></svg>À faire</span><span class="toggle">Voir les 7 tâches<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></span></div>
+              <div class="cline"><span class="meter"><i style="width:0%"></i></span><span><b>0 / 7</b> tâches terminées · 0 %</span><span class="dep"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>En attente de : Gestion des devis</span></div>
+            </summary>
+          </details>
+
+        </div>
+        <p class="foot-note">Une question sur l'avancement ? Écrivez à votre équipe de développement, cette page est en lecture seule.</p>
+      </div>
+    </div>
+  </div>
+</article>
+
+<!-- ===================================================================
+     MODE SOMBRE — variante : bandeau de rappel 2FA
+     =================================================================== -->
+<p class="doc-label">Mode sombre — avec bandeau de rappel 2FA (délai de grâce)</p>
+<article class="frame dark" aria-label="Maquette en mode sombre">
+  <div class="chrome"><i></i><i></i><i></i><div class="url">https://erp.menuiserie-delcourt.example/</div></div>
+  <div class="app">
+
+    <aside class="sidebar" aria-label="Navigation principale">
+      <div class="brand"><span class="logo" aria-hidden="true">D</span><span>Menuiserie Delcourt<small>ERP · production</small></span></div>
+      <div class="nav-group">Suivi</div>
+      <nav class="nav">
+        <a href="#" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Roadmap</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Journal d'audit</a>
+      </nav>
+      <div class="nav-group">Administration</div>
+      <nav class="nav">
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4a3.5 3.5 0 0 1 0 7M21.5 20a6.5 6.5 0 0 0-5-6.3"/></svg>Utilisateurs</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/></svg>Rôles</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>Langues</a>
+      </nav>
+      <div class="sidebar-foot"><span class="avatar" aria-hidden="true">MD</span><span>Marc Dubois<small>Admin</small></span></div>
+    </aside>
+
+    <div class="main">
+      <header class="header">
+        <span class="crumb">Roadmap</span>
+        <span class="spacer"></span>
+        <button class="btn" type="button" aria-haspopup="menu" aria-expanded="false">
+          <span class="avatar" style="width:26px;height:26px;font-size:11px" aria-hidden="true">MD</span>
+          Marc Dubois
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+      </header>
+
+      <div class="banner" role="status">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+        <div><b>Activez la double authentification.</b> <span>Votre rôle d'administrateur l'exige. Il vous reste 5 jours ; passé ce délai, l'accès sera bloqué jusqu'à l'activation.</span></div>
+        <a href="#">Activer maintenant</a>
+      </div>
+
+      <div class="content">
+        <p class="date">Vendredi 11 septembre 2026</p>
+        <h1>Bonjour Marc, voici où en est votre ERP.</h1>
+        <p class="lede"><b>16 tâches sur 34</b> sont terminées. Le catalogue produits est livré, la gestion des devis avance à 60 % et attend la validation par le client ; la facturation démarrera quand les devis seront terminés.</p>
+        <span class="deploy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v3h16v-3"/></svg>État au dernier déploiement : <b>mardi 8 septembre 2026, 18 h 42</b> — pas le temps réel.</span>
+
+        <div class="rail">
+
+          <details class="chapter">
+            <summary>
+              <span class="node done" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L19 7"/></svg></span>
+              <div class="chead"><span class="num" aria-hidden="true">1</span><h2>Catalogue produits</h2><span class="status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg>Terminé</span><span class="toggle">Voir les 8 tâches<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></span></div>
+              <div class="cline"><span class="meter"><i style="width:100%"></i></span><span><b>8 / 8</b> tâches terminées · 100 %</span></div>
+            </summary>
+          </details>
+
+          <details class="chapter" open>
+            <summary>
+              <span class="node" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" stroke="none"/></svg></span>
+              <div class="chead"><span class="num" aria-hidden="true">2</span><h2>Gestion des devis</h2><span class="status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" stroke="none"/></svg>En cours</span><span class="toggle">Masquer les tâches<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></span></div>
+              <div class="cline"><span class="meter"><i style="width:60%"></i></span><span><b>6 / 10</b> tâches terminées · 60 %</span></div>
+              <p class="csum">Créer, envoyer et faire valider un devis. La prochaine étape attend que la signature par le client soit terminée.</p>
+            </summary>
+            <ol class="steps">
+              <li class="done"><div><span class="t">Créer un devis depuis une fiche client</span><span class="who">Léa Martin · priorité normale · simple</span></div><span class="badge done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg>Terminé</span></li>
+              <li class="done"><div><span class="t">Ajouter des lignes de produits au devis</span><span class="who">Léa Martin · priorité normale · moyenne</span></div><span class="badge done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg>Terminé</span></li>
+              <li class="done"><div><span class="t">Calculer les remises et la TVA</span><span class="who">Karim Benali · priorité haute · complexe</span></div><span class="badge done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg>Terminé</span></li>
+              <li class="done"><div><span class="t">Générer le devis en PDF</span><span class="who">Léa Martin · priorité normale · moyenne</span></div><span class="badge done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg>Terminé</span></li>
+              <li class="done"><div><span class="t">Envoyer le devis par email au client</span><span class="who">Karim Benali · priorité normale · simple</span></div><span class="badge done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg>Terminé</span></li>
+              <li class="done"><div><span class="t">Historique des versions d'un devis</span><span class="who">Léa Martin · priorité basse · moyenne</span></div><span class="badge done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg>Terminé</span></li>
+              <li class="wip"><div><span class="t">Validation du devis par le client (signature)</span><span class="who">Karim Benali · priorité haute · complexe</span></div><span class="badge wip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" stroke="none"/></svg>En cours</span></li>
+              <li><div><span class="t">Transformer un devis validé en commande</span><span class="who"><span class="na">Personne assignée non renseignée</span> · priorité haute · moyenne</span><span class="dep"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>En attente de : Validation du devis par le client (en cours)</span></div><span class="badge todo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="8"/></svg>À faire</span></li>
+              <li><div><span class="t">Relancer automatiquement un devis sans réponse</span><span class="who"><span class="na">Personne assignée non renseignée</span> · priorité basse · simple</span><span class="dep"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg>Dépend de : Envoyer le devis par email au client (terminée)</span></div><span class="badge ready"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M10 9l5 3-5 3z" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="8"/></svg>Tâche prête</span></li>
+              <li><div><span class="t">Tableau de bord des devis en attente</span><span class="who"><span class="na">Personne assignée non renseignée</span> · priorité normale · moyenne</span><span class="dep"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>En attente de : Transformer un devis validé en commande (à faire)</span></div><span class="badge todo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="8"/></svg>À faire</span></li>
+            </ol>
+          </details>
+
+          <details class="chapter">
+            <summary>
+              <span class="node" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" stroke="none"/></svg></span>
+              <div class="chead"><span class="num" aria-hidden="true">3</span><h2>Suivi des livraisons</h2><span class="status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" stroke="none"/></svg>En cours</span><span class="toggle">Voir les 9 tâches<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></span></div>
+              <div class="cline"><span class="meter"><i style="width:22%"></i></span><span><b>2 / 9</b> tâches terminées · 22 %</span></div>
+            </summary>
+          </details>
+
+          <details class="chapter">
+            <summary>
+              <span class="node todo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="8"/></svg></span>
+              <div class="chead"><span class="num" aria-hidden="true">4</span><h2>Facturation et relances</h2><span class="status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="8"/></svg>À faire</span><span class="toggle">Voir les 7 tâches<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></span></div>
+              <div class="cline"><span class="meter"><i style="width:0%"></i></span><span><b>0 / 7</b> tâches terminées · 0 %</span><span class="dep"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>En attente de : Gestion des devis</span></div>
+            </summary>
+          </details>
+
+        </div>
+        <p class="foot-note">Une question sur l'avancement ? Écrivez à votre équipe de développement, cette page est en lecture seule.</p>
+      </div>
+    </div>
+  </div>
+</article>
+
+<!-- ===================================================================
+     ÉCRAN SECONDAIRE — état vide (premier jour du dérivé), mode clair
+     =================================================================== -->
+<p class="doc-label">Écran secondaire — état vide, mode clair (roadmap encore vide, premier jour du dérivé)</p>
+<article class="frame" aria-label="Maquette de l'état vide en mode clair">
+  <div class="chrome"><i></i><i></i><i></i><div class="url">https://erp.menuiserie-delcourt.example/</div></div>
+  <div class="app short">
+
+    <aside class="sidebar" aria-label="Navigation principale">
+      <div class="brand"><span class="logo" aria-hidden="true">D</span><span>Menuiserie Delcourt<small>ERP · production</small></span></div>
+      <div class="nav-group">Suivi</div>
+      <nav class="nav">
+        <a href="#" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Roadmap</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Journal d'audit</a>
+      </nav>
+      <div class="nav-group">Administration</div>
+      <nav class="nav">
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4a3.5 3.5 0 0 1 0 7M21.5 20a6.5 6.5 0 0 0-5-6.3"/></svg>Utilisateurs</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/></svg>Rôles</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>Langues</a>
+      </nav>
+      <div class="sidebar-foot"><span class="avatar" aria-hidden="true">MD</span><span>Marc Dubois<small>Admin</small></span></div>
+    </aside>
+
+    <div class="main">
+      <header class="header">
+        <span class="crumb">Roadmap</span>
+        <span class="spacer"></span>
+        <button class="btn" type="button" aria-haspopup="menu" aria-expanded="false">
+          <span class="avatar" style="width:26px;height:26px;font-size:11px" aria-hidden="true">MD</span>
+          Marc Dubois
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+      </header>
+
+      <div class="content">
+        <p class="date">Lundi 7 septembre 2026</p>
+        <h1>Bienvenue Marc ! Votre ERP est prêt.</h1>
+        <p class="lede">La roadmap se remplira dès que votre équipe de développement aura planifié les premières epics. Vous n'avez rien à faire pour l'instant.</p>
+        <span class="deploy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v3h16v-3"/></svg>Premier déploiement : <b>lundi 7 septembre 2026, 09 h 15</b></span>
+
+        <div class="empty">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>
+          <h2>Votre roadmap est encore vide</h2>
+          <p>Aucune epic n'a été planifiée pour le moment. Revenez après le prochain déploiement, ou demandez à votre équipe où en est la planification.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</article>
+
+</body>
+</html>

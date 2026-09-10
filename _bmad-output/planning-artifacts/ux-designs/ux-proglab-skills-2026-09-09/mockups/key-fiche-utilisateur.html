@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Écran clé — Fiche utilisateur de Karim Benali, vue par Sophie (Admin)</title>
+<style>
+/* =====================================================================
+   ÉCRAN CLÉ — FICHE UTILISATEUR (app_user_show, /utilisateurs/{id})
+   Karim Benali (rôle User) vue par Sophie Lemaire (Admin).
+   ---------------------------------------------------------------------
+   Sections du spine qui gouvernent cet écran :
+   EXPERIENCE.md
+     · Information Architecture › Surfaces › « Fiche utilisateur »
+     · Component Patterns › Card, Button, Badge, Table, Colonnes prioritaires,
+       Dialog (confirmation destructive), Flash, Alert, Champ de formulaire
+     · State Patterns › Invitation en attente, Invitation expirée,
+       Compte désactivé (vu par un admin), Compte anonymisé
+     · Voice and Tone › « Dialog désactiver », « Dialog anonymiser »
+     · Key Flows › UJ-2 étapes 3-5 + cas limite (renvoyer l'invitation)
+     · Permissions et visibilité › un utilisateur ne s'auto-désactive jamais
+     · Responsive & Platform › < md : colonnes prioritaires Permission · Origine
+   DESIGN.md
+     · Colors (thème neutre, destructive réservé), Typography (h1 display,
+       h2 heading, h3 subheading, badge, meta), Layout & Spacing (content-max
+       1000, card-padding 24, row-padding 14), Components › Card, Badge
+       (origine : Héritée du rôle / Ajoutée / Retirée ; deactivated), Table,
+       Dialog, Alert, Flash, Champ de formulaire, Button, Avatar
+   Frame, sidebar, en-tête, bouton compte : repris de direction-aere.html.
+   Accessibilité (symfony-proglab-accessibility) : état et origine = icône +
+   libellé (1) ; contrastes du thème (2) ; labels réels (3) ; :focus-visible
+   sur tout l'interactif (4) ; aria-label sur les boutons icône-seule (5) ;
+   un seul h1 par page, h2 cartes, h3 groupes, h2 pour le Dialog modal (6) ;
+   aucune action au survol seul (7).
+   Aucun JavaScript, aucune requête réseau, polices système.
+
+   Tokens clair (shadcn neutral)             ≈ hex
+   --background          oklch(1 0 0)          #ffffff
+   --foreground          oklch(0.145 0 0)      #0a0a0a
+   --card                oklch(1 0 0)          #ffffff
+   --muted / --page      oklch(0.97 0 0)       #f5f5f5
+   --muted-foreground    oklch(0.556 0 0)      #737373
+   --muted-strong        oklch(0.439 0 0)      #525252
+   --primary             oklch(0.205 0 0)      #171717
+   --destructive         oklch(0.577 0.245 27) #e7000b
+   --border / --input    oklch(0.922 0 0)      #e5e5e5
+   --ring                oklch(0.708 0 0)      #b5b5b5
+   Tokens sombre : voir .frame.dark ci-dessous (DESIGN.md frontmatter).
+   ===================================================================== */
+
+:root { --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: var(--font); background: #e8e8e8; color: #0a0a0a; padding: 32px; }
+.doc-intro { max-width: 1280px; margin: 0 auto 24px; font-size: 15px; line-height: 1.5; }
+.doc-intro .kicker { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: #525252; margin: 0 0 4px; }
+.doc-intro p { margin: 0 0 6px; }
+.doc-label { max-width: 1280px; margin: 28px auto 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: #525252; }
+.doc-note { max-width: 1280px; margin: 10px auto 0; font-size: 13px; color: #525252; }
+
+.frame, .phone, .mini {
+  --background: oklch(1 0 0); --foreground: oklch(0.145 0 0); --card: oklch(1 0 0);
+  --muted: oklch(0.97 0 0); --muted-foreground: oklch(0.556 0 0); --muted-strong: oklch(0.439 0 0);
+  --primary: oklch(0.205 0 0); --primary-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.577 0.245 27.325); --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.922 0 0); --input: oklch(0.922 0 0); --ring: oklch(0.708 0 0);
+  --sidebar: oklch(0.985 0 0); --sidebar-accent: oklch(0.94 0 0); --accent: oklch(0.97 0 0);
+  --page: oklch(0.97 0 0);
+}
+.frame.dark {
+  --background: oklch(0.145 0 0); --foreground: oklch(0.985 0 0); --card: oklch(0.205 0 0);
+  --muted: oklch(0.269 0 0); --muted-foreground: oklch(0.708 0 0); --muted-strong: oklch(0.80 0 0);
+  --primary: oklch(0.922 0 0); --primary-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.704 0.191 22.216); --destructive-foreground: oklch(0.145 0 0);
+  --border: oklch(1 0 0 / 10%); --input: oklch(0.269 0 0); --ring: oklch(0.556 0 0);
+  --sidebar: oklch(0.205 0 0); --sidebar-accent: oklch(0.269 0 0); --accent: oklch(0.269 0 0);
+  --page: oklch(0.145 0 0);
+}
+
+.frame { width: 1280px; margin: 0 auto; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 30px rgba(0,0,0,.18); background: var(--page); color: var(--foreground); font-size: 15px; line-height: 1.5; position: relative; }
+.chrome { height: 38px; background: #d9d9d9; display: flex; align-items: center; gap: 8px; padding: 0 12px; }
+.frame.dark .chrome { background: #2b2b2b; }
+.chrome i { width: 11px; height: 11px; border-radius: 50%; background: #b3b3b3; display: inline-block; }
+.chrome .url { flex: 1; margin-left: 10px; height: 24px; border-radius: 6px; background: #f2f2f2; color: #444; font-size: 12px; display: flex; align-items: center; padding: 0 10px; }
+.frame.dark .chrome .url { background: #1c1c1c; color: #bdbdbd; }
+
+.app { display: grid; grid-template-columns: 248px 1fr; min-height: 820px; }
+
+/* Sidebar (direction Aéré) */
+.sidebar { background: var(--sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 16px 12px; }
+.brand { display: flex; align-items: center; gap: 10px; padding: 4px 8px 18px; font-weight: 600; }
+.brand .logo { width: 32px; height: 32px; border-radius: 8px; background: var(--primary); color: var(--primary-foreground); display: grid; place-items: center; font-size: 12px; font-weight: 600; }
+.brand small { display: block; font-weight: 400; color: var(--muted-foreground); font-size: 12px; }
+.nav-group { font-size: 12px; color: var(--muted-foreground); padding: 10px 10px 6px; }
+.nav a { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; color: var(--foreground); text-decoration: none; }
+.nav a[aria-current="page"] { background: var(--sidebar-accent); font-weight: 600; }
+.nav a svg { width: 18px; height: 18px; flex: none; }
+.sidebar-foot { margin-top: auto; border-top: 1px solid var(--border); padding-top: 14px; display: flex; align-items: center; gap: 10px; font-size: 14px; }
+.avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--primary); color: var(--primary-foreground); display: grid; place-items: center; font-size: 12px; font-weight: 600; flex: none; }
+.sidebar-foot small { display: block; color: var(--muted-foreground); font-size: 12px; }
+
+/* En-tête */
+.main { min-width: 0; display: flex; flex-direction: column; }
+.header { height: 60px; display: flex; align-items: center; padding: 0 32px; gap: 12px; background: var(--page); }
+.header .spacer { flex: 1; }
+.btn-account { font: inherit; display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--border); background: var(--card); color: var(--foreground); border-radius: 999px; height: 38px; padding: 0 14px 0 6px; cursor: pointer; }
+.btn-account svg { width: 16px; height: 16px; }
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+
+/* Contenu */
+.content { padding: 8px 32px 40px; max-width: 1000px; }
+.back { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--muted-strong); text-decoration: none; margin: 4px 0 14px; }
+.back svg { width: 15px; height: 15px; }
+.title { margin: 0 0 24px; }
+.title-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+h1 { font-size: 30px; font-weight: 600; letter-spacing: -0.02em; margin: 0; line-height: 1.2; }
+.lead { margin: 6px 0 0; color: var(--muted-strong); font-size: 16px; }
+
+/* Boutons (kit shadcn) */
+.btn { font: inherit; font-size: 14px; font-weight: 500; display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 14px; border-radius: 8px; border: 1px solid transparent; cursor: pointer; text-decoration: none; white-space: nowrap; }
+.btn svg { width: 16px; height: 16px; }
+.btn-primary { background: var(--primary); color: var(--primary-foreground); }
+.btn-outline { background: var(--card); color: var(--foreground); border-color: var(--border); }
+.btn-ghost { background: transparent; color: var(--foreground); }
+.btn-destructive { background: var(--destructive); color: var(--destructive-foreground); }
+.btn-icon { width: 38px; padding: 0; justify-content: center; }
+.btn-sm { height: 32px; padding: 0 12px; font-size: 13px; }
+
+/* Cartes de section */
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; margin-bottom: 14px; }
+.card h2 { font-size: 18px; font-weight: 600; margin: 0 0 4px; }
+.card h3 { font-size: 15px; font-weight: 600; margin: 18px 0 0; }
+.card .desc { margin: 0 0 16px; color: var(--muted-foreground); font-size: 14px; }
+.dl { display: grid; grid-template-columns: 180px 1fr; row-gap: 12px; column-gap: 16px; margin: 0; }
+.dl dt { color: var(--muted-foreground); font-size: 14px; }
+.dl dd { margin: 0; }
+.dl dd small { display: block; color: var(--muted-foreground); font-size: 13px; }
+.block { border-top: 1px solid var(--border); margin-top: 18px; padding-top: 18px; }
+.block-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
+.block-row p { margin: 0; }
+.block-row .hint { color: var(--muted-foreground); font-size: 13px; margin-top: 4px; max-width: 520px; }
+.actions { display: flex; gap: 10px; flex-wrap: wrap; flex: none; }
+.state { display: inline-flex; align-items: center; gap: 6px; }
+.state svg { width: 15px; height: 15px; flex: none; }
+
+/* Formulaire */
+.field { max-width: 480px; margin: 0 0 14px; }
+.field label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 6px; }
+.field input, .field select { font: inherit; font-size: 15px; height: 38px; width: 100%; border: 1px solid var(--input); border-radius: 8px; background: var(--background); color: var(--foreground); padding: 0 12px; }
+.field .help { margin: 6px 0 0; color: var(--muted-foreground); font-size: 13px; }
+.form-row { display: flex; align-items: flex-end; gap: 10px; max-width: 480px; }
+.form-row .field { flex: 1; margin: 0; }
+
+/* Badges */
+.badge { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px; font-size: 13px; font-weight: 500; border: 1px solid var(--border); white-space: nowrap; }
+.badge svg { width: 13px; height: 13px; }
+.badge.done { background: var(--primary); color: var(--primary-foreground); border-color: var(--primary); }
+.badge.todo { color: var(--muted-strong); border-style: dashed; }
+.badge.deactivated { background: var(--muted); color: var(--muted-strong); }
+
+/* Tableau (même rythme que les cartes) */
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; font-size: 13px; font-weight: 400; color: var(--muted-foreground); padding: 6px 0 8px; border-bottom: 1px solid var(--border); }
+td { padding: 14px 0; border-bottom: 1px solid var(--border); vertical-align: middle; font-size: 15px; }
+tr:last-child td { border-bottom: 0; }
+td.act { text-align: right; white-space: nowrap; }
+th.act { text-align: right; }
+
+/* Flash / Alert */
+.alert { display: flex; gap: 14px; align-items: flex-start; background: var(--card); border: 1px solid var(--border); border-left: 4px solid var(--foreground); border-radius: 10px; padding: 14px 18px; margin: 0 0 24px; }
+.alert > svg { width: 20px; height: 20px; flex: none; margin-top: 2px; }
+.alert .body { flex: 1; }
+.alert p { margin: 0; color: var(--muted-strong); font-size: 14px; }
+.alert p b { color: var(--foreground); font-weight: 500; }
+.alert.destructive { border-left-color: var(--destructive); }
+.alert.destructive > svg { color: var(--destructive); }
+.alert .btn-icon { height: 32px; width: 32px; margin: -6px -8px -6px 0; }
+
+/* Dialog */
+.veil { position: absolute; left: 0; right: 0; top: 38px; bottom: 0; background: rgba(0,0,0,.4); display: grid; place-items: center; }
+.dialog { width: 480px; background: var(--card); color: var(--foreground); border: 1px solid var(--border); border-radius: 12px; padding: 24px; box-shadow: 0 16px 48px rgba(0,0,0,.28); }
+.dialog h2 { font-size: 18px; font-weight: 600; margin: 0 0 8px; }
+.dialog p { margin: 0 0 14px; font-size: 15px; }
+.dialog .field { max-width: none; margin-top: 18px; }
+.dialog-foot { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
+
+/* Téléphone (< md) */
+.phone { width: 390px; margin: 0 auto; border-radius: 28px; overflow: hidden; box-shadow: 0 8px 30px rgba(0,0,0,.18); background: var(--page); color: var(--foreground); font-size: 15px; line-height: 1.5; border: 8px solid #2a2a2a; }
+.phone .header { height: 60px; padding: 0 16px; gap: 10px; }
+.phone .header .brand { padding: 0; gap: 8px; }
+.phone .content { padding: 8px 16px 32px; }
+.phone .title { margin-bottom: 18px; }
+.phone .card { padding: 20px; }
+.phone td, .phone th { font-size: 14px; }
+.phone .row-link { display: grid; grid-template-columns: 1fr auto 18px; gap: 10px; align-items: center; text-decoration: none; color: inherit; }
+.phone .row-link svg.chev { width: 18px; height: 18px; color: var(--muted-foreground); }
+
+/* Mini-frame (variante d'état sans coque) */
+.mini { width: 1000px; margin: 0 auto; background: var(--page); color: var(--foreground); border-radius: 12px; padding: 24px 32px; box-shadow: 0 8px 30px rgba(0,0,0,.18); font-size: 15px; line-height: 1.5; }
+.mini .title { margin-bottom: 18px; }
+
+.two { display: grid; grid-template-columns: 1fr 390px; gap: 32px; max-width: 1280px; margin: 0 auto; align-items: start; }
+.two .mini { width: auto; }
+</style>
+</head>
+<body>
+
+<div class="doc-intro">
+  <p class="kicker">Écran clé 1 / 3 — Fiche utilisateur</p>
+  <p><strong>Ce que montre la maquette.</strong> Sophie Lemaire (Admin) ouvre la fiche de Karim Benali (User) juste après lui avoir ajouté la permission « Consulter le journal d'audit » (UJ-2, étapes 3 à 5). Trois cartes : Identité, Permissions, Sécurité. Chaque permission porte son état effectif et son origine ; une surcharge se défait avec « Revenir à l'héritage ».</p>
+  <p>États rendus : <em>compte actif + Flash</em> (clair) ; <em>compte désactivé</em> avec « Réactiver » et « Anonymiser » (sombre) ; <em>Dialog « Anonymiser Karim Benali ? »</em> ; <em>invitation en attente</em> ; <em>téléphone</em> (colonnes prioritaires Permission · Origine). Sur sa propre fiche, un utilisateur ne voit ni « Désactiver », ni « Anonymiser », ni le sélecteur de rôle.</p>
+</div>
+
+<!-- ===================================================================
+     MODE CLAIR — Karim actif, permission « journal d'audit » ajoutée
+     =================================================================== -->
+<p class="doc-label">Mode clair — compte actif, Flash après ajout d'une permission (UJ-2, point culminant)</p>
+<article class="frame" aria-label="Maquette en mode clair">
+  <div class="chrome"><i></i><i></i><i></i><div class="url">https://erp.menuiserie-delcourt.example/utilisateurs/12</div></div>
+  <div class="app">
+
+    <aside class="sidebar" aria-label="Navigation principale">
+      <div class="brand"><span class="logo" aria-hidden="true">MD</span><span>Menuiserie Delcourt<small>ERP · production</small></span></div>
+      <div class="nav-group">Suivi</div>
+      <nav class="nav">
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Roadmap</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Journal d'audit</a>
+      </nav>
+      <div class="nav-group">Administration</div>
+      <nav class="nav">
+        <a href="#" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4a3.5 3.5 0 0 1 0 7M21.5 20a6.5 6.5 0 0 0-5-6.3"/></svg>Utilisateurs</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/></svg>Rôles</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>Langues</a>
+      </nav>
+      <div class="sidebar-foot"><span class="avatar" aria-hidden="true">SL</span><span>Sophie Lemaire<small>Admin</small></span></div>
+    </aside>
+
+    <div class="main">
+      <header class="header">
+        <span class="spacer"></span>
+        <button class="btn-account" type="button" aria-haspopup="menu" aria-expanded="false">
+          <span class="avatar" style="width:26px;height:26px;font-size:11px" aria-hidden="true">SL</span>
+          Sophie Lemaire
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+      </header>
+
+      <div class="content">
+        <a class="back" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M19 12H5m7-7l-7 7 7 7"/></svg>Utilisateurs</a>
+        <div class="title">
+          <div class="title-row">
+            <h1>Karim Benali</h1>
+            <span class="badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg>Actif</span>
+          </div>
+          <p class="lead">Rôle User · karim.benali@menuiserie-delcourt.example</p>
+        </div>
+
+        <!-- Flash succès après redirection (UJ-2, étape 4) -->
+        <div class="alert" role="status">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>
+          <div class="body"><p><b>Permission ajoutée pour Karim Benali.</b> Il verra « Journal d'audit » dans sa navigation dès sa prochaine page.</p></div>
+          <button class="btn btn-ghost btn-icon" type="button" aria-label="Fermer ce message"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+        </div>
+
+        <!-- Identité -->
+        <section class="card" aria-labelledby="h-identite">
+          <h2 id="h-identite">Identité</h2>
+          <p class="desc">Les informations saisies à l'invitation. Karim peut changer sa langue et son mot de passe depuis son profil.</p>
+          <dl class="dl">
+            <dt>Prénom</dt><dd>Karim</dd>
+            <dt>Nom</dt><dd>Benali</dd>
+            <dt>Email</dt><dd>karim.benali@menuiserie-delcourt.example</dd>
+            <dt>Langue</dt><dd>Français</dd>
+            <dt>Membre depuis</dt><dd>jeudi 3 septembre 2026<small>Invitation acceptée le jour même.</small></dd>
+          </dl>
+
+          <div class="block">
+            <form class="form-row" action="#" method="post">
+              <div class="field">
+                <label for="role">Rôle</label>
+                <select id="role" name="role">
+                  <option>Super admin</option>
+                  <option>Admin</option>
+                  <option selected>User</option>
+                </select>
+              </div>
+              <button class="btn btn-primary" type="submit">Enregistrer</button>
+            </form>
+            <p class="help" style="margin:8px 0 0;color:var(--muted-foreground);font-size:13px">Les permissions du nouveau rôle s'appliquent à la prochaine page de Karim, sauf là où une surcharge existe.</p>
+          </div>
+
+          <div class="block block-row">
+            <div>
+              <p><span class="state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg><b style="font-weight:500">Compte actif</b></span> — dernière connexion mardi 8 septembre 2026 à 9 h 15.</p>
+              <p class="hint">Désactiver ne supprime rien : Karim ne pourra plus se connecter, ses sessions seront closes, et vous pourrez le réactiver.</p>
+            </div>
+            <div class="actions"><button class="btn btn-outline" type="button" aria-haspopup="dialog">Désactiver</button></div>
+          </div>
+        </section>
+
+        <!-- Permissions (FR-8, FR-9) -->
+        <section class="card" aria-labelledby="h-perms">
+          <h2 id="h-perms">Permissions</h2>
+          <p class="desc">Toutes les permissions du dérivé, avec ce que Karim peut faire et pourquoi. Une surcharge l'emporte sur le rôle ; « Revenir à l'héritage » l'annule.</p>
+
+          <h3>Suivi</h3>
+          <table>
+            <thead><tr><th scope="col" style="width:44%">Permission</th><th scope="col" style="width:18%">État</th><th scope="col" style="width:20%">Origine</th><th scope="col" class="act"><span style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Action</span></th></tr></thead>
+            <tbody>
+              <tr>
+                <td>Voir la roadmap</td>
+                <td><span class="state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg>Accordée</span></td>
+                <td><span class="badge">Héritée du rôle</span></td>
+                <td class="act"><button class="btn btn-outline btn-sm" type="button">Retirer</button></td>
+              </tr>
+              <tr>
+                <td>Consulter le journal d'audit</td>
+                <td><span class="state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg>Accordée</span></td>
+                <td><span class="badge done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Ajoutée</span></td>
+                <td class="act"><button class="btn btn-outline btn-sm" type="button">Revenir à l'héritage</button></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3>Administration</h3>
+          <table>
+            <thead><tr><th scope="col" style="width:44%">Permission</th><th scope="col" style="width:18%">État</th><th scope="col" style="width:20%">Origine</th><th scope="col" class="act"><span style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Action</span></th></tr></thead>
+            <tbody>
+              <tr>
+                <td>Administrer les comptes</td>
+                <td><span class="state" style="color:var(--muted-strong)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg>Refusée</span></td>
+                <td><span class="badge">Héritée du rôle</span></td>
+                <td class="act"><button class="btn btn-outline btn-sm" type="button">Ajouter</button></td>
+              </tr>
+              <tr>
+                <td>Administrer les permissions</td>
+                <td><span class="state" style="color:var(--muted-strong)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg>Refusée</span></td>
+                <td><span class="badge">Héritée du rôle</span></td>
+                <td class="act"><button class="btn btn-outline btn-sm" type="button">Ajouter</button></td>
+              </tr>
+              <tr>
+                <td>Lancer une tâche en développement</td>
+                <td><span class="state" style="color:var(--muted-strong)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg>Refusée</span></td>
+                <td><span class="badge">Héritée du rôle</span></td>
+                <td class="act"><button class="btn btn-outline btn-sm" type="button">Ajouter</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <!-- Sécurité (FR-5) -->
+        <section class="card" aria-labelledby="h-secu">
+          <h2 id="h-secu">Sécurité</h2>
+          <p class="desc">Ce que vous pouvez faire si Karim n'a plus accès à son second facteur.</p>
+          <div class="block-row">
+            <div>
+              <p><span class="state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M9 12l2 2 4-4"/></svg><b style="font-weight:500">Double authentification active</b></span> — application d'authentification, depuis le 4 septembre 2026.</p>
+              <p class="hint">Réinitialiser efface son second facteur et ses codes de secours. Karim devra réactiver la double authentification à sa prochaine connexion. L'opération est inscrite au journal d'audit.</p>
+            </div>
+            <div class="actions"><button class="btn btn-outline" type="button" aria-haspopup="dialog">Réinitialiser la 2FA</button></div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+</article>
+<p class="doc-note">Sur sa propre fiche, un utilisateur ne voit ni « Désactiver », ni « Anonymiser », ni le sélecteur de rôle : seul un autre administrateur peut agir (EXPERIENCE.md · Permissions et visibilité).</p>
+
+<!-- ===================================================================
+     MODE SOMBRE — Karim désactivé : Réactiver / Anonymiser, une permission retirée
+     =================================================================== -->
+<p class="doc-label">Mode sombre — compte désactivé (FR-6) : « Réactiver » et « Anonymiser », badge « Compte désactivé », origine « Retirée »</p>
+<article class="frame dark" aria-label="Maquette en mode sombre">
+  <div class="chrome"><i></i><i></i><i></i><div class="url">https://erp.menuiserie-delcourt.example/utilisateurs/12</div></div>
+  <div class="app">
+
+    <aside class="sidebar" aria-label="Navigation principale">
+      <div class="brand"><span class="logo" aria-hidden="true">MD</span><span>Menuiserie Delcourt<small>ERP · production</small></span></div>
+      <div class="nav-group">Suivi</div>
+      <nav class="nav">
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Roadmap</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Journal d'audit</a>
+      </nav>
+      <div class="nav-group">Administration</div>
+      <nav class="nav">
+        <a href="#" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4a3.5 3.5 0 0 1 0 7M21.5 20a6.5 6.5 0 0 0-5-6.3"/></svg>Utilisateurs</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/></svg>Rôles</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>Langues</a>
+      </nav>
+      <div class="sidebar-foot"><span class="avatar" aria-hidden="true">SL</span><span>Sophie Lemaire<small>Admin</small></span></div>
+    </aside>
+
+    <div class="main">
+      <header class="header">
+        <span class="spacer"></span>
+        <button class="btn-account" type="button" aria-haspopup="menu" aria-expanded="false">
+          <span class="avatar" style="width:26px;height:26px;font-size:11px" aria-hidden="true">SL</span>
+          Sophie Lemaire
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+      </header>
+
+      <div class="content">
+        <a class="back" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M19 12H5m7-7l-7 7 7 7"/></svg>Utilisateurs</a>
+        <div class="title">
+          <div class="title-row">
+            <h1>Karim Benali</h1>
+            <span class="badge deactivated"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="10" cy="8" r="3.5"/><path d="M3.5 20a6.5 6.5 0 0 1 11-4.7M4 4l16 16"/></svg>Compte désactivé</span>
+          </div>
+          <p class="lead">Rôle User · karim.benali@menuiserie-delcourt.example</p>
+        </div>
+
+        <section class="card" aria-labelledby="d-identite">
+          <h2 id="d-identite">Identité</h2>
+          <p class="desc">Les informations saisies à l'invitation. Rien n'a été supprimé : le journal d'audit et les objets créés par Karim le désignent toujours par son nom.</p>
+          <dl class="dl">
+            <dt>Prénom</dt><dd>Karim</dd>
+            <dt>Nom</dt><dd>Benali</dd>
+            <dt>Email</dt><dd>karim.benali@menuiserie-delcourt.example</dd>
+            <dt>Langue</dt><dd>Français</dd>
+            <dt>Membre depuis</dt><dd>jeudi 3 septembre 2026</dd>
+          </dl>
+
+          <div class="block">
+            <form class="form-row" action="#" method="post">
+              <div class="field">
+                <label for="role-d">Rôle</label>
+                <select id="role-d" name="role">
+                  <option>Super admin</option>
+                  <option>Admin</option>
+                  <option selected>User</option>
+                </select>
+              </div>
+              <button class="btn btn-primary" type="submit">Enregistrer</button>
+            </form>
+            <p style="margin:8px 0 0;color:var(--muted-foreground);font-size:13px">Le rôle s'appliquera si Karim est réactivé.</p>
+          </div>
+
+          <div class="block block-row">
+            <div>
+              <p><span class="state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="10" cy="8" r="3.5"/><path d="M3.5 20a6.5 6.5 0 0 1 11-4.7M4 4l16 16"/></svg><b style="font-weight:500">Désactivé le 9 septembre 2026</b></span> par Sophie Lemaire. Ses sessions ont été closes.</p>
+              <p class="hint">Réactiver lui rend l'accès avec son rôle et ses surcharges. Anonymiser remplace son nom et son email par « Utilisateur anonymisé #12 » partout — c'est irréversible et réservé à une demande d'effacement.</p>
+            </div>
+            <div class="actions">
+              <button class="btn btn-outline" type="button" aria-haspopup="dialog">Réactiver</button>
+              <button class="btn btn-outline" type="button" aria-haspopup="dialog">Anonymiser</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="card" aria-labelledby="d-perms">
+          <h2 id="d-perms">Permissions</h2>
+          <p class="desc">Sans effet tant que le compte est désactivé ; elles s'appliqueront de nouveau à la réactivation.</p>
+
+          <h3>Suivi</h3>
+          <table>
+            <thead><tr><th scope="col" style="width:44%">Permission</th><th scope="col" style="width:18%">État</th><th scope="col" style="width:20%">Origine</th><th scope="col" class="act"><span style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Action</span></th></tr></thead>
+            <tbody>
+              <tr>
+                <td>Voir la roadmap</td>
+                <td><span class="state" style="color:var(--muted-strong)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg>Refusée</span></td>
+                <td><span class="badge todo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12h14"/></svg>Retirée</span></td>
+                <td class="act"><button class="btn btn-outline btn-sm" type="button">Revenir à l'héritage</button></td>
+              </tr>
+              <tr>
+                <td>Consulter le journal d'audit</td>
+                <td><span class="state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg>Accordée</span></td>
+                <td><span class="badge done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Ajoutée</span></td>
+                <td class="act"><button class="btn btn-outline btn-sm" type="button">Revenir à l'héritage</button></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3>Administration</h3>
+          <table>
+            <thead><tr><th scope="col" style="width:44%">Permission</th><th scope="col" style="width:18%">État</th><th scope="col" style="width:20%">Origine</th><th scope="col" class="act"><span style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Action</span></th></tr></thead>
+            <tbody>
+              <tr>
+                <td>Administrer les comptes</td>
+                <td><span class="state" style="color:var(--muted-strong)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg>Refusée</span></td>
+                <td><span class="badge">Héritée du rôle</span></td>
+                <td class="act"><button class="btn btn-outline btn-sm" type="button">Ajouter</button></td>
+              </tr>
+              <tr>
+                <td>Administrer les permissions</td>
+                <td><span class="state" style="color:var(--muted-strong)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg>Refusée</span></td>
+                <td><span class="badge">Héritée du rôle</span></td>
+                <td class="act"><button class="btn btn-outline btn-sm" type="button">Ajouter</button></td>
+              </tr>
+              <tr>
+                <td>Lancer une tâche en développement</td>
+                <td><span class="state" style="color:var(--muted-strong)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg>Refusée</span></td>
+                <td><span class="badge">Héritée du rôle</span></td>
+                <td class="act"><button class="btn btn-outline btn-sm" type="button">Ajouter</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="card" aria-labelledby="d-secu">
+          <h2 id="d-secu">Sécurité</h2>
+          <p class="desc">Ce que vous pouvez faire si Karim n'a plus accès à son second facteur.</p>
+          <div class="block-row">
+            <div>
+              <p><span class="state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M9 12l2 2 4-4"/></svg><b style="font-weight:500">Double authentification active</b></span> — application d'authentification, depuis le 4 septembre 2026.</p>
+              <p class="hint">Réinitialiser efface son second facteur et ses codes de secours. Karim devra réactiver la double authentification à sa prochaine connexion, s'il est réactivé.</p>
+            </div>
+            <div class="actions"><button class="btn btn-outline" type="button" aria-haspopup="dialog">Réinitialiser la 2FA</button></div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+</article>
+
+<!-- ===================================================================
+     ÉTAT ALTERNATIF — Dialog « Anonymiser Karim Benali ? » (FR-20)
+     =================================================================== -->
+<p class="doc-label">État alternatif — Dialog de confirmation « Anonymiser » (irréversible, saisie du mot ANONYMISER, bouton destructif dans le pied seulement)</p>
+<article class="frame" aria-label="Maquette du Dialog Anonymiser" style="min-height:0">
+  <div class="chrome"><i></i><i></i><i></i><div class="url">https://erp.menuiserie-delcourt.example/utilisateurs/12</div></div>
+  <div class="app" style="min-height:560px" aria-hidden="true">
+    <aside class="sidebar" aria-label="Navigation principale">
+      <div class="brand"><span class="logo">MD</span><span>Menuiserie Delcourt<small>ERP · production</small></span></div>
+      <div class="nav-group">Suivi</div>
+      <nav class="nav">
+        <a href="#" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Roadmap</a>
+        <a href="#" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Journal d'audit</a>
+      </nav>
+      <div class="nav-group">Administration</div>
+      <nav class="nav">
+        <a href="#" tabindex="-1" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4a3.5 3.5 0 0 1 0 7M21.5 20a6.5 6.5 0 0 0-5-6.3"/></svg>Utilisateurs</a>
+        <a href="#" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/></svg>Rôles</a>
+        <a href="#" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>Langues</a>
+      </nav>
+      <div class="sidebar-foot"><span class="avatar">SL</span><span>Sophie Lemaire<small>Admin</small></span></div>
+    </aside>
+    <div class="main">
+      <header class="header"><span class="spacer"></span><button class="btn-account" type="button" tabindex="-1"><span class="avatar" style="width:26px;height:26px;font-size:11px">SL</span>Sophie Lemaire<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button></header>
+      <div class="content">
+        <a class="back" href="#" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5m7-7l-7 7 7 7"/></svg>Utilisateurs</a>
+        <div class="title">
+          <div class="title-row"><span style="font-size:30px;font-weight:600;letter-spacing:-0.02em;line-height:1.2">Karim Benali</span><span class="badge deactivated"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="10" cy="8" r="3.5"/><path d="M3.5 20a6.5 6.5 0 0 1 11-4.7M4 4l16 16"/></svg>Compte désactivé</span></div>
+          <p class="lead">Rôle User · karim.benali@menuiserie-delcourt.example</p>
+        </div>
+        <section class="card">
+          <p style="font-size:18px;font-weight:600;margin:0 0 4px">Identité</p>
+          <p class="desc">Les informations saisies à l'invitation. Rien n'a été supprimé : le journal d'audit et les objets créés par Karim le désignent toujours par son nom.</p>
+          <dl class="dl"><dt>Prénom</dt><dd>Karim</dd><dt>Nom</dt><dd>Benali</dd><dt>Email</dt><dd>karim.benali@menuiserie-delcourt.example</dd></dl>
+          <div class="block block-row">
+            <div><p><b style="font-weight:500">Désactivé le 9 septembre 2026</b> par Sophie Lemaire.</p></div>
+            <div class="actions"><button class="btn btn-outline" type="button" tabindex="-1">Réactiver</button><button class="btn btn-outline" type="button" tabindex="-1">Anonymiser</button></div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div class="veil">
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-title" aria-describedby="dlg-desc">
+      <h2 id="dlg-title">Anonymiser Karim Benali ?</h2>
+      <p id="dlg-desc">Son nom et son email seront remplacés par « Utilisateur anonymisé #12 » partout, y compris dans le journal d'audit. <b>Cette action est irréversible.</b></p>
+      <form action="#" method="post">
+        <div class="field">
+          <label for="confirm-word">Saisissez ANONYMISER pour confirmer</label>
+          <input id="confirm-word" name="confirm" type="text" autocomplete="off" required>
+          <p class="help">En majuscules, sans espace.</p>
+        </div>
+        <div class="dialog-foot">
+          <button class="btn btn-outline" type="button">Annuler</button>
+          <button class="btn btn-destructive" type="submit">Anonymiser définitivement</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</article>
+<p class="doc-note">Échap = Annuler ; le focus revient au bouton « Anonymiser » de la fiche. Le bouton de confirmation est un formulaire POST avec jeton CSRF. Un seul Dialog à la fois.</p>
+
+<!-- ===================================================================
+     VARIANTE — invitation en attente (FR-4) + téléphone < md
+     =================================================================== -->
+<p class="doc-label">Variante « invitation en attente » (UJ-2, cas limite) — et largeur téléphone (390 px) : colonnes prioritaires Permission · Origine</p>
+<div class="two">
+
+  <article class="mini" aria-label="Fiche d'un utilisateur invité, avant acceptation">
+    <div class="title">
+      <div class="title-row">
+        <span style="font-size:30px;font-weight:600;letter-spacing:-0.02em;line-height:1.2">Karim Benali</span>
+        <span class="badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>Invitation en attente</span>
+      </div>
+      <p class="lead">Rôle User · karim.benali@menuiserie-delcourt.example</p>
+    </div>
+    <div class="alert" role="note" style="margin-bottom:14px">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>
+      <div class="body">
+        <p><b>Karim n'a pas encore créé son compte.</b> Son invitation, envoyée le 9 septembre 2026, est valable jusqu'au 16 septembre 2026. Renvoyer invalide l'ancien lien.</p>
+      </div>
+      <button class="btn btn-outline" type="button" aria-haspopup="dialog">Renvoyer l'invitation</button>
+    </div>
+    <section class="card" style="margin:0">
+      <p style="font-size:18px;font-weight:600;margin:0 0 4px">Identité</p>
+      <dl class="dl"><dt>Prénom</dt><dd>Karim</dd><dt>Nom</dt><dd>Benali</dd><dt>Email</dt><dd>karim.benali@menuiserie-delcourt.example</dd><dt>Rôle prévu</dt><dd>User</dd></dl>
+    </section>
+    <p class="doc-note" style="margin-top:14px;max-width:none">Passé le délai : badge « Invitation expirée », même bouton. Le Dialog dit « Renvoyer l'invitation à Karim ? L'ancien lien sera invalidé. » puis Flash « Invitation renvoyée. » Les cartes Permissions et Sécurité n'apparaissent qu'une fois le compte actif.</p>
+  </article>
+
+  <article class="phone" aria-label="Maquette à la largeur téléphone">
+    <header class="header">
+      <button class="btn btn-ghost btn-icon" type="button" aria-label="Ouvrir la navigation" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+      <span class="brand"><span class="logo" aria-hidden="true">MD</span><span style="font-size:14px">Menuiserie Delcourt</span></span>
+      <span class="spacer"></span>
+      <button class="btn-account" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="Menu du compte de Sophie Lemaire" style="padding:0 6px"><span class="avatar" style="width:26px;height:26px;font-size:11px" aria-hidden="true">SL</span></button>
+    </header>
+    <div class="content">
+      <a class="back" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M19 12H5m7-7l-7 7 7 7"/></svg>Utilisateurs</a>
+      <div class="title">
+        <div class="title-row"><span style="font-size:26px;font-weight:600;letter-spacing:-0.02em;line-height:1.2">Karim Benali</span></div>
+        <div style="margin-top:8px"><span class="badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg>Actif</span></div>
+        <p class="lead" style="font-size:15px">Rôle User</p>
+      </div>
+      <section class="card">
+        <p style="font-size:18px;font-weight:600;margin:0 0 4px">Permissions</p>
+        <p class="desc">Touchez une permission pour voir son état et agir.</p>
+        <table>
+          <thead><tr><th scope="col">Permission</th><th scope="col" class="act">Origine</th></tr></thead>
+          <tbody>
+            <tr><td colspan="2" style="padding:0"><a class="row-link" href="#" style="padding:14px 0"><span>Voir la roadmap</span><span class="badge">Héritée du rôle</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a></td></tr>
+            <tr><td colspan="2" style="padding:0"><a class="row-link" href="#" style="padding:14px 0"><span>Consulter le journal d'audit</span><span class="badge done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Ajoutée</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a></td></tr>
+            <tr><td colspan="2" style="padding:0"><a class="row-link" href="#" style="padding:14px 0"><span>Administrer les comptes</span><span class="badge">Héritée du rôle</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a></td></tr>
+            <tr><td colspan="2" style="padding:0"><a class="row-link" href="#" style="padding:14px 0"><span>Administrer les permissions</span><span class="badge">Héritée du rôle</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a></td></tr>
+            <tr><td colspan="2" style="padding:0"><a class="row-link" href="#" style="padding:14px 0"><span>Lancer une tâche en développement</span><span class="badge">Héritée du rôle</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a></td></tr>
+          </tbody>
+        </table>
+        <!-- [NOTE FOR UX] Sous md, EXPERIENCE.md · Colonnes prioritaires fixe « Permission · Origine »
+             et « la ligne reste tapable et ouvre le détail » sans dire où s'ouvre le détail d'une
+             permission (pleine page ? Sheet ?). La maquette montre la ligne-lien avec chevron ;
+             la cible reste à trancher dans le spine. -->
+      </section>
+      <section class="card" style="margin:0">
+        <p style="font-size:18px;font-weight:600;margin:0 0 4px">Sécurité</p>
+        <p style="margin:0"><span class="state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M9 12l2 2 4-4"/></svg>Double authentification active</span></p>
+        <div class="actions" style="margin-top:14px"><button class="btn btn-outline" type="button" style="height:44px">Réinitialiser la 2FA</button></div>
+      </section>
+    </div>
+  </article>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Direction « Aéré » — Roadmap, accueil de Marc (Admin, production)</title>
+<style>
+/* =====================================================================
+   DIRECTION « AÉRÉ » — cartes respirantes, une epic = une carte
+   ---------------------------------------------------------------------
+   Thème : shadcn « neutral » par défaut (white-label), tokens oklch.
+   Aucune couleur de marque. Statuts : icône + libellé, jamais la couleur
+   seule. Mouvement suggéré : dépliage en 200 ms (ease-out), chevron 150 ms,
+   barre d'avancement animée au chargement (600 ms) — respecte
+   prefers-reduced-motion (durées à 0).
+
+   Tokens clair (shadcn neutral)             ≈ hex
+   --background          oklch(1 0 0)          #ffffff
+   --foreground          oklch(0.145 0 0)      #0a0a0a
+   --card                oklch(1 0 0)          #ffffff
+   --muted               oklch(0.97 0 0)       #f5f5f5   (fond de page ici)
+   --muted-foreground    oklch(0.556 0 0)      #737373  (4,74:1 sur blanc)
+   --muted-strong        oklch(0.439 0 0)      #525252  (6,9:1 sur #f5f5f5)
+   --primary             oklch(0.205 0 0)      #171717
+   --primary-foreground  oklch(0.985 0 0)      #fafafa
+   --border              oklch(0.922 0 0)      #e5e5e5
+   --ring                oklch(0.708 0 0)      #b5b5b5
+   --sidebar             oklch(0.985 0 0)      #fafafa
+
+   Tokens sombre (shadcn neutral)            ≈ hex
+   --background          oklch(0.145 0 0)      #0a0a0a
+   --foreground          oklch(0.985 0 0)      #fafafa
+   --card                oklch(0.205 0 0)      #171717
+   --muted               oklch(0.269 0 0)      #262626
+   --muted-foreground    oklch(0.708 0 0)      #a3a3a3
+   --muted-strong        oklch(0.80 0 0)       #c4c4c4
+   --primary             oklch(0.922 0 0)      #e5e5e5
+   --primary-foreground  oklch(0.205 0 0)      #171717
+   --border              oklch(1 0 0 / 10%)
+   --ring                oklch(0.556 0 0)      #737373
+   --sidebar             oklch(0.205 0 0)      #171717
+   ===================================================================== */
+
+:root { --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: var(--font); background: #e8e8e8; color: #0a0a0a; padding: 32px; }
+.doc-intro { max-width: 1280px; margin: 0 auto 24px; font-size: 15px; line-height: 1.5; }
+.doc-intro .kicker { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: #525252; margin: 0 0 4px; }
+.doc-intro p { margin: 0 0 6px; }
+.doc-label { max-width: 1280px; margin: 28px auto 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: #525252; }
+
+.frame {
+  --background: oklch(1 0 0); --foreground: oklch(0.145 0 0); --card: oklch(1 0 0);
+  --muted: oklch(0.97 0 0); --muted-foreground: oklch(0.556 0 0); --muted-strong: oklch(0.439 0 0);
+  --primary: oklch(0.205 0 0); --primary-foreground: oklch(0.985 0 0);
+  --border: oklch(0.922 0 0); --ring: oklch(0.708 0 0); --sidebar: oklch(0.985 0 0); --sidebar-accent: oklch(0.94 0 0);
+  --track: oklch(0.922 0 0); --page: oklch(0.97 0 0);
+}
+.frame.dark {
+  --background: oklch(0.145 0 0); --foreground: oklch(0.985 0 0); --card: oklch(0.205 0 0);
+  --muted: oklch(0.269 0 0); --muted-foreground: oklch(0.708 0 0); --muted-strong: oklch(0.80 0 0);
+  --primary: oklch(0.922 0 0); --primary-foreground: oklch(0.205 0 0);
+  --border: oklch(1 0 0 / 10%); --ring: oklch(0.556 0 0); --sidebar: oklch(0.205 0 0); --sidebar-accent: oklch(0.269 0 0);
+  --track: oklch(0.32 0 0); --page: oklch(0.145 0 0);
+}
+
+.frame { width: 1280px; margin: 0 auto; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 30px rgba(0,0,0,.18); background: var(--page); color: var(--foreground); font-size: 15px; line-height: 1.5; }
+.chrome { height: 38px; background: #d9d9d9; display: flex; align-items: center; gap: 8px; padding: 0 12px; }
+.frame.dark .chrome { background: #2b2b2b; }
+.chrome i { width: 11px; height: 11px; border-radius: 50%; background: #b3b3b3; display: inline-block; }
+.chrome .url { flex: 1; margin-left: 10px; height: 24px; border-radius: 6px; background: #f2f2f2; color: #444; font-size: 12px; display: flex; align-items: center; padding: 0 10px; }
+.frame.dark .chrome .url { background: #1c1c1c; color: #bdbdbd; }
+
+.app { display: grid; grid-template-columns: 248px 1fr; min-height: 820px; }
+
+/* Sidebar */
+.sidebar { background: var(--sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 16px 12px; }
+.brand { display: flex; align-items: center; gap: 10px; padding: 4px 8px 18px; font-weight: 600; }
+.brand .logo { width: 32px; height: 32px; border-radius: 8px; background: var(--primary); color: var(--primary-foreground); display: grid; place-items: center; font-size: 12px; font-weight: 700; }
+.brand small { display: block; font-weight: 400; color: var(--muted-foreground); font-size: 12px; }
+.nav-group { font-size: 12px; color: var(--muted-foreground); padding: 10px 10px 6px; }
+.nav a { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; color: var(--foreground); text-decoration: none; }
+.nav a[aria-current="page"] { background: var(--sidebar-accent); font-weight: 600; }
+.nav a svg { width: 18px; height: 18px; flex: none; }
+.sidebar-foot { margin-top: auto; border-top: 1px solid var(--border); padding-top: 14px; display: flex; align-items: center; gap: 10px; font-size: 14px; }
+.avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--primary); color: var(--primary-foreground); display: grid; place-items: center; font-size: 12px; font-weight: 600; flex: none; }
+.sidebar-foot small { display: block; color: var(--muted-foreground); font-size: 12px; }
+
+/* Header */
+.main { min-width: 0; display: flex; flex-direction: column; }
+.header { height: 60px; display: flex; align-items: center; padding: 0 32px; gap: 12px; background: var(--page); }
+.header .spacer { flex: 1; }
+.btn { font: inherit; display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--border); background: var(--card); color: var(--foreground); border-radius: 999px; height: 38px; padding: 0 14px 0 6px; cursor: pointer; }
+.btn svg { width: 16px; height: 16px; }
+a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+
+/* Contenu */
+.content { padding: 8px 32px 40px; max-width: 1000px; }
+.hello { margin: 12px 0 28px; }
+h1 { font-size: 30px; font-weight: 600; letter-spacing: -0.02em; margin: 0 0 6px; }
+.hello p { margin: 0; color: var(--muted-strong); font-size: 16px; }
+.deploy { display: inline-flex; align-items: center; gap: 8px; margin-top: 12px; padding: 6px 12px; border-radius: 999px; background: var(--card); border: 1px solid var(--border); font-size: 13px; color: var(--muted-strong); }
+.deploy svg { width: 14px; height: 14px; }
+.deploy b { color: var(--foreground); font-weight: 500; }
+
+/* Alerte admin (fichier mal formé) — shadcn Alert */
+.alert { display: flex; gap: 14px; align-items: flex-start; background: var(--card); border: 1px solid var(--border); border-left: 4px solid var(--foreground); border-radius: 10px; padding: 14px 18px; margin: 0 0 24px; }
+.alert svg { width: 20px; height: 20px; flex: none; margin-top: 2px; }
+.alert h2 { margin: 0 0 2px; font-size: 15px; font-weight: 600; }
+.alert p { margin: 0; color: var(--muted-strong); font-size: 14px; }
+.alert code { font-family: ui-monospace, Consolas, monospace; font-size: 13px; background: var(--muted); padding: 1px 5px; border-radius: 4px; color: var(--foreground); }
+.alert a { color: var(--foreground); font-weight: 500; }
+
+/* Cartes epic */
+.cards { display: flex; flex-direction: column; gap: 14px; }
+details.card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; }
+details.card summary { list-style: none; cursor: pointer; padding: 20px 24px; display: grid; grid-template-columns: 1fr 240px 28px; gap: 24px; align-items: center; border-radius: 12px; }
+details.card summary::-webkit-details-marker { display: none; }
+details.card summary:focus-visible { outline-offset: -2px; }
+.ctitle { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.ctitle h2 { font-size: 18px; font-weight: 600; margin: 0; }
+.csub { color: var(--muted-foreground); font-size: 14px; margin-top: 4px; }
+.cdep { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 14px; color: var(--muted-strong); }
+.cdep svg { width: 15px; height: 15px; }
+.prog .top { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted-strong); margin-bottom: 8px; }
+.prog .top b { color: var(--foreground); font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.bar { height: 8px; background: var(--track); border-radius: 4px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--primary); border-radius: 4px; transition: width .6s ease-out; }
+.chev { width: 22px; height: 22px; color: var(--muted-foreground); transition: transform .15s ease; }
+details[open] .chev { transform: rotate(180deg); }
+
+.badge { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px; font-size: 13px; font-weight: 500; border: 1px solid var(--border); white-space: nowrap; }
+.badge svg { width: 13px; height: 13px; }
+.badge.done { background: var(--primary); color: var(--primary-foreground); border-color: var(--primary); }
+.badge.wip { border-color: var(--foreground); }
+.badge.todo { color: var(--muted-strong); border-style: dashed; }
+.badge.ready { background: var(--muted); color: var(--foreground); }
+.badge.err { border-style: dotted; color: var(--muted-strong); }
+
+/* Tâches dépliées */
+.tasks { border-top: 1px solid var(--border); padding: 8px 24px 12px; }
+.task { display: grid; grid-template-columns: 36px 1fr 150px; gap: 16px; align-items: start; padding: 14px 0; border-bottom: 1px solid var(--border); }
+.task:last-child { border-bottom: 0; }
+.task .ico { width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid var(--border); display: grid; place-items: center; }
+.task .ico svg { width: 15px; height: 15px; }
+.task .ico.done { background: var(--primary); color: var(--primary-foreground); border-color: var(--primary); }
+.task .ico.wip { border-color: var(--foreground); }
+.task .ico.todo { border-style: dashed; color: var(--muted-foreground); }
+.task .name { font-weight: 500; font-size: 15px; }
+.task .meta { color: var(--muted-foreground); font-size: 13.5px; margin-top: 3px; }
+.task .meta i { font-style: normal; color: var(--muted-foreground); }
+.task .meta .na { font-style: italic; }
+.task .dep { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 13.5px; color: var(--foreground); background: var(--muted); padding: 3px 10px; border-radius: 999px; }
+.task .dep svg { width: 13px; height: 13px; }
+.task .status { justify-self: end; }
+
+.foot-note { margin-top: 22px; color: var(--muted-foreground); font-size: 13px; }
+
+/* Carte "non lisible" (variante fichier mal formé) */
+details.card.broken { border-style: dashed; background: transparent; }
+details.card.broken .csub { color: var(--muted-strong); }
+</style>
+</head>
+<body>
+
+<div class="doc-intro">
+  <p class="kicker">Direction 2 / 3 — « Aéré »</p>
+  <p><strong>Le rationnel.</strong> Marc n'est pas un utilisateur intensif : il passe une fois par semaine et doit comprendre en cinq secondes. Chaque epic est une carte large qui respire, avec un grand chiffre d'avancement et une phrase courte ; les tâches se déplient en liste lisible plutôt qu'en tableau, avec l'essentiel sur une ligne et le reste en second plan. Le mouvement est doux : dépliage 200 ms, barre qui se remplit au chargement.</p>
+  <p>Variantes montrées : <em>fichier roadmap mal formé → roadmap partielle + avertissement admin</em> en mode clair (Marc est administrateur, il voit l'avertissement) ; état nominal complet en mode sombre. Production : pas de bouton « Lancer », pas de notes internes.</p>
+</div>
+
+<!-- ===================================================================
+     MODE CLAIR — variante : fichier mal formé, roadmap partielle
+     =================================================================== -->
+<p class="doc-label">Mode clair — roadmap partielle avec avertissement administrateur</p>
+<article class="frame" aria-label="Maquette en mode clair">
+  <div class="chrome"><i></i><i></i><i></i><div class="url">https://erp.menuiserie-delcourt.example/</div></div>
+  <div class="app">
+
+    <aside class="sidebar" aria-label="Navigation principale">
+      <div class="brand"><span class="logo" aria-hidden="true">MD</span><span>Menuiserie Delcourt<small>ERP · production</small></span></div>
+      <div class="nav-group">Suivi</div>
+      <nav class="nav">
+        <a href="#" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Roadmap</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Journal d'audit</a>
+      </nav>
+      <div class="nav-group">Administration</div>
+      <nav class="nav">
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4a3.5 3.5 0 0 1 0 7M21.5 20a6.5 6.5 0 0 0-5-6.3"/></svg>Utilisateurs</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/></svg>Rôles</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>Langues</a>
+      </nav>
+      <div class="sidebar-foot"><span class="avatar" aria-hidden="true">MD</span><span>Marc Dubois<small>Admin</small></span></div>
+    </aside>
+
+    <div class="main">
+      <header class="header">
+        <span class="spacer"></span>
+        <button class="btn" type="button" aria-haspopup="menu" aria-expanded="false">
+          <span class="avatar" style="width:26px;height:26px;font-size:11px" aria-hidden="true">MD</span>
+          Marc Dubois
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+      </header>
+
+      <div class="content">
+        <div class="hello">
+          <h1>Bonjour Marc</h1>
+          <p>Voici où en est votre ERP. Ouvrez une epic pour voir ses tâches.</p>
+          <span class="deploy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v3h16v-3"/></svg>Dernier déploiement : <b>mardi 8 septembre 2026 à 18 h 42</b></span>
+        </div>
+
+        <!-- Avertissement visible des administrateurs seulement (FR-14) -->
+        <div class="alert" role="alert">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v4M12 17h.01"/></svg>
+          <div>
+            <h2>Roadmap partielle : une epic n'a pas pu être lue</h2>
+            <p>Le fichier de l'epic « Suivi des livraisons » est mal formé (ligne 14 : statut « shipped » inconnu). Les trois autres epics sont affichées normalement. Seuls les administrateurs voient ce message ; les autres utilisateurs voient la roadmap sans cette epic. <a href="#">Prévenir l'équipe de développement</a></p>
+          </div>
+        </div>
+
+        <div class="cards">
+
+          <details class="card">
+            <summary>
+              <div>
+                <div class="ctitle"><h2>Catalogue produits</h2><span class="badge done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg>Terminé</span></div>
+                <div class="csub">Fiches produits, tarifs et stocks de l'atelier</div>
+              </div>
+              <div class="prog"><div class="top"><span>8 sur 8 tâches terminées</span><b>100 %</b></div><div class="bar"><i style="width:100%"></i></div></div>
+              <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+            </summary>
+          </details>
+
+          <details class="card" open>
+            <summary>
+              <div>
+                <div class="ctitle"><h2>Gestion des devis</h2><span class="badge wip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" stroke="none"/></svg>En cours</span></div>
+                <div class="csub">Créer, envoyer et faire valider un devis</div>
+              </div>
+              <div class="prog"><div class="top"><span>6 sur 10 tâches terminées</span><b>60 %</b></div><div class="bar"><i style="width:60%"></i></div></div>
+              <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+            </summary>
+            <div class="tasks">
+              <div class="task"><span class="ico done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg></span><div><div class="name">Créer un devis depuis une fiche client</div><div class="meta">Léa Martin · priorité normale · simple</div></div><span class="badge done status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg>Terminé</span></div>
+              <div class="task"><span class="ico done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg></span><div><div class="name">Ajouter des lignes de produits au devis</div><div class="meta">Léa Martin · priorité normale · moyenne</div></div><span class="badge done status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg>Terminé</span></div>
+              <div class="task"><span class="ico done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg></span><div><div class="name">Calculer les remises et la TVA</div><div class="meta">Karim Benali · priorité haute · complexe</div></div><span class="badge done status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg>Terminé</span></div>
+              <div class="task"><span class="ico done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg></span><div><div class="name">Générer le devis en PDF</div><div class="meta">Léa Martin · priorité normale · moyenne</div></div><span class="badge done status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg>Terminé</span></div>
+              <div class="task"><span class="ico done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg></span><div><div class="name">Envoyer le devis par email au client</div><div class="meta">Karim Benali · priorité normale · simple</div></div><span class="badge done status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg>Terminé</span></div>
+              <div class="task"><span class="ico done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg></span><div><div class="name">Historique des versions d'un devis</div><div class="meta">Léa Martin · priorité basse · moyenne</div></div><span class="badge done status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg>Terminé</span></div>
+              <div class="task"><span class="ico wip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" stroke="none"/></svg></span><div><div class="name">Validation du devis par le client (signature)</div><div class="meta">Karim Benali · priorité haute · complexe</div></div><span class="badge wip status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" stroke="none"/></svg>En cours</span></div>
+              <div class="task"><span class="ico todo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="8"/></svg></span><div><div class="name">Transformer un devis validé en commande</div><div class="meta"><span class="na">Personne assignée non renseignée</span> · priorité haute · moyenne</div><span class="dep"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>En attente de : Validation du devis par le client (en cours)</span></div><span class="badge todo status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="8"/></svg>À faire</span></div>
+              <div class="task"><span class="ico todo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M10 9l5 3-5 3z" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="8"/></svg></span><div><div class="name">Relancer automatiquement un devis sans réponse</div><div class="meta"><span class="na">Personne assignée non renseignée</span> · priorité basse · simple</div><span class="dep"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg>Dépend de : Envoyer le devis par email au client (terminée)</span></div><span class="badge ready status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M10 9l5 3-5 3z" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="8"/></svg>Tâche prête</span></div>
+              <div class="task"><span class="ico todo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="8"/></svg></span><div><div class="name">Tableau de bord des devis en attente</div><div class="meta"><span class="na">Personne assignée non renseignée</span> · priorité normale · moyenne</div><span class="dep"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>En attente de : Transformer un devis validé en commande (à faire)</span></div><span class="badge todo status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="8"/></svg>À faire</span></div>
+            </div>
+          </details>
+
+          <!-- Epic non lisible : reste à sa place, sans chiffre inventé -->
+          <details class="card broken">
+            <summary>
+              <div>
+                <div class="ctitle"><h2>Suivi des livraisons</h2><span class="badge err"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v4M12 17h.01"/></svg>Non lisible</span></div>
+                <div class="csub">Avancement indisponible tant que le fichier n'est pas corrigé.</div>
+              </div>
+              <div class="prog"><div class="top"><span>Tâches non lues</span><b>—</b></div><div class="bar"></div></div>
+              <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+            </summary>
+          </details>
+
+          <details class="card">
+            <summary>
+              <div>
+                <div class="ctitle"><h2>Facturation et relances</h2><span class="badge todo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="8"/></svg>À faire</span></div>
+                <div class="csub">Factures depuis les commandes, échéances et relances</div>
+                <span class="cdep"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>En attente de : Gestion des devis</span>
+              </div>
+              <div class="prog"><div class="top"><span>0 sur 7 tâches terminées</span><b>0 %</b></div><div class="bar"><i style="width:0%"></i></div></div>
+              <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+            </summary>
+          </details>
+
+        </div>
+
+        <p class="foot-note">Cette page reflète le dernier déploiement, pas le temps réel.</p>
+      </div>
+    </div>
+  </div>
+</article>
+
+<!-- ===================================================================
+     MODE SOMBRE — état nominal
+     =================================================================== -->
+<p class="doc-label">Mode sombre — état nominal, epic « Gestion des devis » dépliée</p>
+<article class="frame dark" aria-label="Maquette en mode sombre">
+  <div class="chrome"><i></i><i></i><i></i><div class="url">https://erp.menuiserie-delcourt.example/</div></div>
+  <div class="app">
+
+    <aside class="sidebar" aria-label="Navigation principale">
+      <div class="brand"><span class="logo" aria-hidden="true">MD</span><span>Menuiserie Delcourt<small>ERP · production</small></span></div>
+      <div class="nav-group">Suivi</div>
+      <nav class="nav">
+        <a href="#" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Roadmap</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Journal d'audit</a>
+      </nav>
+      <div class="nav-group">Administration</div>
+      <nav class="nav">
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4a3.5 3.5 0 0 1 0 7M21.5 20a6.5 6.5 0 0 0-5-6.3"/></svg>Utilisateurs</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/></svg>Rôles</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>Langues</a>
+      </nav>
+      <div class="sidebar-foot"><span class="avatar" aria-hidden="true">MD</span><span>Marc Dubois<small>Admin</small></span></div>
+    </aside>
+
+    <div class="main">
+      <header class="header">
+        <span class="spacer"></span>
+        <button class="btn" type="button" aria-haspopup="menu" aria-expanded="false">
+          <span class="avatar" style="width:26px;height:26px;font-size:11px" aria-hidden="true">MD</span>
+          Marc Dubois
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+      </header>
+
+      <div class="content">
+        <div class="hello">
+          <h1>Bonjour Marc</h1>
+          <p>Voici où en est votre ERP. Ouvrez une epic pour voir ses tâches.</p>
+          <span class="deploy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v3h16v-3"/></svg>Dernier déploiement : <b>mardi 8 septembre 2026 à 18 h 42</b></span>
+        </div>
+
+        <div class="cards">
+
+          <details class="card">
+            <summary>
+              <div>
+                <div class="ctitle"><h2>Catalogue produits</h2><span class="badge done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg>Terminé</span></div>
+                <div class="csub">Fiches produits, tarifs et stocks de l'atelier</div>
+              </div>
+              <div class="prog"><div class="top"><span>8 sur 8 tâches terminées</span><b>100 %</b></div><div class="bar"><i style="width:100%"></i></div></div>
+              <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+            </summary>
+          </details>
+
+          <details class="card" open>
+            <summary>
+              <div>
+                <div class="ctitle"><h2>Gestion des devis</h2><span class="badge wip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" stroke="none"/></svg>En cours</span></div>
+                <div class="csub">Créer, envoyer et faire valider un devis</div>
+              </div>
+              <div class="prog"><div class="top"><span>6 sur 10 tâches terminées</span><b>60 %</b></div><div class="bar"><i style="width:60%"></i></div></div>
+              <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+            </summary>
+            <div class="tasks">
+              <div class="task"><span class="ico done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg></span><div><div class="name">Créer un devis depuis une fiche client</div><div class="meta">Léa Martin · priorité normale · simple</div></div><span class="badge done status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg>Terminé</span></div>
+              <div class="task"><span class="ico done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg></span><div><div class="name">Ajouter des lignes de produits au devis</div><div class="meta">Léa Martin · priorité normale · moyenne</div></div><span class="badge done status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg>Terminé</span></div>
+              <div class="task"><span class="ico done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg></span><div><div class="name">Calculer les remises et la TVA</div><div class="meta">Karim Benali · priorité haute · complexe</div></div><span class="badge done status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg>Terminé</span></div>
+              <div class="task"><span class="ico done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg></span><div><div class="name">Générer le devis en PDF</div><div class="meta">Léa Martin · priorité normale · moyenne</div></div><span class="badge done status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg>Terminé</span></div>
+              <div class="task"><span class="ico done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg></span><div><div class="name">Envoyer le devis par email au client</div><div class="meta">Karim Benali · priorité normale · simple</div></div><span class="badge done status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg>Terminé</span></div>
+              <div class="task"><span class="ico done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg></span><div><div class="name">Historique des versions d'un devis</div><div class="meta">Léa Martin · priorité basse · moyenne</div></div><span class="badge done status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg>Terminé</span></div>
+              <div class="task"><span class="ico wip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" stroke="none"/></svg></span><div><div class="name">Validation du devis par le client (signature)</div><div class="meta">Karim Benali · priorité haute · complexe</div></div><span class="badge wip status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" stroke="none"/></svg>En cours</span></div>
+              <div class="task"><span class="ico todo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="8"/></svg></span><div><div class="name">Transformer un devis validé en commande</div><div class="meta"><span class="na">Personne assignée non renseignée</span> · priorité haute · moyenne</div><span class="dep"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>En attente de : Validation du devis par le client (en cours)</span></div><span class="badge todo status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="8"/></svg>À faire</span></div>
+              <div class="task"><span class="ico todo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M10 9l5 3-5 3z" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="8"/></svg></span><div><div class="name">Relancer automatiquement un devis sans réponse</div><div class="meta"><span class="na">Personne assignée non renseignée</span> · priorité basse · simple</div><span class="dep"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12l5 5L19 7"/></svg>Dépend de : Envoyer le devis par email au client (terminée)</span></div><span class="badge ready status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M10 9l5 3-5 3z" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="8"/></svg>Tâche prête</span></div>
+              <div class="task"><span class="ico todo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="8"/></svg></span><div><div class="name">Tableau de bord des devis en attente</div><div class="meta"><span class="na">Personne assignée non renseignée</span> · priorité normale · moyenne</div><span class="dep"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>En attente de : Transformer un devis validé en commande (à faire)</span></div><span class="badge todo status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="8"/></svg>À faire</span></div>
+            </div>
+          </details>
+
+          <details class="card">
+            <summary>
+              <div>
+                <div class="ctitle"><h2>Suivi des livraisons</h2><span class="badge wip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" stroke="none"/></svg>En cours</span></div>
+                <div class="csub">Bons de livraison, tournées et signature à la réception</div>
+              </div>
+              <div class="prog"><div class="top"><span>2 sur 9 tâches terminées</span><b>22 %</b></div><div class="bar"><i style="width:22%"></i></div></div>
+              <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+            </summary>
+          </details>
+
+          <details class="card">
+            <summary>
+              <div>
+                <div class="ctitle"><h2>Facturation et relances</h2><span class="badge todo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="8"/></svg>À faire</span></div>
+                <div class="csub">Factures depuis les commandes, échéances et relances</div>
+                <span class="cdep"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>En attente de : Gestion des devis</span>
+              </div>
+              <div class="prog"><div class="top"><span>0 sur 7 tâches terminées</span><b>0 %</b></div><div class="bar"><i style="width:0%"></i></div></div>
+              <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+            </summary>
+          </details>
+
+        </div>
+
+        <p class="foot-note">Cette page reflète le dernier déploiement, pas le temps réel.</p>
+      </div>
+    </div>
+  </div>
+</article>
+
+</body>
+</html>
