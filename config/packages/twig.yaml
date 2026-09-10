@@ -1,6 +1,12 @@
 twig:
     file_name_pattern: '*.twig'
 
+    # Le nom du dérivé, disponible dans chaque template sans qu'un contrôleur ait à le
+    # passer : le gabarit de base le compose dans le `<title>` de toutes les pages, y
+    # compris celles que le socle ne rend pas lui-même (pages d'erreur, story 1.10).
+    globals:
+        app_name: '%app.name%'
+
 when@test:
     twig:
         strict_variables: true

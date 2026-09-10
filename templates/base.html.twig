@@ -1,18 +1,45 @@
 <!DOCTYPE html>
-{# Le gabarit de la recette, réduit. La story 1.4 le remplace par le vrai gabarit du
-   socle — lien d'évitement, repères de page, région d'annonces. En attendant, `lang`
-   y est parce qu'il coûte une ligne et qu'un écart d'accessibilité ne se consigne pas
-   en dette silencieuse. La locale réelle arrive à la story 1.5. #}
-<html lang="{{ app.request ? app.request.locale : 'en' }}">
+{# Le gabarit de base du socle — le contrat de UX-DR-6, à la lettre.
+
+   Tout écran du socle et de ses dérivés passe par ici : lien d'évitement, repères de
+   page, `<main>` focalisable, région d'annonces persistante, `<title>` composé. Rien de
+   ce que ce fichier apporte n'a besoin de JavaScript ; les deux contrôleurs Stimulus
+   (`page-focus` et `announce`) n'ajoutent que le confort sous Turbo Drive.
+
+   Ce que ce gabarit ne porte **pas**, volontairement :
+   - le `h1`, qui appartient au template de page (règle 6 — un seul par page) ;
+   - la coque applicative — Sidebar, en-tête de compte, sélecteur de thème : story 2.3 ;
+   - la moindre règle métier en JavaScript.
+
+   `tests/Core/Template/BaseTemplateTest.php` tient ce contrat au caractère près, et
+   `tests/Core/Accessibility/AccessibilityFloorTest.php` le tient comme une règle sur
+   toute page rendue.
+
+   Les deux textes visibles de ce fichier sont écrits en français en clair. Les catalogues
+   de traduction arrivent à la story 1.5 ; y renvoyer maintenant afficherait une clé. #}
+{# `lang` est une étiquette BCP 47, pas une locale Symfony : `fr_BE` s'écrit `fr-BE` en
+   HTML, et un lecteur d'écran ignore la forme à tiret bas — il retombe alors sur la langue
+   du système. Le socle ne sert qu'un `fr` aujourd'hui ; la story 1.5 pose les catalogues
+   et les premières locales régionales, où l'écart deviendrait visible. #}
+<html lang="{{ (app.request ? app.request.locale : 'fr')|replace({'_': '-'}) }}">
     <head>
         <meta charset="UTF-8">
-        {# Même raisonnement que le `lang` ci-dessus : sans cette ligne, un navigateur
-           mobile rend la page à 980 px puis la réduit, et les paliers responsive comme
-           les cibles tactiles du thème sont inertes. Une ligne, un écart d'accessibilité
-           en moins. #}
+        {# Sans cette ligne, un navigateur mobile rend la page à 980 px puis la réduit, et
+           les paliers responsive comme les cibles tactiles du thème sont inertes. #}
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>{% block title %}Welcome!{% endblock %}</title>
-        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.2em%22 font-size=%2296%22>⚫️</text><text y=%221.3em%22 x=%220.2em%22 font-size=%2276%22 fill=%22%23fff%22>sf</text></svg>">
+        {# « <page> — <nom du dérivé> » (WCAG 2.4.2). Le nom vient de `APP_NAME` par le
+           paramètre `app.name` : un dérivé se renomme sans toucher `src/` ni `config/`.
+           Sous Turbo Drive, c'est ce titre — fusionné dans le `<head>` à chaque
+           navigation — qui dit à un lecteur d'écran qu'il a changé de page.
+
+           La garde n'est pas une politesse : une page qui n'écrit pas son bloc rendrait
+           « — Socle ERP », un titre qui commence par un séparateur et ne nomme pas la
+           page. Les pages d'erreur de la story 1.10 sont le cas concret — elles héritent
+           du gabarit sans toujours poser leur propre titre.
+           `AccessibilityFloorTest::every_page_has_a_title_that_names_it()` exige la forme
+           sur toute page rendue. #}
+        {% set page_title %}{% block title %}{% endblock %}{% endset %}
+        <title>{% if page_title|trim is not empty %}{{ page_title|trim }} — {% endif %}{{ app_name }}</title>
         {# Ce bloc reste vide, et ce n'est pas un oubli : `assets/app.js` importe
            `styles/app.css`, donc `importmap()` génère lui-même le `<link rel="stylesheet">`
            du thème. Le CSS n'est pas injecté par du JavaScript — pas de flash de contenu
@@ -25,6 +52,64 @@
         {% endblock %}
     </head>
     <body>
-        {% block body %}{% endblock %}
+        {# Premier élément focalisable du document (WCAG 2.4.1) : `sr-only` au repos,
+           visible dès qu'il prend le focus. La transition est la seule que le socle
+           écrive à la main — elle lit `--motion-fade`, que `theme.css` ramène à 0 sous
+           `prefers-reduced-motion`.
+
+           L'espacement est écrit en `focus:` et non en utilitaire nu : `not-sr-only`
+           remet `padding` et `margin` à zéro, et sa spécificité (classe + pseudo-classe)
+           bat celle d'un `px-3` simple. Le lien apparaîtrait sans marge intérieure. #}
+        <a
+            href="#contenu"
+            class="sr-only rounded-lg bg-card text-label text-foreground transition-all duration-[var(--motion-fade)] focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-3 focus:py-2"
+        >Aller au contenu</a>
+
+        {# Repère `banner`. Rendu même vide : c'est un critère de la story, et la story 2.3
+           y posera l'en-tête applicatif. #}
+        <header>{% block header %}{% endblock %}</header>
+
+        {# Repères conditionnels. Un `<nav>` vide n'est pas un repère — c'est une entrée
+           « navigation » qui ne contient rien dans la liste que parcourt un lecteur
+           d'écran. Le gabarit expose donc le bloc et ne rend l'élément que rempli ; la
+           Sidebar de la story 2.3 le remplira. Même raisonnement pour le pied de page. #}
+        {% set nav_content %}{% block nav %}{% endblock %}{% endset %}
+        {% if nav_content|trim is not empty %}
+            <nav aria-label="{% block nav_label %}Navigation principale{% endblock %}">{{ nav_content }}</nav>
+        {% endif %}
+
+        {# `id` = cible du lien d'évitement ; `tabindex="-1"` pour que ce lien y déplace
+           réellement le focus et pas seulement le défilement ; `page-focus` pour replacer
+           le focus après chaque remplacement de body par Turbo.
+
+           **Contrainte que la story 1.6 doit respecter.** `page-focus` cherche ses cibles
+           dans l'élément qui le porte — donc ici, et nulle part ailleurs. Le bloc d'erreur
+           `role="alert"` d'un rendu 422 et le Flash d'une redirection 303 doivent donc être
+           rendus **à l'intérieur de ce `<main>`**. Rendus dans le `<header>`, ils ne sont
+           jamais trouvés : le focus retombe en silence sur le `h1` et l'ordre de UX-DR-6
+           n'est plus respecté. La portée est volontaire — un contrôleur de focus qui
+           balaierait tout le document sauterait aussi sur une alerte de coque sans rapport
+           avec la navigation en cours. Elle est écrite ici, dans le contrôleur, et tenue
+           par `tests/js/page_focus_controller.test.js`. #}
+        <main id="contenu" tabindex="-1" data-controller="page-focus">
+            {% block body %}{% endblock %}
+        </main>
+
+        {% set footer_content %}{% block footer %}{% endblock %}{% endset %}
+        {% if footer_content|trim is not empty %}
+            <footer>{{ footer_content }}</footer>
+        {% endif %}
+
+        {# La région d'annonces, persistante et vide au rendu.
+
+           `data-turbo-permanent` : Turbo la reporte d'une page à l'autre au lieu de la
+           recréer — une région live qui vient d'apparaître n'annonce rien, seule la
+           mutation d'une région déjà présente est perçue.
+
+           Elle naît `polite` ; le contrôleur `announce` la passe en `assertive` le temps
+           d'une erreur. Rien ne l'écrit côté serveur : un Flash ou un bloc d'erreur garde
+           sa propre sémantique (`role="status"` / `role="alert"`) et `announce` y recopie
+           son texte. #}
+        <div id="annonces" aria-live="polite" class="sr-only" data-turbo-permanent></div>
     </body>
 </html>

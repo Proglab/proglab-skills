@@ -33,3 +33,17 @@
 # qui se lit en revue ; `assets/vendor/` est la sortie qu'il décrit, et
 # tests/Core/Theme/AssetPipelineTest.php refuse qu'elle manque.
 ###< symfony/asset-mapper ###
+
+###> tests/js — l'exception Node, et rien d'autre ###
+# La chaîne d'assets du socle n'a pas d'étape Node (AD-1), et
+# `tests/Core/Theme/AssetPipelineTest.php` le tient à la racine. L'exception accordée
+# pendant la story 1.4 ne concerne que **les tests** : tout le nécessaire Node vit sous
+# `tests/js/` — manifeste, lockfile, dépendances installées — pour que la règle de la
+# story 1.3 ne soit ni contournée ni affaiblie.
+#
+# Le manifeste et le lockfile sont commités ; les dépendances installées, non. C'est le
+# même partage que `composer.json` / `composer.lock` face à `vendor/` — et l'inverse
+# d'`assets/vendor/`, commité parce qu'il est **servi** en production. Rien de ce
+# répertoire n'atteint jamais un navigateur.
+/tests/js/node_modules/
+###< tests/js — l'exception Node, et rien d'autre ###

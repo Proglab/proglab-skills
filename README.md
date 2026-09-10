@@ -36,10 +36,62 @@ make cs       # corrige le style plutôt que de le signaler
 | **Layer contract** | `deptrac` | La frontière des deux racines — `Core → Module` interdit, `Module → Module` interdit, `Module → Core` hors `Core\Contract` interdit |
 | **Tests** | `test` | PHPUnit, chaque test fonctionnel isolé dans une transaction annulée par `dama/doctrine-test-bundle` |
 | **Linters and audits** | `lint`, `audit` | Conteneur, Twig, YAML, mapping Doctrine, puis `composer audit` et `importmap:audit` — sans `npm` dans la chaîne, c'est la seule vérification de vulnérabilité côté JavaScript |
+| **Accessibility** | `a11y` | Le plancher WCAG 2.1 AA du gabarit de base : les sept règles de `symfony-proglab-accessibility` sur les pages réellement rendues et sur les sources, les repères et le lien d'évitement, la région d'annonces, et les ratios de contraste **recalculés** depuis les `oklch` du thème plutôt que recopiés. C'est aussi la seule catégorie qui exécute du **JavaScript** — les deux contrôleurs Stimulus du gabarit, sur un DOM simulé (voir plus bas) |
 
 Tous les outils sont des `require-dev` épinglés par `composer.lock` et lancés par le PHP
 du projet depuis `vendor/` : même version en local et en CI, aucune installation globale,
 aucun daemon.
+
+### La catégorie « Accessibility » exécute aussi du JavaScript
+
+C'est la seule entorse à « aucune étape Node », et elle est bornée par un test plutôt que
+par une bonne intention.
+
+Le gabarit porte deux contrôleurs Stimulus qui **sont** du comportement d'accessibilité :
+`page-focus` replace le focus après chaque navigation Turbo — bloc d'erreur, champ
+invalide, Flash, puis `h1` —, et `announce` recopie le texte d'un Flash ou d'un bloc
+d'erreur dans la région live `#annonces`, en `assertive` pour une erreur et en `polite`
+sinon. Sans eux, une navigation Turbo laisse le focus sur un lien qui n'existe plus et un
+message rendu côté serveur n'est jamais annoncé. Il n'y a pas de DOM en PHP : aucun test
+de la suite ne peut prouver l'un ou l'autre.
+
+```bash
+npm --prefix tests/js install   # une seule fois, puis à chaque changement du lockfile
+node --test "tests/js/**/*.test.js"
+```
+
+Le runner est celui de Node (`node --test`), le DOM vient de **jsdom**, et Stimulus n'est
+pas installé depuis npm : les tests importent `assets/vendor/@hotwired/stimulus/`, le
+fichier commité qu'`importmap.php` épingle et que le navigateur reçoit. Une seconde copie
+en dépendance de test dériverait un jour de celle qui est servie.
+
+**Pourquoi c'est la seule entorse, et pourquoi elle ne s'élargit pas.** La chaîne d'assets
+reste sans Node : ni bundler, ni `package.json` à la racine, ni `node_modules` à la racine.
+Tout le nécessaire — manifeste, lockfile, dépendances installées, harnais — vit sous
+`tests/js/`, et rien de ce répertoire n'atteint un navigateur. Deux tests de
+`tests/Core/Theme/AssetPipelineTest.php` tiennent ce partage sans qu'on ait à le relire :
+`nothing_in_the_chain_needs_node()` refuse tout artefact Node à la racine, et
+`the_node_exception_is_confined_to_the_test_directory()` refuse qu'il en apparaisse
+ailleurs qu'à `tests/js/` **et** que `assets/`, `importmap.php` ou la cible de build se
+mettent à dépendre de `tests/js/`. La flèche va dans un seul sens : les tests lisent les
+assets, jamais l'inverse.
+
+### Ce que la catégorie « Accessibility » ne peut pas voir
+
+Il n'y a toujours pas de navigateur dans la porte : jsdom exécute du JavaScript sur un
+arbre DOM, il n'a ni moteur de mise en page, ni ordre de tabulation réel, ni lecteur
+d'écran. Trois choses restent donc à vérifier à la main, sur `/` et sur chaque écran
+ajouté ensuite — c'est court, et c'est le complément assumé du contrôle automatisé, pas un
+oubli :
+
+- **Tab depuis le haut de la page.** Le premier élément doit être « Aller au contenu », il
+  doit devenir visible en prenant le focus, et l'activer doit poser le focus dans le
+  `<main>`. Puis continuer jusqu'en bas : à chaque arrêt, on doit pouvoir dire où on est.
+- **JavaScript coupé** (DevTools › Command Palette › « Disable JavaScript »). La page reste
+  complète et navigable ; Turbo et les deux contrôleurs Stimulus n'ajoutent que le confort.
+- **Zoom à 400 %**, soit 320 px de large en CSS. La mise en page se réorganise sans
+  défilement horizontal du `body` ; seuls un tableau ou un bloc à chasse fixe ont le droit
+  de défiler dans leur propre conteneur.
 
 ### Ce qu'il faut avoir en local
 
@@ -53,6 +105,14 @@ aucun daemon.
   cette plateforme.
 - **`make`**, déjà présent sur la plupart des hôtes. Sous Windows le `Makefile` bascule
   sur Git Bash, livré avec Git.
+- **Node 22.15 ou plus récent**, pour la seule étape Node du dépôt : les tests des deux
+  contrôleurs Stimulus, sous `tests/js/`. Le plancher n'est pas arrondi — le harnais résout
+  `@hotwired/stimulus` vers le fichier commité par `module.registerHooks()`, qui n'existe
+  pas avant 22.15. Il est déclaré une seule fois, dans l'`engines.node` de
+  `tests/js/package.json` : `engine-strict=true` en fait un refus d'npm, la CI lit ce même
+  champ, et un test tient les trois endroits alignés. `make a11y` installe les dépendances
+  quand elles manquent ou que le lockfile a bougé, et ne touche pas au réseau sinon. Le
+  reste de la porte, et toute la chaîne d'assets, s'en passent — c'est détaillé plus haut.
 
 La base de test est `app_test`, montée par les migrations et jamais par
 `doctrine:schema:create` — une suite qui construit son schéma depuis le mapping n'exerce
@@ -72,7 +132,9 @@ Symfony ne charge pas `.env.local` en environnement de test.
 AssetMapper sert les assets en modules ES natifs et Tailwind 4 est compilé par un binaire
 autonome que `symfonycasts/tailwind-bundle` télécharge dans `var/`. **Ni `npm`, ni
 `node_modules`, ni bundler** — et donc ni JSX, ni composants monofichiers, ni TypeScript :
-c'est le marché, et il ne se renégocie pas fonctionnalité par fonctionnalité.
+c'est le marché, et il ne se renégocie pas fonctionnalité par fonctionnalité. La seule
+exception du dépôt est `tests/js/`, qui exécute les deux contrôleurs Stimulus du gabarit
+sous la catégorie « Accessibility » et ne touche pas la chaîne d'assets — voir plus haut.
 
 ```bash
 php bin/console tailwind:build --watch   # à laisser tourner pendant le développement
@@ -99,6 +161,13 @@ jamais édité par un dérivé. `assets/styles/brand.css` est livré vide : c'es
 fichier qu'un dérivé touche, et il ne contient que les variables qu'il a le droit de
 redéfinir. `tests/Core/Theme/` refuse un rôle sans variante sombre, une couleur codée en
 dur dans un template, un second kit de composants et un binaire Tailwind non épinglé.
+
+Toutes les pages passent par un gabarit unique, `templates/base.html.twig` : lien
+« Aller au contenu », repères, `<main id="contenu" tabindex="-1">`, région d'annonces
+persistante que les navigations Turbo ne recréent pas, et un `<title>` composé
+« <page> — <nom du dérivé> ». Le nom du dérivé vient de la variable d'environnement
+`APP_NAME` — c'est, avec `brand.css` et le logo, tout ce qu'un rebranding touche. Le `h1`
+appartient au template de page, jamais au gabarit.
 
 Les composants viennent du kit shadcn de Symfony UX Toolkit, **copiés** dans le dépôt :
 

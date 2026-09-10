@@ -207,3 +207,64 @@ jobs:
         run: php bin/console importmap:audit
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # La sixième catégorie. Le contrat de l'epic dit que le plancher d'accessibilité est
+  # « vérifié par un test automatisé en CI, jamais par relecture » : un job nommé est ce
+  # qui rend l'échec lisible — « Accessibility » rouge dit quoi corriger, un test perdu
+  # dans la suite ne le dit pas.
+  #
+  # Pas de service de base de données : le plancher rend les pages GET du socle, qui n'en
+  # touchent aucune. Le jour où une page en aura besoin, ce job prendra le même service
+  # MySQL et les mêmes migrations que « Tests ».
+  accessibility:
+    name: Accessibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: ctype, iconv, intl, pdo_mysql
+          coverage: none
+
+      - uses: ramsey/composer-install@v3
+
+      # Le plancher regarde de vraies pages rendues : sans la feuille compilée,
+      # `@import 'tailwindcss'` tombe sur `missing_import_mode: strict` et chaque rendu
+      # échoue pour une raison qui n'a rien à voir avec l'accessibilité.
+      - name: Build the theme stylesheet
+        run: php bin/console tailwind:build
+
+      - name: Accessibility floor
+        run: php vendor/bin/phpunit --testsuite Accessibility
+
+      # La seule étape Node de tout le workflow, et elle est ici plutôt que dans
+      # « Tests » parce que ce qu'elle vérifie est du comportement d'accessibilité :
+      # quatre lignes de la matrice d'edge cases de la story 1.4 décrivent le focus
+      # replacé après une navigation Turbo et la recopie d'un message dans la région
+      # d'annonces. Aucun test PHP ne peut les prouver — il n'y a pas de DOM en PHP.
+      #
+      # L'exception ne déborde pas : tout le nécessaire Node vit sous `tests/js/`, la
+      # racine n'a ni manifeste ni lockfile ni `node_modules`, et rien de ce répertoire
+      # n'atteint la chaîne d'assets. `AssetPipelineTest` tient les deux règles.
+      # `node-version-file` plutôt qu'une version épinglée ici : le plancher est déclaré
+      # une seule fois, dans l'`engines.node` de `tests/js/package.json`, et la CI le lit.
+      # Une version écrite à la main dériverait du plancher sans que rien ne le dise —
+      # c'était le cas, avec un README qui disait 22, une CI sur 24 et un harnais qui exige
+      # en réalité 22.15. `AssetPipelineTest::the_node_version_floor_is_declared_once_and_read_everywhere()`
+      # tient les trois ensemble.
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: tests/js/package.json
+          cache: npm
+          cache-dependency-path: tests/js/package-lock.json
+
+      # `ci` et non `install` : il installe exactement le lockfile et échoue si celui-ci
+      # a dérivé du manifeste — l'équivalent de `composer validate --strict` côté npm.
+      - name: Install the JavaScript test dependencies
+        run: npm --prefix tests/js ci --no-audit --no-fund
+
+      - name: Stimulus controller behaviour
+        run: node --test "tests/js/**/*.test.js"
