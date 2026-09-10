@@ -2,7 +2,7 @@
 title: Addendum au PRD — Socle ERP custom (proglab)
 status: final
 created: 2026-09-09
-updated: 2026-09-09
+updated: 2026-09-10
 ---
 
 # Addendum au PRD — Socle ERP custom (proglab)
@@ -14,9 +14,13 @@ n'est pas répété.
 
 ## Décision ouverte en tête : la version de Symfony du socle
 
-Non fixée. Elle conditionne le bundle de journal d'audit (voir ci-dessous) et la
-compatibilité de `scheb/2fa` (Symfony 7.4/8, PHP 8.4). À trancher en premier en
-architecture.
+**Tranchée le 2026-09-10 — AD-1 : Symfony 7.4 LTS sur PHP 8.5.** Symfony 8.0 est en fin
+de vie depuis juillet 2026 et le support de la 8.1 s'arrête en janvier 2027 ; la 7.4 LTS
+est soutenue jusqu'en novembre 2028 pour les correctifs et novembre 2029 pour la
+sécurité. PHP 8.5 et non 8.4, dont la sécurité s'arrête onze mois avant cette échéance.
+`scheb/2fa` 8.6, Symfony UX 3.4 et le kit shadcn restent tous disponibles sur ce couple.
+Conséquence pour la suite de ce document : `damienharper/auditor-bundle` 7.x exige
+Symfony 8 et sort donc du jeu.
 
 ## Choix techniques
 
@@ -42,15 +46,25 @@ Chaque puce suit le même schéma : choix · raison · FR concernée · statut.
   service ; chaque entrée porte un code d'action stable, un libellé traduisible et
   l'objet concerné. Contrat fixé par FR-12. *Arrêté.*
 
-### À trancher en architecture
+### Tranchés en architecture le 2026-09-10
 
-- **Invitation** : aucun bundle maintenu pour Symfony 7/8. Entité maison (email, rôle,
-  jeton, expiration, usage unique) et URL signée ; `symfonycasts/verify-email-bundle`
-  ou les Login Links de Symfony sont candidats pour signer l'URL. FR-4. *À trancher :
-  le mécanisme de signature.*
-- **Journal d'audit — modifications** : candidats et contraintes de version dans
-  l'addendum du brief (§Paysage) ; Gedmo Loggable écarté : il reste lié à DBAL 3.
-  FR-11. *À trancher selon la version de Symfony du socle.*
+- **Invitation** : **tranché le 2026-09-10 — AD-15.** Entité maison portant
+  destinataire, rôle prévu, jeton aléatoire stocké haché, date d'expiration et date
+  d'usage ; l'URL transporte le jeton en clair, la base n'en garde que l'empreinte. Le
+  même mécanisme sert la réinitialisation de mot de passe. Aucune signature d'URL sans
+  état : ni `symfonycasts/verify-email-bundle` ni les Login Links ne peuvent marquer un
+  lien consommé, invalider le précédent au renvoi, ou porter les états « en attente » et
+  « expirée » que FR-4 montre à l'administrateur. FR-3, FR-4. *Arrêté.*
+- **Journal d'audit — modifications** : **tranché le 2026-09-10 — AD-3.** Couche maison,
+  un listener Doctrine `onFlush` qui ne traduit rien d'autre qu'un changeset et appelle
+  un service portant toutes les règles, écrivant dans la même table que les actions
+  métier de FR-12. Aucun bundle : `damienharper/auditor-bundle` 7.x exige Symfony 8 (et
+  sa branche 6.3 serait une branche de maintenance dès le premier jour),
+  `rcsofttech/audit-trail-bundle` est trop jeune pour porter la traçabilité clonée chez
+  chaque client, et Gedmo Loggable est opt-in par entité. Raison décisive : aucun bundle
+  ne couvre FR-12, donc une couche maison existe de toute façon, et FR-13 exige de
+  filtrer, paginer et exporter les deux types d'entrées ensemble. FR-11, FR-12, FR-13.
+  *Arrêté.*
 
 ## Roadmap : contrat d'entrée BMAD
 
@@ -61,8 +75,12 @@ Chaque puce suit le même schéma : choix · raison · FR concernée · statut.
   `_bmad-output/implementation-artifacts/`. Forme exacte à confirmer sur les premiers
   fichiers produits par ce projet.
 - Statuts BMAD observés : les cinq de FR-15 ; jamais de rétrogradation.
-- Priorité, difficulté, assignation, dépendances : voir OQ-3 ; si absentes des
-  fichiers BMAD, convention d'en-tête YAML dans les stories du projet.
+- Priorité, difficulté, assignation, dépendances : **tranché le 2026-09-10 — AD-10.**
+  Le socle possède ce contrat plutôt que de le deviner : il définit et documente la
+  convention d'en-tête YAML attendue dans les stories, lit ces champs quand ils y sont,
+  les rend « non renseigné » sinon, et considère qu'une tâche sans dépendance déclarée
+  est prête dès que son statut est « à faire ». Les clés `epic-{n}-retrospective` sont
+  exclues du calcul d'avancement des epics. OQ-3 est donc close.
 
 ## Lancer une tâche (environnement de développement)
 

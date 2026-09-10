@@ -2,7 +2,7 @@
 title: Addendum au brief — Socle ERP custom (proglab)
 status: final
 created: 2026-09-09
-updated: 2026-09-09
+updated: 2026-09-10
 ---
 
 # Addendum au brief — Socle ERP custom (proglab)
@@ -66,7 +66,11 @@ Chaque décision suit le même schéma : **Écarté** (si une alternative a ét�
     Symfony 8.0 / PHP 8.4 / DBAL 4 / ORM 3.2.
   - `rcsofttech/audit-trail-bundle` — onFlush/postFlush, transports DB/queue/HTTP,
     masquage ; Symfony 7.4/8.0, PHP ≥ 8.4 ; jeune, adoption modeste.
-  - Gedmo Loggable — incompatible DBAL ≥ 4 : à écarter.
+  - Gedmo Loggable — **corrigé le 2026-09-10** : l'affirmation « incompatible DBAL ≥ 4 »
+    était fausse. Sa version 3.22.1 déclare `conflict: doctrine/dbal <3.7 || >=5.0`,
+    donc DBAL 4 est bien supporté. Il reste écarté, pour deux autres raisons : il est
+    opt-in par entité, ce qui contredit l'audit par défaut de FR-11, et il stocke les
+    changements en tableau sérialisé, hostile aux filtres de FR-13.
   - Aucun bundle ne couvre le journal d'actions métier explicites : couche à écrire
     dans les services.
 - **Multi-tenant** (hors périmètre, pour mémoire) : `hakam/multi-tenancy-bundle`

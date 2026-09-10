@@ -2,7 +2,7 @@
 title: PRD — Socle ERP custom (proglab)
 status: final
 created: 2026-09-09
-updated: 2026-09-09
+updated: 2026-09-10
 ---
 
 # PRD : Socle ERP custom (proglab)
@@ -17,6 +17,11 @@ fixé au Glossaire (§3) ; les fonctionnalités sont groupées avec leurs exigen
 fonctionnelles (FR) numérotées globalement dans l'ordre de leur ajout ; les hypothèses
 non confirmées sont balisées `[ASSUMPTION]` en ligne et indexées en §11. Les choix
 techniques (bundles, mécanismes) vivent dans `addendum.md`, pas ici.
+
+**Révision du 2026-09-10.** Le run d'architecture a contredit deux points de ce
+document, corrigés ici : FR-17 (l'API n'émet pas de jeton) et la règle de dérivation du
+§6 (un dérivé livré est maintenu). Les décisions correspondantes sont AD-5 et AD-1 de
+`../../architecture/architecture-proglab-skills-2026-09-09/ARCHITECTURE-SPINE.md`.
 
 ## 1. Vision
 
@@ -338,7 +343,7 @@ son auteur, son horodatage et l'objet concerné.
 - Liste de référence des actions du socle auditées : connexion, échec de connexion,
   mot de passe changé ou réinitialisé, invitation envoyée et acceptée, 2FA activée ou
   réinitialisée, surcharge de permission, permissions d'un rôle modifiées,
-  désactivation et réactivation, anonymisation, jeton d'accès obtenu ou révoqué,
+  désactivation et réactivation, anonymisation, jeton d'accès créé ou révoqué,
   langue activée ou désactivée. Les puces « crée une entrée d'audit » des autres FR
   renvoient à cette liste.
 
@@ -411,18 +416,30 @@ jour les fichiers BMAD (statut, personne assignée). Réalise UJ-5.
 ### 4.6 API
 
 **Description :** l'amorce d'une interface JSON pour une future application cliente —
-assez pour s'authentifier et vérifier que le service répond. Pas plus.
+assez pour qu'elle s'identifie et vérifie que le service répond. Pas plus. Les jetons
+qu'elle présente sont créés depuis l'application, pas par l'API.
 
-#### FR-17 : S'authentifier par l'API
+#### FR-17 : Obtenir un jeton d'accès pour l'API
 
-Un utilisateur actif peut obtenir par l'API un jeton d'accès avec ses identifiants et
-son second facteur.
+Un utilisateur actif crée ses jetons d'accès depuis son profil, dans l'application, et
+peut les révoquer. L'API n'a aucun point d'entrée d'authentification.
 
 **Conséquences (testables) :**
-- Un utilisateur désactivé ou sans second facteur valide est refusé.
-- Le jeton d'accès expire `[ASSUMPTION: après une durée configurable, par défaut une
-  heure]` et peut être révoqué par l'utilisateur lui-même ou par un administrateur.
-- Chaque obtention de jeton d'accès crée une entrée d'audit.
+- Le jeton n'est montré qu'une seule fois, à sa création ; l'application n'en conserve
+  qu'une empreinte et ne peut pas le réafficher.
+- Le jeton porte une date d'expiration `[ASSUMPTION: durée configurable, par défaut une
+  heure]` et peut être révoqué par l'utilisateur lui-même ou par un administrateur
+  depuis la fiche de l'utilisateur.
+- Une requête portant un jeton expiré, révoqué, ou appartenant à un utilisateur
+  désactivé ou anonymisé est refusée, même si le jeton a été créé avant.
+- La création et la révocation d'un jeton créent chacune une entrée d'audit.
+- Aucune URL de l'API n'accepte un mot de passe.
+
+*Révisé le 2026-09-10 (AD-5). La version précédente faisait obtenir le jeton par l'API
+avec les identifiants et le second facteur. Le second facteur est porté par un flux de
+session qui ne se compose pas avec une API sans état ; créer le jeton derrière la
+connexion du navigateur, où la double authentification a déjà eu lieu, atteint le même
+but sans faire circuler le mot de passe vers l'API.*
 
 #### FR-18 : Health check
 
@@ -489,11 +506,16 @@ Un administrateur peut désactiver ou réactiver une langue d'interface pour le 
   l'anonymisation (FR-20) : l'historique reste, la personne n'y est plus identifiable.
 - **Coût** : le socle ne requiert aucun service externe payant `[ASSUMPTION: l'envoi
   d'email passe par le serveur SMTP du client ou de l'équipe]`.
-- **Dérivation** : le socle se clone et diverge ; il n'est pas mis à jour dans les
-  dérivés existants, et les correctifs se reportent à la main. Risque assumé : à des
-  centaines de dérivés, c'est une dette de maintenance qui grandit avec le succès. La
-  règle sera réexaminée — noyau partagé, outillage de report — dès que les dérivés se
-  compteront en dizaines.
+- **Dérivation et maintenance** : le socle se clone et diverge ; son code n'est pas
+  resynchronisé dans les dérivés existants, et un correctif du socle se reporte à la
+  main. Un dérivé livré est en revanche **maintenu** : les montées de version du
+  framework et des dépendances sont décidées une fois sur le socle, puis appliquées à
+  chaque dérivé. C'est ce qui justifie de bâtir le socle sur une version à support long
+  plutôt que sur la dernière version publiée. Risque assumé : à des centaines de
+  dérivés, c'est une dette de maintenance qui grandit avec le succès. La règle sera
+  réexaminée — noyau partagé, outillage de report — dès que les dérivés se compteront en
+  dizaines. *Révisé le 2026-09-10 (AD-1) : la version précédente laissait entendre qu'un
+  dérivé restait figé sur la version de son clonage.*
 
 ## 7. Non-objectifs (explicites)
 
@@ -501,7 +523,8 @@ Ce que le socle n'est pas, et qui n'en est pas utilisateur, en v1 :
 
 - Une interface commune à plusieurs dérivés, ou un compte valable sur plusieurs : un
   tiers qui consulterait plusieurs ERP à la fois n'est pas un utilisateur.
-- La mise à jour du socle dans les dérivés déjà clonés.
+- La resynchronisation du code du socle dans les dérivés déjà clonés. Leur maintenance
+  en version, elle, est assurée (§6).
 - Le multi-tenant : un ERP, un client, un déploiement ; pas de « locataire » d'une
   instance partagée.
 - La facturation, la comptabilité, ou tout module métier : le socle s'arrête là où le
@@ -565,14 +588,17 @@ anonymisation, profil, API, langues, lancement de tâche).
 
 **Décisions prises pendant le PRD** : OQ-1 (droit à l'effacement) → anonymisation,
 FR-20 ; OQ-4 (correspondance des statuts) → fixée dans FR-15.
+**Décisions prises pendant l'architecture, le 2026-09-10** : OQ-3 (champs BMAD) → close,
+le socle définit la convention d'en-tête qu'il attend (AD-10).
 
 - **OQ-2** — Rétention du journal d'audit : illimitée en v1, mais à partir de quel
   volume ou de quelle durée archiver ?
-- **OQ-3** — Champs BMAD : priorité, difficulté, assignation et dépendances
-  existent-ils dans les stories que BMAD produira, ou faut-il une convention d'en-tête
-  propre au projet ? Propriétaire : Fabrice ; à trancher dès que
-  `bmad-create-epics-and-stories` aura produit les premiers fichiers, avant les stories
-  de la roadmap.
+- ~~**OQ-3**~~ — *Close le 2026-09-10 (AD-10).* La question était de savoir si les
+  stories BMAD portent priorité, difficulté, assignation et dépendances, ou s'il faut
+  une convention propre au projet. Réponse : le socle définit et documente la convention
+  d'en-tête YAML qu'il attend, traite les champs absents comme « non renseigné », et
+  considère prête toute tâche « à faire » sans dépendance déclarée. La roadmap n'a donc
+  plus de dépendance bloquante vers `bmad-create-epics-and-stories`.
 - **OQ-5** — Les permissions par défaut des rôles Admin et User (§4.3, FR-7)
   suffisent-elles à tous les dérivés, ou chaque dérivé les ajustera-t-il ?
 
@@ -589,7 +615,7 @@ FR-20 ; OQ-4 (correspondance des statuts) → fixée dans FR-15.
 - §4.5 FR-14 — priorité, difficulté, assignation et dépendances portées par l'en-tête
   des stories.
 - §4.5 FR-15 — permission « notes internes » accordée par défaut au seul Super admin.
-- §4.6 FR-17 — jeton d'accès expirant après une heure par défaut.
+- §4.6 FR-17 — durée d'expiration d'un jeton d'accès configurable, une heure par défaut.
 - §4.7 FR-22 — langue de repli après désactivation : la première active dans l'ordre
   français, anglais, néerlandais.
 - §5 — dimensionnement : 50 utilisateurs, 1 million d'entrées d'audit.
