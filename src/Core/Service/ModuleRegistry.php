@@ -20,7 +20,8 @@ final readonly class ModuleRegistry
      * @param iterable<ModuleDescriptor> $modules
      */
     public function __construct(
-        #[AutowireIterator('app.module')] private iterable $modules,
+        #[AutowireIterator('app.module')]
+        private iterable $modules,
     ) {
     }
 

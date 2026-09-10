@@ -1,0 +1,21 @@
+# Le socle est écrit en LF partout. `.editorconfig` le dit déjà, et php-cs-fixer
+# l'impose (règle `line_ending`, héritée de @PSR12) — mais sur Windows la valeur par
+# défaut `core.autocrlf=true` réécrit la copie de travail en CRLF, et alors `make
+# cs-check` échoue sur chaque fichier en local pendant que la CI Linux passe. Une porte
+# dont les deux façades ne voient pas les mêmes octets n'est pas une porte.
+#
+# `eol=lf` l'emporte sur `core.autocrlf`, donc cette ligne referme l'écart pour tout le
+# monde, quel que soit le poste.
+* text=auto eol=lf
+
+# Le Makefile est indenté par des tabulations, ce qui n'est pas une question de fin de
+# ligne — c'est noté ici parce que c'est le premier fichier qu'on soupçonne quand `make`
+# répond « missing separator ».
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary

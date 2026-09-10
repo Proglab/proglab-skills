@@ -138,9 +138,10 @@ final class ModuleWiringTest extends WebTestCase
     {
         $root = \dirname(__DIR__, 2).'/src/Module';
 
-        $entries = array_values(array_diff(scandir($root) ?: [], ['.', '..', '.gitkeep']));
+        $entries = scandir($root);
+        self::assertIsArray($entries);
 
-        self::assertSame([], $entries);
+        self::assertSame([], array_values(array_diff($entries, ['.', '..', '.gitkeep'])));
     }
 
     #[Test]

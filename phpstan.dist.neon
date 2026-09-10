@@ -1,0 +1,46 @@
+# Analyse statique de la porte de qualité.
+#
+#   make stan
+#
+# Les extensions ne s'auto-enregistrent pas : sans ces `includes`, PHPStan n'échoue pas,
+# il se tait — il sort en 0 et ne signale rien au-delà des règles du cœur, si bien que la
+# porte paraît verte tout en ne vérifiant qu'une fraction de ce qu'elle prétend.
+# `tests/Core/Quality/StaticAnalysisTest.php` mesure ce que cette configuration attrape
+# réellement, sur un défaut injecté dans un bac à sable.
+includes:
+    - vendor/phpstan/phpstan-symfony/extension.neon
+    - vendor/phpstan/phpstan-doctrine/extension.neon
+    - vendor/phpstan/phpstan-strict-rules/rules.neon
+    - vendor/phpstan/phpstan-deprecation-rules/rules.neon
+    - vendor/phpstan/phpstan-phpunit/extension.neon
+    - vendor/phpstan/phpstan-phpunit/rules.neon
+
+parameters:
+    level: max
+
+    paths:
+        - src
+        - tests
+        # Les migrations sont la premiere chose que la production execute : les
+        # laisser hors de l'analyse reviendrait a livrer non verifie le seul code
+        # qui touche le schema.
+        - migrations
+
+    symfony:
+        # Le vrai nom de fichier de `var/cache/dev/` — il intègre le nom de la classe du
+        # kernel. Un chemin faux fait avorter PHPStan (« Container … does not exist »,
+        # sortie 1) : l'echec est bruyant, et `StaticAnalysisTest` le verrait. Ce qui se
+        # tait, en revanche, c'est un `includes:` manquant.
+        #   ls var/cache/dev/*KernelDevDebugContainer.xml
+        containerXmlPath: var/cache/dev/App_KernelDevDebugContainer.xml
+
+    doctrine:
+        objectManagerLoader: tests/object-manager.php
+
+    # Les entités sont hydratées par Doctrine, donc PHPStan ne peut pas voir que ces
+    # propriétés sont initialisées au moment où quoi que ce soit les lit.
+    checkUninitializedProperties: false
+
+    # Pas de baseline sur ce dépôt, et ce n'est pas un oubli : le socle naît avec la
+    # porte, il n'a aucune dette existante à geler. Une baseline ne servirait qu'à faire
+    # passer du code écrit après elle — ce que la story 1.2 refuse explicitement.

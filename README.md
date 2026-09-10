@@ -15,6 +15,58 @@ leur nom. Ce dépôt n'est plus un catalogue installable ailleurs — c'est l'es
 travail lui-même, qui embarque aussi [BMAD](https://bmadcode.com/) (`_bmad/`), dont les
 agents sont alignés sur cette suite via les overrides de `_bmad/custom/`.
 
+## Porte de qualité
+
+Le socle ERP qui vit dans ce dépôt a une porte unique, en deux façades qui vérifient la
+même liste de catégories : `make qa` en local, la CI de `.github/workflows/ci.yml` en
+ligne. Un job de CI par catégorie, nommé d'après elle, et
+`tests/Core/Quality/QualityGateParityTest.php` échoue en nommant l'orpheline dès qu'une
+catégorie n'existe que d'un côté.
+
+```bash
+make          # liste les cibles
+make qa       # la porte complète — c'est ce que la CI exécute
+make cs       # corrige le style plutôt que de le signaler
+```
+
+| Catégorie | Cible | Ce qu'elle attrape |
+|---|---|---|
+| **Static analysis** | `stan` | PHPStan au niveau `max`, extensions Symfony et Doctrine comprises. Aucune baseline : le socle naît avec sa porte, il n'a pas de dette à geler |
+| **Code style** | `cs-check` | php-cs-fixer, jeu `@PHP85Migration` par-dessus `@Symfony:risky` et `@PER-CS` |
+| **Layer contract** | `deptrac` | La frontière des deux racines — `Core → Module` interdit, `Module → Module` interdit, `Module → Core` hors `Core\Contract` interdit |
+| **Tests** | `test` | PHPUnit, chaque test fonctionnel isolé dans une transaction annulée par `dama/doctrine-test-bundle` |
+| **Linters and audits** | `lint`, `audit` | Conteneur, Twig, YAML, mapping Doctrine, et `composer audit` |
+
+Tous les outils sont des `require-dev` épinglés par `composer.lock` et lancés par le PHP
+du projet depuis `vendor/` : même version en local et en CI, aucune installation globale,
+aucun daemon.
+
+### Ce qu'il faut avoir en local
+
+- **PHP 8.5** — `composer.json` exige `>=8.5`, et le style applique `@PHP85Migration`.
+- **MySQL 8.4 LTS.** C'est le plancher contractuel du socle et des serveurs clients :
+  MySQL 8.0 est en fin de vie depuis avril 2026 et ne tient pas la fenêtre de Symfony 7.4
+  LTS. `serverVersion=8.4` le dit dans `.env`, dans `.env.test` et dans le workflow de
+  CI, et un test refuse toute dérive entre les trois. SQLite n'est pas une option de
+  repli : la suite doit voir le moteur de production, et `dbname_suffix` — le garde-fou
+  qui empêche les tests d'écrire dans la base de développement — n'a même aucun effet sur
+  cette plateforme.
+- **`make`**, déjà présent sur la plupart des hôtes. Sous Windows le `Makefile` bascule
+  sur Git Bash, livré avec Git.
+
+La base de test est `app_test`, montée par les migrations et jamais par
+`doctrine:schema:create` — une suite qui construit son schéma depuis le mapping n'exerce
+jamais les migrations, et les migrations sont la première chose que la production
+exécute.
+
+```bash
+php bin/console --env=test doctrine:database:create --if-not-exists
+php bin/console --env=test doctrine:migrations:migrate --no-interaction
+```
+
+Une surcharge locale du DSN se met dans `.env.local` **et** dans `.env.test.local` :
+Symfony ne charge pas `.env.local` en environnement de test.
+
 ## Les skills
 
 Commencer par `symfony-proglab-standards`. Il est volontairement court : il détecte le
