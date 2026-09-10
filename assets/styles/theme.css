@@ -1,0 +1,352 @@
+/*
+ * Le thème du socle — la feuille que seul le socle édite.
+ *
+ * Un dérivé ne touche jamais ce fichier : il redéfinit ce que `brand.css` lui ouvre, et
+ * tout le reste hérite. C'est ce qui permet de reporter un correctif de thème d'un
+ * dérivé à l'autre par un `git diff` propre.
+ *
+ * La matière vient de DESIGN.md (spine UX) : rôles de couleur l.14-79, douze rôles
+ * typographiques l.80-144, rayons l.145-151, espacement et jetons nommés l.152-174,
+ * hauteurs de composants l.175-330, mouvement l.647-652.
+ *
+ * Deux règles tenues par `tests/Core/Theme/ThemeTokensTest.php`, pas par relecture :
+ * chaque rôle existe en clair ET en sombre, et aucune valeur du thème ne se réécrit à la
+ * main dans un template.
+ */
+
+/* ------------------------------------------------------------------------------------
+ * Typographie, rayons, espacement, largeurs — les jetons que Tailwind expose en classes.
+ *
+ * Pile système : aucune police à charger, aucune requête réseau, rendu natif par OS
+ * (DESIGN.md § Typography). Corps à 15 px, un cran au-dessus du 14 px habituel des
+ * back-offices : la roadmap se lit une fois par semaine et ne doit pas faire plisser les
+ * yeux.
+ * --------------------------------------------------------------------------------- */
+@theme {
+    --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', monospace;
+
+    /* Titre de page — le seul h1 de chaque page. */
+    --text-display: 1.875rem; /* 30px */
+    --text-display--line-height: 1.2;
+    --text-display--font-weight: 600;
+    --text-display--letter-spacing: -0.02em;
+
+    /* Titre de section ou de carte — h2. */
+    --text-heading: 1.125rem; /* 18px */
+    --text-heading--line-height: 1.3;
+    --text-heading--font-weight: 600;
+
+    /* Sous-titre — h3 d'Alert, de Flash, de groupe de permissions. */
+    --text-subheading: 0.9375rem; /* 15px */
+    --text-subheading--line-height: 1.4;
+    --text-subheading--font-weight: 600;
+
+    /* Accroche — la phrase sous le h1. */
+    --text-lead: 1rem; /* 16px */
+    --text-lead--line-height: 1.5;
+    --text-lead--font-weight: 400;
+
+    /* Corps — tout le reste. */
+    --text-body: 0.9375rem; /* 15px */
+    --text-body--line-height: 1.5;
+    --text-body--font-weight: 400;
+
+    /* Corps réduit — description d'epic, corps d'Alert, bandeau. */
+    --text-body-sm: 0.875rem; /* 14px */
+    --text-body-sm--line-height: 1.5;
+    --text-body-sm--font-weight: 400;
+
+    /* Libellé — labels de champ, boutons, onglets. */
+    --text-label: 0.875rem; /* 14px */
+    --text-label--line-height: 1.4;
+    --text-label--font-weight: 500;
+
+    /* Méta — assignation, priorité, difficulté, note de bas de page. */
+    --text-meta: 0.8125rem; /* 13px */
+    --text-meta--line-height: 1.4;
+    --text-meta--font-weight: 400;
+
+    /* Légende — titres de groupe de la sidebar, sous-ligne d'avatar. */
+    --text-caption: 0.75rem; /* 12px */
+    --text-caption--line-height: 1.4;
+    --text-caption--font-weight: 400;
+
+    /* Badge — statuts, origine d'une permission. */
+    --text-badge: 0.8125rem; /* 13px */
+    --text-badge--line-height: 1;
+    --text-badge--font-weight: 500;
+
+    /* Chiffre — pourcentages et compteurs.
+       Tailwind ne lit que trois modificateurs sur un `--text-*` : `--line-height`,
+       `--letter-spacing`, `--font-weight`. Un `--text-stat--font-variant-numeric` ne
+       serait jamais émis, donc les chiffres tabulaires que DESIGN.md demande — pour
+       qu'un pourcentage qui passe de 9 à 10 ne fasse pas sauter la mise en page —
+       s'obtiennent en posant l'utilitaire natif `tabular-nums` à côté de `text-stat`. */
+    --text-stat: 1rem; /* 16px */
+    --text-stat--line-height: 1;
+    --text-stat--font-weight: 600;
+
+    /* Mono — valeurs brutes du journal d'audit, jeton d'API affiché une fois. */
+    --text-mono: 0.8125rem; /* 13px */
+    --text-mono--line-height: 1.5;
+    --text-mono--font-weight: 400;
+
+    /* Rayons (DESIGN.md § Shapes). `--radius` lui-même est déclaré dans `:root` :
+       c'est le `--radius` de shadcn, et le kit le lit à l'exécution. */
+    --radius-sm: 0.25rem; /* 4px  — code inline, cases à cocher */
+    --radius-md: 0.5rem; /* 8px  — champs, boutons, entrées de navigation */
+    --radius-lg: 0.625rem; /* 10px — Alert, DropdownMenu, Sheet */
+    --radius-xl: 0.75rem; /* 12px — Card, Dialog */
+    --radius-full: 9999px; /* Badge, avatar, pastille de dépendance, bouton compte */
+
+    /* Espacement nommé : ce que la direction Aéré a arrêté, écrit une fois. L'échelle
+       Tailwind à base 4 reste celle par défaut. */
+    --spacing-gutter-desktop: 2rem; /* 32px */
+    --spacing-gutter-mobile: 1rem; /* 16px */
+    --spacing-card-padding: 1.5rem; /* 24px */
+    --spacing-card-gap: 0.875rem; /* 14px */
+    --spacing-row-padding: 0.875rem; /* 14px */
+    --spacing-sidebar-width: 15.5rem; /* 248px */
+    --spacing-header-height: 3.75rem; /* 60px */
+    --spacing-touch-target-min: 2.75rem; /* 44px — hauteur minimale sur pointeur grossier */
+    --spacing-control-height: 2.375rem; /* 38px — boutons et champs */
+    --spacing-badge-height: 1.625rem; /* 26px */
+
+    /* Largeurs de lecture : rien ne s'étire sur un écran 4K. */
+    --container-content: 62.5rem; /* 1000px — roadmap, fiches, formulaires */
+    --container-content-table: 80rem; /* 1280px — utilisateurs, journal d'audit */
+}
+
+/* ------------------------------------------------------------------------------------
+ * Les rôles de couleur, exposés à Tailwind.
+ *
+ * `inline` fait que `bg-primary` compile en `var(--primary)` et non en
+ * `var(--color-primary)` : c'est ce qui permet à `brand.css` — et au bloc sombre — de
+ * redéfinir `--primary` à l'exécution et d'être suivi.
+ * --------------------------------------------------------------------------------- */
+@theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-page: var(--page);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-muted-strong: var(--muted-strong);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-track: var(--track);
+    --color-sidebar: var(--sidebar);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-status-done: var(--status-done);
+    --color-status-done-foreground: var(--status-done-foreground);
+    --color-status-doing: var(--status-doing);
+    --color-status-todo: var(--status-todo);
+    --color-status-ready: var(--status-ready);
+    --color-status-unreadable: var(--status-unreadable);
+}
+
+/* ------------------------------------------------------------------------------------
+ * La variante `dark:` du kit.
+ *
+ * Le kit shadcn propose `@custom-variant dark (&:is(.dark *))`, qui ne s'active qu'à la
+ * classe. Le socle promet aussi de suivre `prefers-color-scheme` : la variante couvre
+ * donc les deux chemins, exactement comme les blocs de jetons plus bas.
+ * --------------------------------------------------------------------------------- */
+@custom-variant dark {
+    @media (prefers-color-scheme: dark) {
+        &:where(:not(.light, .light *)) {
+            @slot;
+        }
+    }
+
+    &:where(.dark, .dark *) {
+        @slot;
+    }
+}
+
+/* ------------------------------------------------------------------------------------
+ * Le thème clair — shadcn « neutral », achromatique par construction.
+ *
+ * Deux défauts du kit passent sous un seuil WCAG et sont conservés tels quels
+ * (DESIGN.md l.432-440) :
+ *
+ *   --input  bordure de champ, 1,26:1 sur `--card` en clair, 1,18:1 en sombre. C'est un
+ *            choix assumé, pas une dette : le contour seul est discret par conception,
+ *            et ce sont le label visible au-dessus, le fond de carte et l'anneau de
+ *            focus qui situent le champ.
+ *   --ring   anneau de focus, ≈ 2,05:1 sur blanc, ≈ 4,1:1 en sombre. Même choix assumé,
+ *            pour la même raison : le défaut du kit prime sur la mesure.
+ *
+ * Un dérivé qui veut un contour ou un anneau plus marqué change ces deux variables dans
+ * `brand.css`, comme n'importe quelle autre. Les seuils du tableau de contrastes de
+ * DESIGN.md restent la référence pour tout ce que le socle **ajoute** au kit — statuts,
+ * badges, `--muted-strong`.
+ * --------------------------------------------------------------------------------- */
+:root {
+    color-scheme: light;
+
+    /* Le `--radius` de shadcn (10 px). Le kit le lit à l'exécution. */
+    --radius: 0.625rem;
+
+    /* Mouvement : minimal et fonctionnel uniquement (DESIGN.md l.647-652). */
+    --motion-fade: 150ms; /* chevron, Dialog, DropdownMenu */
+    --motion-panel: 200ms; /* dépliage d'Accordion, glissement de Sheet */
+
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.145 0 0);
+    --page: oklch(0.97 0 0);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.145 0 0);
+    --muted: oklch(0.97 0 0);
+    --muted-foreground: oklch(0.556 0 0);
+    --muted-strong: oklch(0.439 0 0);
+    --primary: oklch(0.205 0 0);
+    --primary-foreground: oklch(0.985 0 0);
+    --secondary: oklch(0.97 0 0);
+    --secondary-foreground: oklch(0.205 0 0);
+    --accent: oklch(0.97 0 0);
+    --accent-foreground: oklch(0.205 0 0);
+    --destructive: oklch(0.577 0.245 27.325);
+    --destructive-foreground: oklch(1 0 0);
+    --border: oklch(0.922 0 0);
+    --input: oklch(0.922 0 0);
+    --ring: oklch(0.708 0 0);
+    --track: oklch(0.922 0 0);
+    --sidebar: oklch(0.985 0 0);
+    --sidebar-foreground: oklch(0.145 0 0);
+    --sidebar-accent: oklch(0.94 0 0);
+
+    /* Statuts lisibles : des alias sémantiques, pas des copies de valeurs. C'est ce qui
+       fait suivre le badge « Terminé » quand un dérivé recolore `--primary`.
+       La règle qui ne se négocie pas, quel que soit le rebranding : jamais la couleur
+       seule — chaque statut est une icône + un libellé + une forme de bordure. */
+    --status-done: var(--primary);
+    --status-done-foreground: var(--primary-foreground);
+    --status-doing: var(--foreground);
+    --status-todo: var(--muted-strong);
+    --status-ready: var(--muted);
+    --status-unreadable: var(--muted-strong);
+}
+
+/* ------------------------------------------------------------------------------------
+ * Le thème sombre.
+ *
+ * Il est écrit deux fois : un `@media` ne peut pas entrer dans une liste de sélecteurs,
+ * et le socle promet les deux chemins — suivre `prefers-color-scheme` par défaut, et se
+ * laisser forcer par la classe `dark` sur `<html>` (EXPERIENCE.md l.367-370 ; la bascule
+ * elle-même et sa mémorisation appartiennent à l'Epic 5).
+ *
+ * `the_two_dark_blocks_never_diverge()` interdit à l'une des deux copies de dériver de
+ * l'autre. Les alias de statut ne sont pas repris : ils suivent leur cible.
+ * --------------------------------------------------------------------------------- */
+@media (prefers-color-scheme: dark) {
+    :root:not(.light) {
+        color-scheme: dark;
+
+        --background: oklch(0.145 0 0);
+        --foreground: oklch(0.985 0 0);
+        --page: oklch(0.145 0 0);
+        --card: oklch(0.205 0 0);
+        --card-foreground: oklch(0.985 0 0);
+        --muted: oklch(0.269 0 0);
+        --muted-foreground: oklch(0.708 0 0);
+        --muted-strong: oklch(0.8 0 0);
+        --primary: oklch(0.922 0 0);
+        --primary-foreground: oklch(0.205 0 0);
+        --secondary: oklch(0.269 0 0);
+        --secondary-foreground: oklch(0.985 0 0);
+        --accent: oklch(0.269 0 0);
+        --accent-foreground: oklch(0.985 0 0);
+        --destructive: oklch(0.704 0.191 22.216);
+        --destructive-foreground: oklch(0.145 0 0);
+        --border: oklch(1 0 0 / 10%);
+        --input: oklch(0.269 0 0);
+        --ring: oklch(0.556 0 0);
+        --track: oklch(0.32 0 0);
+        --sidebar: oklch(0.205 0 0);
+        --sidebar-foreground: oklch(0.985 0 0);
+        --sidebar-accent: oklch(0.269 0 0);
+    }
+}
+
+:root.dark {
+    color-scheme: dark;
+
+    --background: oklch(0.145 0 0);
+    --foreground: oklch(0.985 0 0);
+    --page: oklch(0.145 0 0);
+    --card: oklch(0.205 0 0);
+    --card-foreground: oklch(0.985 0 0);
+    --muted: oklch(0.269 0 0);
+    --muted-foreground: oklch(0.708 0 0);
+    --muted-strong: oklch(0.8 0 0);
+    --primary: oklch(0.922 0 0);
+    --primary-foreground: oklch(0.205 0 0);
+    --secondary: oklch(0.269 0 0);
+    --secondary-foreground: oklch(0.985 0 0);
+    --accent: oklch(0.269 0 0);
+    --accent-foreground: oklch(0.985 0 0);
+    --destructive: oklch(0.704 0.191 22.216);
+    --destructive-foreground: oklch(0.145 0 0);
+    --border: oklch(1 0 0 / 10%);
+    --input: oklch(0.269 0 0);
+    --ring: oklch(0.556 0 0);
+    --track: oklch(0.32 0 0);
+    --sidebar: oklch(0.205 0 0);
+    --sidebar-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.269 0 0);
+}
+
+/* Sous `prefers-reduced-motion: reduce`, toutes les durées tombent à zéro — les
+   composants du kit le font déjà, les transitions écrites à la main lisent ces jetons. */
+@media (prefers-reduced-motion: reduce) {
+    :root {
+        --motion-fade: 0ms;
+        --motion-panel: 0ms;
+    }
+}
+
+@layer base {
+    *,
+    ::after,
+    ::before {
+        border-color: var(--border);
+    }
+
+    /* La profondeur vient de deux tons — le fond de page gris sous les cartes
+       blanches — et d'une bordure de 1 px. Jamais d'une ombre (DESIGN.md § Elevation). */
+    body {
+        background-color: var(--page);
+        color: var(--foreground);
+        font-family: var(--font-sans);
+        font-size: var(--text-body);
+        line-height: var(--text-body--line-height);
+    }
+
+    /* Règle 4 de `symfony-proglab-accessibility` : chaque élément interactif porte un
+       indicateur de focus visible. `:focus-visible` plutôt que `:focus` garde l'anneau
+       au clavier sans l'imposer au clic.
+
+       C'est un plancher, pas le dernier mot : cette règle vit dans `@layer base`, et
+       les couches déclarées par Tailwind mettent `utilities` après `base`. Les
+       composants du kit qui portent `outline-none` la remplacent donc réellement — par
+       leur propre `focus-visible:ring-3 focus-visible:ring-ring/50`, un défaut du kit
+       conservé au même titre que `--ring`. Ce qui n'est jamais permis, c'est de
+       supprimer sans remplacer. */
+    :focus-visible {
+        outline: 2px solid var(--ring);
+        outline-offset: 2px;
+    }
+}

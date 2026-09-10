@@ -1,0 +1,19 @@
+# Tailwind 4 sans Node.
+#
+# Le bundle télécharge le binaire CLI autonome de Tailwind dans `var/` et enregistre un
+# compilateur AssetMapper sur la feuille d'entrée : aucun bundler, aucun `node_modules`,
+# aucune étape Node (AD-1).
+#
+#   php bin/console tailwind:build --watch    # pendant le développement
+#   php bin/console asset-map:compile         # au déploiement, qui minifie pour vous
+symfonycasts_tailwind:
+    # Épinglée, et pas seulement « installée ». Non épinglée, le bundle récupère le
+    # dernier CLI publié : deux releases du même dérivé ne se bâtiraient alors pas avec
+    # le même binaire, et une version majeure de Tailwind peut arriver sur un runner sans
+    # cache un jour où personne n'a touché à un fichier CSS.
+    binary_version: 'v4.3.3'
+
+    # Explicite plutôt que par défaut : la valeur par défaut du bundle est un détail
+    # d'implémentation, et cette ligne est ce qui dit où vit le point d'entrée du thème.
+    input_css:
+        - '%kernel.project_dir%/assets/styles/app.css'

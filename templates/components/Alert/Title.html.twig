@@ -1,0 +1,16 @@
+{# @prop as 'div' The HTML tag to render — use a real heading level when the alert sits in a page outline. #}
+{# @block content The title text of the alert. #}
+{#
+   Écart assumé avec le kit, pour les deux raisons de `Card:Title` : le rôle
+   typographique du socle pour ce moment est `--text-subheading` (15 px / 600, DESIGN.md
+   § Typography), et DESIGN.md documente ce titre comme un `h3`, que le `<div>` du kit
+   rend inatteignable. `div` reste le défaut.
+#}
+{%- props as = 'div' -%}
+<{{ as }}
+    data-slot="alert-title"
+    class="{{ ('text-subheading group-has-[>svg]/alert:col-start-2 [&_a]:underline [&_a]:underline-offset-3 [&_a]:hover:text-foreground ' ~ attributes.render('class'))|tailwind_merge }}"
+    {{ attributes }}
+>
+    {%- block content %}{% endblock -%}
+</{{ as }}>

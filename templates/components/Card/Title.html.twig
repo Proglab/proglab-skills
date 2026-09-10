@@ -1,0 +1,24 @@
+{# @prop as 'div' The HTML tag to render — use a real heading level when the card sits in a page outline. #}
+{# @block content The title text of the card. #}
+{#
+   Écart assumé avec le kit, en deux points.
+
+   `cn-font-heading` : le kit référence cette classe et ne la définit nulle part — le
+   consommateur est censé la fournir. Le socle a déjà son rôle typographique pour ce
+   moment, `--text-heading` (18 px / 600, DESIGN.md § Typography), donc c'est lui qui
+   est posé plutôt qu'une classe morte doublée d'un `text-base`.
+
+   `as` : DESIGN.md documente ce titre comme un `h2`. Le kit rend un `<div>`, ce qui
+   coupe la carte de la hiérarchie de titres de la page (règle 6 de
+   `symfony-proglab-accessibility`). `Button` et `Badge` exposent déjà une prop `as` ;
+   celle-ci suit le même modèle, avec `div` par défaut pour ne rien changer aux appels
+   qui n'en ont pas besoin.
+#}
+{%- props as = 'div' -%}
+<{{ as }}
+    data-slot="card-title"
+    class="{{ ('text-heading leading-snug group-data-[size=sm]/card:text-subheading ' ~ attributes.render('class'))|tailwind_merge }}"
+    {{ attributes }}
+>
+    {%- block content %}{% endblock -%}
+</{{ as }}>

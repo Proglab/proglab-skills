@@ -1,0 +1,14 @@
+# Recette Flex de `symfony/property-info`, tiré comme dépendance par
+# `symfony/ux-twig-component` : c'est le composant qui lit les propriétés d'une classe
+# de composant Twig pour y injecter les props.
+#
+# `with_constructor_extractor` fait lire aussi les paramètres du constructeur, et pas
+# seulement les propriétés déclarées — ce qu'il faut pour un composant `final readonly`
+# à propriétés promues, la forme que ce standard écrit partout.
+#
+# Le socle n'a aucun composant avec classe aujourd'hui (ils sont tous anonymes, cf.
+# `twig_component.yaml`). Le fichier reste parce qu'il est le défaut de la recette et
+# qu'il sera juste le jour où le premier arrivera.
+framework:
+    property_info:
+        with_constructor_extractor: true

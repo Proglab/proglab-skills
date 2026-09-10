@@ -24,3 +24,12 @@
 /.php-cs-fixer.php
 /.php-cs-fixer.cache
 ###< php-cs-fixer/shim ###
+
+###> symfony/asset-mapper ###
+/public/assets/
+# `/assets/vendor/` est volontairement absent de cette liste : le socle **commite** ses
+# dépendances JavaScript, pour qu'un déploiement n'ait pas à aller les rechercher et pour
+# que ce qui est livré soit exactement ce qui a été relu. `importmap.php` reste le fichier
+# qui se lit en revue ; `assets/vendor/` est la sortie qu'il décrit, et
+# tests/Core/Theme/AssetPipelineTest.php refuse qu'elle manque.
+###< symfony/asset-mapper ###

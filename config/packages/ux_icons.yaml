@@ -1,0 +1,44 @@
+# Une seule bibliothèque d'icônes : Tabler, trait de 2 px (DESIGN.md l.643).
+#
+# Mélanger deux bibliothèques, c'est deux traits, deux grilles et deux vocabulaires de
+# noms sur le même écran — la même raison qui interdit un second kit de composants.
+ux_icons:
+    # Les icônes sont verrouillées dans le dépôt. `php bin/console ux:icons:lock` scanne
+    # les templates et importe ce qui manque ; les fichiers sont commités.
+    icon_dir: '%kernel.project_dir%/assets/icons'
+
+    default_icon_attributes:
+        # Taille en `em` : l'icône suit la taille du texte à côté duquel elle est posée.
+        #
+        # Pas de `fill` ici, et ce n'est pas un oubli. Les attributs par défaut sont
+        # fusionnés **par-dessus** ceux du SVG source (`Icon::withAttributes()` :
+        # `[...$this->attributes, ...$attributes]`), et les icônes Tabler de trait
+        # arrivent avec `fill="none" stroke="currentColor"`. Un `fill: currentColor`
+        # global les rendrait toutes pleines. La couleur suit le texte parce que le SVG
+        # dit déjà `currentColor` — il n'y a rien à ajouter.
+        height: '1em'
+        width: '1em'
+
+    icon_sets:
+        tabler:
+            icon_attributes:
+                # DESIGN.md l.643 : trait de 2 px. Tabler le pose déjà ; l'écrire ici
+                # fait que le socle ne dépend pas de ce défaut.
+                stroke-width: '2'
+
+    # Une icône manquante est une erreur, pas un trou silencieux dans une interface.
+    ignore_not_found: false
+
+    iconify:
+        # Coupé par défaut : sans cela, une icône absente du dépôt part la chercher chez
+        # Iconify **au moment du rendu**, et une page de production dépend alors d'une
+        # API tierce et d'un réseau sortant.
+        on_demand: false
+
+when@dev:
+    ux_icons:
+        iconify:
+            on_demand: true
+            # Chaque icône rendue à la demande est écrite sur disque au premier rendu :
+            # on ne peut plus oublier de la committer avant de déployer.
+            auto_lock: true

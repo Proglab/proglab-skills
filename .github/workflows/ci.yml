@@ -91,6 +91,15 @@ jobs:
       - name: Prepare the test database
         run: php bin/console --env=test doctrine:migrations:migrate --no-interaction --allow-no-migration
 
+      # En environnement de test, le compilateur du bundle Tailwind s'efface quand la
+      # feuille compilée manque (`strict_mode` vaut false en test) : `@import
+      # 'tailwindcss'` retombe alors sur AssetMapper, qui ne connaît pas cet asset et
+      # échoue en `missing_import_mode: strict`. Sur un runner, qui part toujours d'un
+      # clone frais, chaque test fonctionnel qui rend une page tomberait. C'est aussi ici
+      # que le binaire autonome prouve qu'il compile sans npm.
+      - name: Build the theme stylesheet
+        run: php bin/console tailwind:build
+
       # phpunit.dist.xml porte failOnPhpunitNotice et l'extension DAMA.
       - name: Run the test suite
         run: php vendor/bin/phpunit
@@ -185,7 +194,16 @@ jobs:
       - name: Known vulnerabilities (PHP)
         run: composer audit
 
-      # `php bin/console importmap:audit` manque volontairement : AssetMapper n'entre au
-      # socle qu'à la story 1.3, et la commande échouerait aujourd'hui faute de bundle.
-      # Elle se rajoute ici et dans la cible `audit` du Makefile ce jour-là — jamais
-      # gardée derrière une condition, qui ne ferait que masquer son absence.
+      # Il n'y a pas de `npm audit` sur cette stack : `importmap:audit` est la seule
+      # vérification de vulnérabilité côté JavaScript, et elle interroge la base d'avis
+      # de GitHub pour les versions épinglées dans `importmap.php`. Jamais gardée
+      # derrière une condition, qui ne ferait que masquer son absence.
+      #
+      # Le jeton est celui que GitHub fournit à chaque exécution : sans lui, l'API
+      # d'avis est interrogée en anonyme, plafonnée à 60 requêtes par heure et par IP —
+      # une IP partagée entre tous les runners hébergés. La porte deviendrait rouge pour
+      # une raison sans aucun rapport avec le changement.
+      - name: Known vulnerabilities (JavaScript)
+        run: php bin/console importmap:audit
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

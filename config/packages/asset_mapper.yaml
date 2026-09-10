@@ -1,0 +1,20 @@
+# AssetMapper : les assets sont servis en modules ES natifs, résolus par une import map.
+#
+# Pas de bundler, pas d'étape Node, pas de second lockfile (AD-1). Le prix est connu et
+# assumé : ni JSX, ni composants monofichiers, ni TypeScript.
+framework:
+    asset_mapper:
+        paths:
+            - assets/
+
+        # En développement, un `@import` ou une `url()` qu'AssetMapper ne sait pas
+        # résoudre doit échouer bruyamment. `warn` partout, c'est un import cassé qui
+        # part silencieusement en production et qu'un utilisateur découvre.
+        missing_import_mode: strict
+
+when@prod:
+    framework:
+        asset_mapper:
+            # En production, une faute de frappe ne doit pas faire tomber le site : elle
+            # a déjà eu deux occasions d'être vue, en développement et à la compilation.
+            missing_import_mode: warn

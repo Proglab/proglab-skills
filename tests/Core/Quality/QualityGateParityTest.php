@@ -104,7 +104,11 @@ final class QualityGateParityTest extends TestCase
         'Layer contract' => ['deptrac analyse', '--config-file=deptrac.yaml', '--report-uncovered'],
         // Le garde-fou d'isolation et les migrations sont dans la liste : ce sont eux qui
         // font que la façade locale vérifie autant que la façade en ligne.
-        'Tests' => ['debug:config dama_doctrine_test', 'doctrine:migrations:migrate', 'phpunit'],
+        // `tailwind:build` est dans la liste pour la même raison que les migrations : en
+        // test, le compilateur du bundle s'efface quand la feuille compilée manque, et
+        // `@import 'tailwindcss'` fait alors échouer tout test fonctionnel qui rend une
+        // page. Sur un clone frais, la retirer d'une façade rend cette façade rouge.
+        'Tests' => ['debug:config dama_doctrine_test', 'doctrine:migrations:migrate', 'tailwind:build', 'phpunit'],
         'Linters and audits' => [
             'composer validate --strict',
             'lint:container',
@@ -112,6 +116,11 @@ final class QualityGateParityTest extends TestCase
             'lint:yaml',
             'doctrine:schema:validate --skip-sync',
             'composer audit',
+            // Il n'y a pas de `npm audit` sur cette stack : sans cette ligne, rien ne
+            // signalerait jamais qu'un paquet JavaScript épinglé dans `importmap.php` a
+            // une faille publiée. Elle est nommée ici parce qu'une catégorie peut rester
+            // présente par son nom et se vider de sa substance.
+            'importmap:audit',
         ],
     ];
 

@@ -1,0 +1,38 @@
+/*
+ * Le point d'entrée CSS — quatre imports, et rien d'autre.
+ *
+ * L'ordre **est** le contrat de rebranding : Tailwind, puis les feuilles du kit shadcn,
+ * puis le thème du socle, puis la marque du dérivé. Une marque importée avant le socle
+ * ne surcharge rien.
+ *
+ * Ce que chaque fichier porte :
+ *   theme.css  tout le thème du socle — rôles de couleur en clair et en sombre,
+ *              typographie, rayons, espacement, mouvement. Seul le socle l'édite. Les
+ *              deux défauts du kit conservés sous un seuil WCAG (`--input`, `--ring`)
+ *              y sont documentés comme choix assumés.
+ *   brand.css  livré vide : les seules variables qu'un dérivé a le droit de redéfinir.
+ *
+ * Le thème ne vit pas ici, contrairement à la lettre de DESIGN.md l.398-409, pour que le
+ * report d'un correctif de thème d'un dérivé à l'autre reste un `git diff` propre.
+ *
+ * Compilé sans Node par `symfonycasts/tailwind-bundle` :
+ *   php bin/console tailwind:build --watch
+ */
+
+/* `source(none)` coupe la détection automatique de Tailwind, qui remonte jusqu'à la
+   racine du dépôt et y ramasse tout ce qui ressemble à une classe. Ce dépôt porte aussi
+   `.claude/skills/` et `_bmad-output/`, où des exemples de documentation écrivent
+   `text-red-500` ou `text-gray-400` : sans cette coupure, la feuille livrée embarque des
+   couleurs que le socle refuse justement d'utiliser. Les trois sources réelles sont
+   déclarées juste en dessous. */
+@import 'tailwindcss' source(none);
+
+@import '../vendor/tw-animate-css/dist/tw-animate.css';
+@import '../vendor/shadcn/dist/tailwind.css';
+
+@import './theme.css';
+@import './brand.css';
+
+@source '../../templates/';
+@source '../../src/';
+@source '../controllers/';
