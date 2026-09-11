@@ -146,9 +146,16 @@ audit: ## Vulnérabilités connues, en PHP et en JavaScript
 
 # `composer install` ne fait qu'avertir quand le lock a derive du json : sans
 # `composer validate --strict`, « meme version en local et en CI » n'est verifie par rien.
+#
+# `lint:container --env=prod` en plus du precedent, et ce n'est pas une redondance : le
+# bloc `when@prod` de config/packages/monolog.yaml n'etait verifie que par lecture du YAML.
+# Renommer le handler `nested` sans renommer la reference, ou filtrer un canal qui n'existe
+# pas, laissait la porte verte et la production muette. Cette ligne **construit** le
+# conteneur de prod, donc elle resout ces references pour de vrai.
 lint: ## Lint le conteneur, les templates, le YAML, le mapping Doctrine et composer.json
 	composer validate --strict
 	php bin/console lint:container
+	php bin/console lint:container --env=prod
 	php bin/console lint:twig templates/
 	php bin/console lint:yaml config/ .github/ translations/
 	php bin/console doctrine:schema:validate --skip-sync

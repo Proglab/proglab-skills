@@ -1,0 +1,34 @@
+{% extends 'base.html.twig' %}
+
+{# La page servie quand une adresse ne correspond à rien.
+
+   **Ce répertoire est le seul point d'extension.** `@Twig` ne résout que vers
+   `templates/bundles/TwigBundle/` — le bundle n'embarque aucune vue —, et
+   `TwigErrorRenderer::findTemplate()` essaie `error{statut}.html.twig` puis
+   `error.html.twig`, sans repli par famille. Ces quatre fichiers sont donc toute la
+   surface, et ils ne sont utilisés que hors debug : en développement, la page de debug du
+   framework reste servie.
+
+   **Rien de technique n'atteint le DOM.** Le renderer passe trois variables à ce
+   template ; aucune n'est écrite ici, et aucune ne doit l'être. Ni le code HTTP, ni son
+   libellé, ni un nom de classe, ni une trace. `tests/Core/Template/ErrorPageTest.php`
+   balaie le texte de la page servie *et* la source de ces quatre fichiers.
+
+   **Rien de ce chemin de rendu ne touche la base de données.** La locale vient de la
+   requête principale — `App\Core\EventListener\LocaleListener` sort sur `!isMainRequest()`,
+   donc la sous-requête d'erreur en hérite et ne la recalcule pas —, les catalogues sont
+   des fichiers, et `app_name` vient d'une variable d'environnement. C'est ce qui permet à
+   la 500 de rendre quand la base est injoignable, et c'est une propriété prouvée.
+
+   **Un dérivé remplace ce fichier en place**, au même titre que le logo ou les variables
+   de couleur : pas de logique, pas de dépendance à un service, rien qu'un gabarit et des
+   clés. Ne rien ajouter ici qui rendrait ce remplacement difficile. #}
+{% block title %}{{ 'error.not_found.title'|trans }}{% endblock %}
+
+{% block body %}
+    <h1>{{ 'error.not_found.title'|trans }}</h1>
+
+    <p>{{ 'error.not_found.message'|trans }}</p>
+
+    <p><a href="{{ path('app_home') }}">{{ 'error.back_home'|trans }}</a></p>
+{% endblock %}

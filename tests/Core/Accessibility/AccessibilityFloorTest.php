@@ -49,7 +49,7 @@ final class AccessibilityFloorTest extends WebTestCase
     {
         $offences = [];
 
-        foreach ($this->pages() as $page => $crawler) {
+        foreach ($this->crawlers() as $page => $crawler) {
             $focusable = $crawler->filter('body a[href], body button, body input, body select, body textarea, body [tabindex]:not([tabindex="-1"])');
 
             if (0 === $focusable->count()) {
@@ -80,7 +80,7 @@ final class AccessibilityFloorTest extends WebTestCase
     {
         $offences = [];
 
-        foreach ($this->pages() as $page => $crawler) {
+        foreach ($this->crawlers() as $page => $crawler) {
             if (1 !== $crawler->filter('header')->count()) {
                 $offences[] = \sprintf('%s : la page doit porter exactement un repère `<header>`.', $page);
             }
@@ -120,7 +120,7 @@ final class AccessibilityFloorTest extends WebTestCase
     {
         $offences = [];
 
-        foreach ($this->pages() as $page => $crawler) {
+        foreach ($this->crawlers() as $page => $crawler) {
             $lang = $crawler->filter('html')->attr('lang');
 
             if (null === $lang || '' === trim($lang)) {
@@ -150,7 +150,7 @@ final class AccessibilityFloorTest extends WebTestCase
     {
         $offences = [];
 
-        foreach ($this->pages() as $page => $crawler) {
+        foreach ($this->crawlers() as $page => $crawler) {
             $title = $crawler->filter('title');
 
             if (1 !== $title->count()) {
@@ -185,7 +185,7 @@ final class AccessibilityFloorTest extends WebTestCase
     {
         $offences = [];
 
-        foreach ($this->pages() as $page => $crawler) {
+        foreach ($this->crawlers() as $page => $crawler) {
             $region = $crawler->filter('#annonces');
 
             if (1 !== $region->count()) {
@@ -226,7 +226,7 @@ final class AccessibilityFloorTest extends WebTestCase
     {
         $offences = [];
 
-        foreach ($this->pages() as $page => $crawler) {
+        foreach ($this->crawlers() as $page => $crawler) {
             foreach (self::elementsOf($crawler->filter('[aria-invalid="true"]')) as $field) {
                 $described = self::words($field->getAttribute('aria-describedby'));
 
@@ -348,7 +348,7 @@ final class AccessibilityFloorTest extends WebTestCase
     {
         $offences = [];
 
-        foreach ($this->pages() as $page => $crawler) {
+        foreach ($this->crawlers() as $page => $crawler) {
             foreach (self::elementsOf($crawler->filterXPath('//input|//select|//textarea')) as $control) {
                 $type = strtolower($control->getAttribute('type'));
 
@@ -451,7 +451,7 @@ final class AccessibilityFloorTest extends WebTestCase
     {
         $offences = [];
 
-        foreach ($this->pages() as $page => $crawler) {
+        foreach ($this->crawlers() as $page => $crawler) {
             foreach (self::elementsOf($crawler->filterXPath('//img')) as $image) {
                 if (!$image->hasAttribute('alt')) {
                     $offences[] = \sprintf('%s : une `<img>` sans attribut `alt` — un lecteur d\'écran annoncerait son nom de fichier (règle 5).', $page);
@@ -489,7 +489,7 @@ final class AccessibilityFloorTest extends WebTestCase
     {
         $offences = [];
 
-        foreach ($this->pages() as $page => $crawler) {
+        foreach ($this->crawlers() as $page => $crawler) {
             $levels = [];
 
             foreach (self::elementsOf($crawler->filterXPath('//h1|//h2|//h3|//h4|//h5|//h6')) as $heading) {
@@ -619,6 +619,7 @@ final class AccessibilityFloorTest extends WebTestCase
     public function the_floor_actually_reads_a_rendered_page_and_the_declared_sources(): void
     {
         self::assertNotSame([], $this->pages(), 'Aucune page du socle n\'a été rendue : le contrôle d\'accessibilité ne regarde rien.');
+        self::assertNotSame([], $this->errorPages(), \sprintf('Aucun template n\'a été rendu depuis « %s » : les pages d\'erreur sont sorties du plancher sans que rien ne bouge.', self::ERROR_TEMPLATES));
 
         foreach (self::declaredSources() as $directory) {
             self::assertNotSame(
@@ -641,8 +642,85 @@ final class AccessibilityFloorTest extends WebTestCase
     // Lecture des pages rendues
     // -------------------------------------------------------------------------------
 
+    /**
+     * Les pages d'erreur (story 1.10). Elles sont **balayées**, pas listées : un cinquième
+     * fichier posé là entre dans le plancher sans qu'on y pense, et c'est la seule façon
+     * qu'une page d'erreur ne sorte jamais du contrôle en silence.
+     */
+    private const string ERROR_TEMPLATES = 'templates/bundles/TwigBundle/Exception';
+
+    /** @var array<string, Crawler>|null */
+    private ?array $crawlers = null;
+
     /** @var array<string, Crawler>|null */
     private ?array $pages = null;
+
+    /** @var array<string, Crawler>|null */
+    private ?array $errorPages = null;
+
+    /**
+     * Tout ce que les neuf règles de DOM ci-dessus regardent.
+     *
+     * Deux sources, et elles ne se ressemblent pas : les écrans du socle sont découverts
+     * par la `RouteCollection` et rendus par une vraie requête HTTP ; les pages d'erreur
+     * n'ont aucune route et sont rendues hors requête. Les fusionner ici plutôt que dans
+     * `pages()` garde chaque source honnête — `pages()` continue d'exiger
+     * `assertResponseIsSuccessful()`, ce qu'une page d'erreur ne pourrait jamais satisfaire.
+     *
+     * @return array<string, Crawler>
+     */
+    private function crawlers(): array
+    {
+        // `pages()` d'abord : c'est lui qui crée le client, donc le conteneur dont
+        // `errorPages()` tire Twig.
+        return $this->crawlers ??= array_merge($this->pages(), $this->errorPages());
+    }
+
+    /**
+     * Les quatre pages d'erreur, rendues **hors requête**.
+     *
+     * Elles n'ont aucune route : le `TwigErrorRenderer` les résout par statut, hors debug,
+     * depuis une sous-requête. Le plancher ne peut donc pas les atteindre par le chemin
+     * qu'il utilise pour les écrans — et il n'en a pas besoin, puisque ce qu'il vérifie est
+     * le DOM que le template produit. Rendre sans requête ajoute même une preuve : une page
+     * d'erreur qui aurait besoin du contexte de requête échouerait ici, et c'est exactement
+     * la propriété qui compte le jour où la base ne répond plus.
+     *
+     * `tests/Core/Template/ErrorPageTest.php` prouve l'autre moitié — que ces fichiers sont
+     * réellement servis, par le vrai renderer, pour les bons statuts.
+     *
+     * @return array<string, Crawler>
+     */
+    private function errorPages(): array
+    {
+        if (null !== $this->errorPages) {
+            return $this->errorPages;
+        }
+
+        $twig = self::getContainer()->get('twig');
+
+        $pages = [];
+
+        // Un Finder à part, et non `finderFor()` : celui-là descend récursivement en
+        // acceptant `*.twig`, `*.php` et `*.js`, et son `name()` s'ajoute au lieu de
+        // restreindre. Ici on ne veut que des **pages** — un partial rangé dans un
+        // sous-répertoire n'a pas de `h1` et ferait échouer toute la suite au lieu de la
+        // faire rapporter. Le chemin relatif porte donc le sous-répertoire s'il y en a un.
+        $found = new Finder()
+            ->files()
+            ->in(GateFiles::projectDir().'/'.self::ERROR_TEMPLATES)
+            ->depth('== 0')
+            ->name('*.html.twig')
+            ->sortByName();
+
+        foreach ($found as $file) {
+            $logical = '@Twig/Exception/'.str_replace('\\', '/', $file->getRelativePathname());
+
+            $pages[\sprintf('%s (hors requête)', $logical)] = new Crawler($twig->render($logical), 'http://localhost');
+        }
+
+        return $this->errorPages = $pages;
+    }
 
     /**
      * Toute route GET du socle, réellement rendue.

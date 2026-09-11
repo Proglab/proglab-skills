@@ -22,3 +22,35 @@ layout:
 home:
     index:
         title: Accueil
+
+# Les pages d'erreur (story 1.10). Les quatre templates de
+# `templates/bundles/TwigBundle/Exception/` ne portent que ces clés : un dérivé qui veut
+# sa propre 404 remplace le fichier, sans aucun mécanisme de surcharge à apprendre.
+#
+# La clé nomme l'intention, jamais le statut HTTP : `not_found` et non `404`. Le code
+# n'apparaît ni dans le texte, ni dans la clé, ni dans le DOM — c'est ce que le tableau
+# de ton interdit, et `tests/Core/Template/ErrorPageTest.php` le vérifie sur la page
+# réellement servie.
+#
+# `unexpected` sert **deux** templates — `error500.html.twig` et le générique
+# `error.html.twig` : un 502 ou un 405 n'a rien de plus à dire à l'utilisateur qu'une 500.
+#
+# Les trois messages sont repris au mot près du tableau *Voice and Tone* du contrat UX.
+# Les trois titres n'y figurent pas — les pages d'erreur y sont « spine-only » et le
+# tableau ne donne que le corps du message. Ils sont donc une décision de cette story,
+# écrite sous les mêmes règles : courte, vouvoyée, sans identifiant technique.
+error:
+    forbidden:
+        title: Accès non autorisé
+        message: "Vous n'avez pas accès à cette page. Si vous pensez que c'est une erreur, adressez-vous à votre administrateur."
+    not_found:
+        title: Page introuvable
+        message: "Cette page n'existe pas."
+    unexpected:
+        title: Une erreur est survenue
+        message: "Quelque chose n'a pas fonctionné. Réessayez ; si cela persiste, prévenez votre administrateur."
+    # Le tableau de ton écrit « Retour à la roadmap » : la roadmap est la page d'accueil
+    # de l'Epic 3, et l'accueil de l'Epic 1 n'en est pas encore une. Le lien pointe
+    # `app_home` dans les deux cas — c'est le libellé qui suivra la page le jour où elle
+    # devient la roadmap.
+    back_home: Retour à l'accueil

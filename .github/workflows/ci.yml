@@ -186,6 +186,13 @@ jobs:
       # `composer install` ne fait qu'avertir quand le lock a derive du json.
       - run: composer validate --strict
       - run: php bin/console lint:container
+
+      # Le conteneur de production, construit pour de vrai. Le bloc `when@prod` de
+      # `config/packages/monolog.yaml` n'est autrement vérifié que par lecture du YAML :
+      # un handler `nested` renommé sans sa référence laisserait la porte verte et la
+      # production muette.
+      - run: php bin/console lint:container --env=prod
+
       - run: php bin/console lint:twig templates/
       - run: php bin/console lint:yaml config/ .github/ translations/
       - run: php bin/console doctrine:schema:validate --skip-sync

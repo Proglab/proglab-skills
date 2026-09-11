@@ -1,0 +1,16 @@
+{% extends 'base.html.twig' %}
+
+{# L'accès refusé. Même forme que `error404.html.twig`, dont le commentaire porte les
+   règles communes aux quatre fichiers.
+
+   Le message dit quoi faire ensuite et **jamais pourquoi** l'accès est refusé : nommer la
+   permission manquante renseignerait sur ce qui existe derrière la porte. #}
+{% block title %}{{ 'error.forbidden.title'|trans }}{% endblock %}
+
+{% block body %}
+    <h1>{{ 'error.forbidden.title'|trans }}</h1>
+
+    <p>{{ 'error.forbidden.message'|trans }}</p>
+
+    <p><a href="{{ path('app_home') }}">{{ 'error.back_home'|trans }}</a></p>
+{% endblock %}

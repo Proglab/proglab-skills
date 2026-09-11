@@ -1,0 +1,21 @@
+{% extends 'base.html.twig' %}
+
+{# La panne. Même forme que `error404.html.twig`, dont le commentaire porte les règles
+   communes aux quatre fichiers.
+
+   Le message est générique, et c'est volontaire : ce qui a réellement échoué part au
+   journal — `ErrorListener` l'y écrit en `critical`, sur le canal `request` — et rien de
+   cela n'apparaît à l'écran.
+
+   C'est la page du plus mauvais moment : celle qui doit répondre quand tout le reste a
+   échoué. Elle n'appelle aucun service, ne lit aucune donnée, et partage son texte avec le
+   générique `error.html.twig`. #}
+{% block title %}{{ 'error.unexpected.title'|trans }}{% endblock %}
+
+{% block body %}
+    <h1>{{ 'error.unexpected.title'|trans }}</h1>
+
+    <p>{{ 'error.unexpected.message'|trans }}</p>
+
+    <p><a href="{{ path('app_home') }}">{{ 'error.back_home'|trans }}</a></p>
+{% endblock %}

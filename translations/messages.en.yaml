@@ -7,3 +7,15 @@ layout:
 home:
     index:
         title: Home
+
+error:
+    forbidden:
+        title: Access not allowed
+        message: "You do not have access to this page. If you think this is a mistake, contact your administrator."
+    not_found:
+        title: Page not found
+        message: "This page does not exist."
+    unexpected:
+        title: Something went wrong
+        message: "Something did not work. Try again; if it keeps happening, let your administrator know."
+    back_home: Back to home

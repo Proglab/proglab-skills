@@ -1,0 +1,21 @@
+{% extends 'base.html.twig' %}
+
+{# Le repli, pour tout statut qui n'a pas son propre fichier : 401, 405, 502, 503…
+
+   Il n'est pas du zèle. `TwigErrorRenderer::findTemplate()` essaie `error{statut}.html.twig`
+   puis **directement** celui-ci : il n'y a aucun repli par famille, pas de `error4xx`.
+   Sans ce fichier, un 405 ou un 502 sort par le `HtmlErrorRenderer` nu — « Oops, an Error
+   Occurred », en anglais, hors gabarit, avec le code HTTP en toutes lettres.
+
+   Il partage son texte avec `error500.html.twig` : un statut que l'utilisateur n'a pas
+   provoqué n'a rien de plus à lui dire qu'une panne. Les règles communes aux quatre
+   fichiers sont commentées dans `error404.html.twig`. #}
+{% block title %}{{ 'error.unexpected.title'|trans }}{% endblock %}
+
+{% block body %}
+    <h1>{{ 'error.unexpected.title'|trans }}</h1>
+
+    <p>{{ 'error.unexpected.message'|trans }}</p>
+
+    <p><a href="{{ path('app_home') }}">{{ 'error.back_home'|trans }}</a></p>
+{% endblock %}

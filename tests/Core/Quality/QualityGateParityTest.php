@@ -114,6 +114,11 @@ final class QualityGateParityTest extends TestCase
         'Linters and audits' => [
             'composer validate --strict',
             'lint:container',
+            // Épinglé séparément : c'est la seule étape de la porte qui **construit** le
+            // conteneur de production, donc la seule qui résolve pour de vrai les
+            // références de `config/packages/*.yaml` sous `when@prod`. La perdre des deux
+            // façades ne casserait aucune autre assertion.
+            'lint:container --env=prod',
             'lint:twig',
             // Les arguments sont épinglés avec la commande : perdre `translations/` d'une
             // seule des deux façades ne casserait aucune parité, et un catalogue mal formé

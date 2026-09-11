@@ -1,0 +1,128 @@
+# Le premier magasin de journaux du dépôt (story 1.10), écrit à la main.
+#
+#   bin/console debug:config monolog                     # la config fusionnée, par environnement
+#   bin/console debug:config --env=prod monolog          # et celle de la production, qui seule compte
+#   bin/console debug:container --tag=monolog.channel_logger
+#
+# **Pourquoi ce fichier existe.** Le second critère de la story exige qu'une 500 soit
+# « journalisée par canal ». Le socle n'avait aucun logger : `ErrorListener` sortait sur
+# `if (!$logger = …) return;` et une panne en production ne laissait aucune trace. Poser
+# `symfony/monolog-bundle` suffit à faire écrire ce listener — aucun code applicatif n'est
+# à écrire. Il ne restait qu'à décider *où* ces lignes vont, et c'est tout ce fichier.
+#
+# **Pourquoi il est relu et pas hérité.** La recette Flex écrit une configuration correcte
+# et générique. Une configuration que personne ne relit ne tient le mot « canal » que par
+# accident : `tests/Core/Observability/ErrorLoggingTest.php` en vérifie la forme *et*
+# l'effet — canal, niveau, et ce qu'une 403 comme une 404 ne déclenchent pas.
+#
+# **Ce que ce fichier ne fait volontairement pas.** Ni processor, ni identifiant de
+# corrélation, ni utilisateur courant, ni masquage, ni sink d'alerte, ni heartbeat. Tout
+# cela appartient à l'observabilité et n'a rien à quoi se raccrocher aujourd'hui : le socle
+# n'a ni utilisateur connecté ni formulaire, donc la ligne d'une 500 porte ce que Symfony y
+# met — message, classe, requête — et rien de plus. Dès que l'un des deux existe, le
+# masquage et l'identifiant de corrélation deviennent nécessaires ; les tenir pour acquis
+# ici serait une erreur.
+monolog:
+    # **Le socle ne déclare aucun canal à lui.** Rien dans `src/` n'écrit encore une ligne :
+    # un canal `business` ou `alert` posé par anticipation serait un nom que personne
+    # n'injecte, invisible à `debug:container --tag=monolog.channel_logger` comme utile.
+    #
+    # Le canal qui porte les pages de cette story est `request`, et il vient de Symfony :
+    # `framework-bundle/Resources/config/web.php` tague `exception_listener` avec
+    # `['channel' => 'request']`. Comme `doctrine`, `security` ou `messenger`, il se filtre,
+    # il ne se déclare pas.
+    #
+    # `deprecation` est la seule exception, et elle est ici pour son handler de production :
+    # une dépréciation n'atteint jamais `error`, donc sans canal séparé `fingers_crossed`
+    # l'avalerait pour toujours — et c'est l'alerte précoce de la prochaine montée de
+    # version de Symfony.
+    channels: ['deprecation']
+
+when@dev:
+    monolog:
+        handlers:
+            # En développement on veut chaque ligne, tout de suite, dans un fichier qu'on
+            # peut suivre : `var/log/dev.log`. Pas de `fingers_crossed` — il ne rendrait
+            # service qu'en masquant ce qu'on est justement en train de chercher.
+            main:
+                type: stream
+                path: '%kernel.logs_dir%/%kernel.environment%.log'
+                level: debug
+                channels: ['!event']
+
+when@test:
+    monolog:
+        handlers:
+            # La **forme de production**, avec une destination observable. Le test ne
+            # vérifie pas seulement qu'une ligne est écrite : il vérifie que la
+            # bufférisation la laisse passer quand c'est une panne et l'avale quand c'est
+            # une page introuvable. Un simple `stream` ici prouverait le logger et pas la
+            # politique.
+            #
+            # `excluded_http_codes` et `channels` sont donc **mot pour mot ceux de
+            # `when@prod`** : une forme qui diverge d'un seul filtre ne prouve plus la
+            # forme de production, elle prouve une forme voisine.
+            # `ErrorLoggingTest::the_configuration_declares_one_handler_per_environment()`
+            # tient les deux listes face à face.
+            main:
+                type: fingers_crossed
+                action_level: error
+                handler: testing
+                excluded_http_codes: [403, 404, 405]
+                buffer_size: 50
+                channels: ['!deprecation']
+
+            # `Monolog\Handler\TestHandler` : les enregistrements restent en mémoire. Un
+            # test vert n'écrit rien sur le disque, et la suite n'a aucun fichier de log à
+            # nettoyer entre deux exécutions.
+            testing:
+                type: test
+                level: debug
+
+when@prod:
+    monolog:
+        handlers:
+            # `fingers_crossed` bufférise et n'écrit rien tant qu'aucun enregistrement
+            # n'atteint `action_level`, puis vide le buffer entier — la trace de debug qui
+            # a mené à l'échec. Deux conséquences à connaître avant de croire le journal
+            # cassé : une requête qui fonctionne n'écrit **zéro ligne**, et une requête en
+            # échec en déverse jusqu'à `buffer_size` d'un coup.
+            #
+            # `excluded_http_codes` est ce qui tient « une page introuvable n'est pas une
+            # panne : elle ne réveille personne ». Sans lui, chaque adresse tapée de travers
+            # déclencherait un vidage complet — le journal deviendrait illisible à la taille
+            # où on en aurait justement besoin.
+            #
+            # **403 y est autant que 404.** `ErrorListener` journalise une
+            # `AccessDeniedHttpException` en `error`, qui est exactement `action_level` : sans
+            # elle dans la liste, chaque accès refusé viderait les cinquante lignes du
+            # buffer. La matrice de la story met 403 et 404 sur la même ligne, et c'est ici
+            # que cette ligne se tient.
+            main:
+                type: fingers_crossed
+                action_level: error
+                handler: nested
+                excluded_http_codes: [403, 404, 405]
+                buffer_size: 50
+                channels: ['!deprecation']
+
+            # La destination. `php://stderr` plutôt qu'un fichier : c'est au serveur — et
+            # donc à `symfony-proglab-deployment` — de décider où ce flux atterrit, pas à
+            # l'application. Le JSON est ce qui permettra de le lire autrement qu'à l'œil le
+            # jour où un agrégateur existe.
+            #
+            # `level: debug` est volontaire : le buffer ne mérite d'être vidé que s'il porte
+            # la trace qui explique l'échec. Le remonter à `error` rendrait tout le
+            # mécanisme inutile.
+            nested:
+                type: stream
+                path: php://stderr
+                level: debug
+                formatter: monolog.formatter.json
+
+            # Non bufférisé, et c'est tout l'intérêt : `main` exclut ce canal ci-dessus.
+            deprecation:
+                type: stream
+                path: php://stderr
+                channels: ['deprecation']
+                formatter: monolog.formatter.json

@@ -26,4 +26,13 @@ return [
     // l'architecture (AR-25). Il n'ajoute que du confort : chaque chemin du socle
     // fonctionne en pleine page sans lui.
     Symfony\UX\Turbo\TurboBundle::class => ['all' => true],
+    // Le premier magasin de journaux du dépôt (story 1.10). Sans lui, le service `logger`
+    // n'existe pas, `ErrorListener::logException()` sort sans écrire une ligne, et une 500
+    // en production ne laisse aucune trace nulle part. Aucun code applicatif ne s'ajoute :
+    // le listener natif sait déjà router par canal et lire `#[WithLogLevel]`.
+    //
+    // `config/packages/monolog.yaml` est **réécrit à la main** par-dessus la recette Flex :
+    // une configuration que personne ne relit ne tient le mot « canal » que par accident.
+    // `tests/Core/Observability/ErrorLoggingTest.php` en vérifie la forme et l'effet.
+    Symfony\Bundle\MonologBundle\MonologBundle::class => ['all' => true],
 ];

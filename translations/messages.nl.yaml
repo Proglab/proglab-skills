@@ -7,3 +7,15 @@ layout:
 home:
     index:
         title: Home
+
+error:
+    forbidden:
+        title: Geen toegang
+        message: "U hebt geen toegang tot deze pagina. Denkt u dat dit een vergissing is, neem dan contact op met uw beheerder."
+    not_found:
+        title: Pagina niet gevonden
+        message: "Deze pagina bestaat niet."
+    unexpected:
+        title: Er is iets misgegaan
+        message: "Probeer het opnieuw; blijft dit gebeuren, waarschuw dan uw beheerder."
+    back_home: Terug naar de startpagina

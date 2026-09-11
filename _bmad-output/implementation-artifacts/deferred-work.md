@@ -421,3 +421,15 @@ Entrees ajoutees par bmad-build. Append-only : ne pas modifier les entrees exist
 
     Le correctif tiendra en une ligne — `{{ app_name }}` à la place du texte — mais il
     appartient à la story qui décide de quoi la surface de rebranding est faite.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-10-rendre-les-pages-403-404-et-500-lisibles.md`
+  summary: En production, le handler Monolog écrit sur `php://stderr` et rien nulle part ne dit où ce flux atterrit.
+  evidence: Vérifié : `config/packages/monolog.yaml` délègue explicitement la destination au serveur, et aucune cible de déploiement n'existe encore dans le dépôt. Sous PHP-FPM sans `catch_workers_output`, ce flux est purement perdu — la story qui pose le premier magasin de journaux du socle se refermerait donc sur une production toujours muette. Ce qui trancherait : la story 3.1 « Déployer le dérivé chez le client », qui possède le `deploy.php`, le `php.ini` de production et les services systemd. Le choix de stderr plutôt qu'un fichier est délibéré et reste le bon ; c'est son raccordement qui manque.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-10-rendre-les-pages-403-404-et-500-lisibles.md`
+  summary: Le texte générique des pages d'erreur sera faux pour un 401, et `excluded_http_codes` devra l'accueillir.
+  evidence: Vérifié inatteignable aujourd'hui : aucun firewall n'existe, donc rien ne produit un 401. Dès que la story 1.6 en pose un, le repli `error.html.twig` répondra « Quelque chose n'a pas fonctionné. Réessayez » à un utilisateur qui doit simplement se connecter, et un 401 non exclu videra le buffer de `fingers_crossed` comme le faisait la 403. Les deux se règlent ensemble, et elles appartiennent à la story qui rend le statut atteignable.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-10-rendre-les-pages-403-404-et-500-lisibles.md`
+  summary: Le 429 du ralentissement de connexion devra rejoindre `excluded_http_codes`.
+  evidence: Même raisonnement que le 401, autre story : `symfony/rate-limiter` n'entre qu'à la story 1.7, nommément exclue de celle-ci. Une fois qu'elle existe, une rafale de tentatives de connexion viderait le buffer de journaux à chaque refus — exactement le bruit que `excluded_http_codes` existe pour empêcher. Le texte générique « Réessayez » y est en plus contre-indiqué, puisque c'est précisément ce qu'il ne faut pas faire tout de suite.
