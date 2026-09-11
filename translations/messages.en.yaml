@@ -19,3 +19,13 @@ error:
         title: Something went wrong
         message: "Something did not work. Try again; if it keeps happening, let your administrator know."
     back_home: Back to home
+security:
+    login:
+        title: Sign in
+        language: Language
+        email: Email
+        password: Password
+        submit: Sign in
+        error:
+            invalid_credentials: Incorrect email or password.
+            account_disabled: This account is disabled. Please contact your administrator.

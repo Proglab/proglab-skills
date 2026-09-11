@@ -25,10 +25,17 @@ use Symfony\Component\HttpKernel\KernelEvents;
  * interface dont personne ne sait pourquoi elle a changé. Aucun préfixe de langue dans
  * l'URL non plus (AD-6) : le chemin ne dépend pas de la langue.
  *
- * **La couture de la story 1.6.** Un quatrième barreau viendra s'insérer *entre* la
- * session et la première langue active : la langue du compte connecté. Il n'est pas
- * écrit ici — une couture nommée n'est pas du code écrit à l'avance — et son insertion ne
- * touchera que cette méthode.
+ * **La couture annoncée par la story 1.5 n'a pas été posée, et elle ne le sera pas.** Un
+ * quatrième barreau « langue du compte connecté » est infaisable à cette priorité : ce
+ * listener tourne à **20**, le pare-feu de Symfony à **8** — il n'y a pas encore de token,
+ * donc `getUser()` rendrait `null` sur chaque requête. Descendre sous 8 déplacerait le
+ * problème sur le translator, que `LocaleAwareListener` synchronise à la priorité **15** :
+ * la locale serait posée trop tard pour être traduite.
+ *
+ * La story 1.6 a donc fait l'inverse : `App\Core\EventListener\LoginLocaleListener` écrit
+ * la langue du compte **en session**, sous `SESSION_KEY`, au moment de la connexion
+ * réussie. La chaîne ci-dessous n'a pas bougé, et le comportement promis par l'UX —
+ * « après connexion, la langue du profil prend le relais » — est tenu par le barreau 2.
  *
  * **Priorité 20**, donc avant le `LocaleListener` de Symfony (16) et après le routeur
  * (32). Celui de Symfony n'écrit ensuite que s'il trouve un attribut de route `_locale`
@@ -44,9 +51,17 @@ final readonly class LocaleListener
     public const int PRIORITY = 20;
 
     /**
-     * La clé de session qui porte le choix explicite. Elle n'est écrite que par un
-     * `?lang=` valide, et jamais par un repli : c'est ce qui permet à un utilisateur de
-     * retrouver sa langue le jour où un administrateur la réactive.
+     * La clé de session qui porte la langue retenue.
+     *
+     * **Elle n'est jamais écrite par un repli**, et c'est l'invariant qui compte : la
+     * session garde le choix d'origine même quand la langue vient d'être désactivée, si
+     * bien qu'un utilisateur la retrouve le jour où un administrateur la réactive.
+     *
+     * Deux écritures existent, et deux seulement : un `?lang=` valide et actif, ci-dessous
+     * ; la langue du compte, écrite à la connexion réussie par
+     * `App\Core\EventListener\LoginLocaleListener`. La seconde écrase la première, ce qui
+     * *est* le comportement promis — « après connexion, la langue du profil prend le
+     * relais ».
      */
     public const string SESSION_KEY = '_locale';
 
@@ -78,7 +93,9 @@ final readonly class LocaleListener
             return $chosen;
         }
 
-        // La story 1.6 insérera ici le barreau « langue du compte ».
+        // Pas de barreau « langue du compte » ici : elle est écrite en session à la
+        // connexion, et c'est donc le barreau ci-dessous qui la sert. Voir le docblock
+        // de cette classe pour la raison — elle tient à deux priorités d'écouteurs.
 
         $remembered = $this->offered($this->remembered($request));
 

@@ -54,3 +54,16 @@ error:
     # `app_home` dans les deux cas — c'est le libellé qui suivra la page le jour où elle
     # devient la roadmap.
     back_home: Retour à l'accueil
+# L'écran de connexion (story 1.6). Les deux messages d'échec sont ceux du tableau
+# *Voice and Tone* du contrat UX, au mot près : un message d'erreur dit toujours quoi
+# faire ensuite, et jamais lequel des deux champs était faux.
+security:
+    login:
+        title: Connexion
+        language: Langue
+        email: Email
+        password: Mot de passe
+        submit: Se connecter
+        error:
+            invalid_credentials: Email ou mot de passe incorrect.
+            account_disabled: Ce compte est désactivé. Adressez-vous à votre administrateur.

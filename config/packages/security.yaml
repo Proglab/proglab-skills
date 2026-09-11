@@ -1,0 +1,96 @@
+# La sécurité du socle — écrite à la main, pas la recette de Flex.
+#
+# La recette pose un provider `users_in_memory` et un firewall sans authenticator : un
+# firewall dans cet état ne laisse entrer personne, en silence. Ce fichier n'en garde
+# rien.
+#
+#   php bin/console debug:firewall main
+#
+# **Un seul firewall applicatif** (`main`), plus `dev`, qui est une exclusion et non une
+# frontière. Plusieurs firewalls, ce sont plusieurs contextes de sécurité, et un
+# utilisateur authentifié dans l'un est anonyme dans l'autre. Le firewall `/api` sans état
+# de l'Epic 6 sera le seul second légitime — mécanisme différent, préfixe de chemin propre,
+# aucune session.
+#
+# Ce que ce fichier ne porte **pas**, volontairement :
+# - `login_throttling` : c'est la story 1.7, et `symfony/rate-limiter` n'entre pas ici ;
+# - un `access_control` au-delà de l'accès anonyme à `/login` : aucune zone n'existe
+#   encore, et une règle qui ne défend rien n'est vérifiée par rien (Epic 2) ;
+# - `stateless_token_ids` sous `framework.csrf_protection` : le CSRF sans état exige son
+#   contrôleur Stimulus dans le navigateur, ce qui contredit AD-17 (« tout fonctionne sans
+#   JavaScript »). Le défaut de Symfony — un jeton en session — est le bon ici.
+security:
+    # `auto` choisit le meilleur algorithme offert par la plateforme et, avec
+    # `needsRehash()`, fait migrer les hachages au fil de ses améliorations. Nommer
+    # bcrypt ou argon2id fige la décision dans un fichier que plus personne ne relit.
+    password_hashers:
+        Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface: 'auto'
+
+    providers:
+        app_users:
+            entity:
+                class: App\Core\Entity\User
+                property: email
+
+    firewalls:
+        dev:
+            pattern: ^/(_profiler|_wdt|assets)/
+            security: false
+
+        main:
+            lazy: true
+            provider: app_users
+
+            # Le contrôle « compte désactivé ». `checkPreAuth`, donc antérieur à la
+            # vérification du mot de passe : voir la classe pour ce que cela achète.
+            user_checker: App\Core\Security\UserChecker
+
+            form_login:
+                login_path: app_login
+                check_path: app_login
+                # Le formulaire est rendu et soumis à la même URL, et le pare-feu
+                # intercepte le POST avant tout contrôleur.
+                default_target_path: app_home
+                # AD-18 ne souffre aucune exception : jeton en session, vérifié par le
+                # badge CSRF du passport.
+                enable_csrf: true
+                # Le défaut du framework, écrit en toutes lettres : c'est l'identifiant
+                # que `templates/security/login.html.twig` passe à `csrf_token()`, et un
+                # couplage qui n'est visible qu'à un seul bout se casse en silence.
+                csrf_token_id: authenticate
+
+            # Aucun écran. La route est vide : le pare-feu intercepte la requête avant
+            # qu'elle n'atteigne le contrôleur.
+            #
+            # `enable_csrf` vaut `false` par défaut sur la déconnexion, et sans lui un
+            # `<img src="https://…/logout">` posé sur un site tiers ferme la session de qui
+            # visite ce site. AD-18 dit « toute écriture, sans exception », et fermer une
+            # session en est une. L'URL porteuse du jeton se construit avec `logout_path()`
+            # côté Twig — jamais `path('app_logout')`, qui rendrait un lien sans jeton.
+            logout:
+                path: app_logout
+                enable_csrf: true
+
+    # Une seule règle, et elle est le filet de la seule page que cette story pose.
+    # `PUBLIC_ACCESS` est explicite plutôt qu'implicite : le jour où l'Epic 2 ajoute un
+    # `^/` en dernier, `/login` est déjà couvert — l'ordre de lecture est de haut en bas
+    # et seule la première correspondance s'applique.
+    #
+    # Le motif est ancré aux deux bouts. `^/login` seul couvre aussi `/logins` et
+    # `/login-admin` : la règle la plus permissive de la liste s'appliquerait alors à des
+    # chemins que personne n'a voulu ouvrir, et elle gagnerait contre le `^/` final
+    # puisque seule la première correspondance compte.
+    access_control:
+        - { path: ^/login$, roles: PUBLIC_ACCESS }
+
+when@test:
+    security:
+        # Le hachage est coûteux par conception. En test, le coût minimal de chaque
+        # algorithme suffit — `auto` reste `auto`, donc c'est bien le mécanisme de
+        # production qui est exercé, seulement moins cher.
+        password_hashers:
+            Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface:
+                algorithm: auto
+                cost: 4
+                time_cost: 3
+                memory_cost: 10

@@ -52,6 +52,20 @@ when@test:
             App\Core\Contract\ModuleDescriptor:
                 tags: ['app.module']
 
+        # Le hacheur de mots de passe, rendu atteignable depuis les tests.
+        #
+        # Aucun service du socle ne l'injecte encore — la commande d'initialisation de la
+        # story 1.11 sera la première — donc le conteneur le supprime comme inutilisé, et
+        # `tests/Core/Security/Accounts.php` ne peut plus créer de compte avec le hacheur
+        # du projet. C'est la concession la plus étroite possible : l'alternative serait
+        # de hacher dans le test avec un algorithme écrit en dur, c'est-à-dire de vérifier
+        # la connexion sur un mécanisme que la production n'utilise pas.
+        #
+        # À retirer le jour où un service du socle l'injecte pour de bon.
+        Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface:
+            alias: security.user_password_hasher
+            public: true
+
         # Miroir du glob des modules ci-dessus, sur les modules de démonstration.
         App\Tests\Fixtures\Module\:
             resource: '../tests/Fixtures/Module/*/'

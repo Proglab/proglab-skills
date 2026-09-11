@@ -41,7 +41,7 @@ development_status:
   1-3-installer-le-kit-de-composants-et-poser-le-thème-du-socle: done
   1-4-poser-le-gabarit-de-base-et-le-plancher-d-accessibilité: done
   1-5-servir-l-interface-en-français-anglais-et-néerlandais: done
-  1-6-se-connecter-avec-son-email-et-son-mot-de-passe: in-progress
+  1-6-se-connecter-avec-son-email-et-son-mot-de-passe: review
   1-7-ralentir-les-tentatives-de-connexion-répétées: backlog
   1-8-sortir-l-envoi-des-emails-de-la-requête: backlog
   1-9-réinitialiser-un-mot-de-passe-oublié: backlog

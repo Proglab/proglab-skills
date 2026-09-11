@@ -7,6 +7,19 @@ twig:
     globals:
         app_name: '%app.name%'
 
+        # Les langues **actives**, disponibles dans chaque template sans qu'un contrôleur
+        # ait à les passer. C'est la page de connexion qui l'exige : elle est rendue par
+        # deux chemins — le contrôleur en GET, l'écouteur d'échec au rendu 422 — et deux
+        # endroits qui assemblent les mêmes variables sont deux endroits qui divergent.
+        #
+        # Ce qui est exposé est le **service**, pas la liste. Une référence de service en
+        # global est instanciée avec Twig, sur chaque requête qui rend un template — mais
+        # instancier `ActiveLocales` ne coûte rien : il ne requête la base que dans
+        # `all()`, et il mémorise sa réponse pour la requête. Une page qui ne lit pas le
+        # global ne pose donc aucune requête de plus, et une page qui le lit deux fois
+        # n'en pose qu'une.
+        active_locales: '@App\Core\Service\ActiveLocales'
+
 when@test:
     twig:
         strict_variables: true
