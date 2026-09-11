@@ -115,7 +115,10 @@ final class QualityGateParityTest extends TestCase
             'composer validate --strict',
             'lint:container',
             'lint:twig',
-            'lint:yaml',
+            // Les arguments sont épinglés avec la commande : perdre `translations/` d'une
+            // seule des deux façades ne casserait aucune parité, et un catalogue mal formé
+            // passerait la porte du côté qui ne le regarde plus.
+            'lint:yaml config/ .github/ translations/',
             'doctrine:schema:validate --skip-sync',
             'composer audit',
             // Il n'y a pas de `npm audit` sur cette stack : sans cette ligne, rien ne
@@ -138,6 +141,11 @@ final class QualityGateParityTest extends TestCase
         // les quatre lignes de la matrice d'edge cases qu'ils portent redeviendraient
         // muettes.
         'Accessibility' => [
+            // Les migrations y sont pour la même raison que dans « Tests », et depuis que
+            // le plancher rend des pages qui lisent la table des langues : sur un clone
+            // frais, retirer cette ligne d'une façade la rend rouge pendant que la porte
+            // reste verte de l'autre côté.
+            'doctrine:migrations:migrate',
             'tailwind:build',
             'phpunit --testsuite Accessibility',
             'node --test "tests/js/**/*.test.js"',

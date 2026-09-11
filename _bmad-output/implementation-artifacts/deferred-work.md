@@ -382,3 +382,42 @@ Entrees ajoutees par bmad-build. Append-only : ne pas modifier les entrees exist
     correction est une décision de spine — celle de Fabrice —, pas une correction de build.
     Quand elle est prise, deux endroits suivent : la ligne `--ring` du tableau de
     `DESIGN.md § Colors`, et le commentaire correspondant d'`assets/styles/brand.css`.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-5-servir-l-interface-en-francais-anglais-et-neerlandais.md`
+  summary: Rien ne compare une migration écrite à la main au mapping Doctrine, parce que
+    `doctrine:schema:validate` est lancé avec `--skip-sync` sur les deux façades de la porte.
+  evidence: |
+    Réel et antérieur à la story 1.5. `--skip-sync` est dans le `Makefile` et dans le job
+    « Linters and audits » depuis la story 1.2, pour une raison qui tient toujours : l'entité
+    de fixture `tests/Fixtures/Module/Demo/Entity/DemoWidget.php` n'a pas de migration, donc
+    une vraie vérification de synchronisation serait rouge en permanence.
+
+    Ce que cela coûte à partir de maintenant : la story 1.5 pose la **première** migration du
+    dépôt, et elle est écrite à la main. La seule garantie que son `CREATE TABLE` corresponde
+    au mapping de `App\Core\Entity\Language` est une relecture humaine — la couche conformité
+    de la revue a vérifié à la main, dans `vendor/doctrine/dbal`, que DBAL 4 produit bien
+    `TINYINT` pour un booléen. La prochaine migration n'aura pas forcément ce relecteur.
+
+    Deux pistes, l'une ou l'autre, pas les deux : restreindre la vérification de
+    synchronisation au mapping `Core` (les fixtures restent hors du contrôle), ou donner une
+    migration aux entités de fixture pour pouvoir lever `--skip-sync`. C'est un arbitrage
+    d'outillage, pas une correction de build.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-5-servir-l-interface-en-francais-anglais-et-neerlandais.md`
+  summary: `templates/home/index.html.twig` code « Socle ERP » en dur dans sa `h1` alors que
+    le `<title>` compose `app_name` — un dérivé renommé affiche deux noms différents sur la
+    même page.
+  evidence: |
+    Réel et antérieur à la story 1.5 : la `h1` vient de la story 1.1, `app_name` de la 1.4.
+    La story 1.5 ne fait que rendre l'écart visible, en traduisant le titre de la page sans
+    toucher au nom du produit.
+
+    Pourquoi c'est reporté plutôt que corrigé : ce n'est pas une question de traduction — le
+    nom d'un dérivé ne se traduit pas — mais de surface de rebranding. Cette surface est
+    nommée par le contexte d'epic (« le rebranding se limite aux variables de couleur du
+    thème et au logo ») et possédée par les stories 1.11 « Initialiser un dérivé en une
+    commande » et 1.12 « Écrire le guide de dérivation ». Même verdict que le favicon reporté
+    par la story 1.4, et pour la même raison.
+
+    Le correctif tiendra en une ligne — `{{ app_name }}` à la place du texte — mais il
+    appartient à la story qui décide de quoi la surface de rebranding est faite.

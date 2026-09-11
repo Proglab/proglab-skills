@@ -138,6 +138,7 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ env.PHP_VERSION }}
+          extensions: ctype, iconv, intl, pdo_mysql
           coverage: none
 
       - uses: ramsey/composer-install@v3
@@ -156,6 +157,7 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ env.PHP_VERSION }}
+          extensions: ctype, iconv, intl, pdo_mysql
           coverage: none
 
       - uses: ramsey/composer-install@v3
@@ -185,7 +187,7 @@ jobs:
       - run: composer validate --strict
       - run: php bin/console lint:container
       - run: php bin/console lint:twig templates/
-      - run: php bin/console lint:yaml config/ .github/
+      - run: php bin/console lint:yaml config/ .github/ translations/
       - run: php bin/console doctrine:schema:validate --skip-sync
 
       # composer audit sans option : le socle refuse toute vulnérabilité connue, y
@@ -213,13 +215,36 @@ jobs:
   # qui rend l'échec lisible — « Accessibility » rouge dit quoi corriger, un test perdu
   # dans la suite ne le dit pas.
   #
-  # Pas de service de base de données : le plancher rend les pages GET du socle, qui n'en
-  # touchent aucune. Le jour où une page en aura besoin, ce job prendra le même service
-  # MySQL et les mêmes migrations que « Tests ».
+  # Ce job avait ici une note disant « pas de service de base de données : le plancher
+  # rend les pages GET du socle, qui n'en touchent aucune », et promettant qu'il prendrait
+  # le même service MySQL que « Tests » le jour où une page en aurait besoin. Ce jour est
+  # la story 1.5 : la résolution de locale lit les langues actives en base à chaque
+  # requête, donc **toute** page rendue touche désormais la base. La promesse est tenue
+  # ici — même image, mêmes identifiants, mêmes migrations que « Tests ».
   accessibility:
     name: Accessibility
     runs-on: ubuntu-latest
     timeout-minutes: 10
+
+    services:
+      database:
+        image: mysql:8.4
+        env:
+          MYSQL_USER: app
+          MYSQL_PASSWORD: app
+          MYSQL_DATABASE: app_test
+          MYSQL_ROOT_PASSWORD: root
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -uapp -papp"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+          --health-start-period=30s
+
+    env:
+      DATABASE_URL: mysql://app:app@127.0.0.1:3306/app?serverVersion=8.4&charset=utf8mb4
+
     steps:
       - uses: actions/checkout@v4
 
@@ -230,6 +255,12 @@ jobs:
           coverage: none
 
       - uses: ramsey/composer-install@v3
+
+      # Les migrations, jamais doctrine:schema:create — pour la même raison que dans
+      # « Tests ». Le plancher rend de vraies pages, et une page ne sait plus dire sa
+      # langue tant que la table des langues n'existe pas.
+      - name: Prepare the test database
+        run: php bin/console --env=test doctrine:migrations:migrate --no-interaction --allow-no-migration
 
       # Le plancher regarde de vraies pages rendues : sans la feuille compilée,
       # `@import 'tailwindcss'` tombe sur `missing_import_mode: strict` et chaque rendu

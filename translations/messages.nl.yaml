@@ -1,0 +1,9 @@
+# Traduction du catalogue du socle. La source est `messages.fr.yaml` : une clé n'existe
+# ici que parce qu'elle existe là-bas.
+layout:
+    skip_to_content: Naar de inhoud
+    main_navigation: Hoofdnavigatie
+
+home:
+    index:
+        title: Home
