@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-10-2026 11:30
-last_updated: 09-11-2026 10:40
+last_updated: 09-11-2026 14:21
 project: proglab-skills
 project_key: NOKEY
 tracking_system: file-system
@@ -40,8 +40,8 @@ development_status:
   1-2-bloquer-les-régressions-en-intégration-continue: done
   1-3-installer-le-kit-de-composants-et-poser-le-thème-du-socle: done
   1-4-poser-le-gabarit-de-base-et-le-plancher-d-accessibilité: done
-  1-5-servir-l-interface-en-français-anglais-et-néerlandais: review
-  1-6-se-connecter-avec-son-email-et-son-mot-de-passe: backlog
+  1-5-servir-l-interface-en-français-anglais-et-néerlandais: done
+  1-6-se-connecter-avec-son-email-et-son-mot-de-passe: in-progress
   1-7-ralentir-les-tentatives-de-connexion-répétées: backlog
   1-8-sortir-l-envoi-des-emails-de-la-requête: backlog
   1-9-réinitialiser-un-mot-de-passe-oublié: backlog
