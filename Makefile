@@ -28,7 +28,7 @@ SHELL := bash.exe
 endif
 
 .DEFAULT_GOAL := help
-.PHONY: help qa test stan stan-baseline cs cs-check deptrac audit lint a11y container-cache
+.PHONY: help qa test stan stan-baseline cs cs-check deptrac audit lint a11y container-cache sync-status
 
 # Le `0-9` de la classe n'est pas decoratif : `a11y` porte un chiffre, et sans lui la
 # cible existe, s'execute et n'apparait dans aucune liste.
@@ -152,3 +152,11 @@ lint: ## Lint le conteneur, les templates, le YAML, le mapping Doctrine et compo
 	php bin/console lint:twig templates/
 	php bin/console lint:yaml config/ .github/ translations/
 	php bin/console doctrine:schema:validate --skip-sync
+
+# Hors de la porte de qualité, et donc hors de la table `# qa-category:` : cette cible ne
+# vérifie rien, elle recale le suivi de sprint. `.githooks/post-merge` l'exécute tout
+# seul après un merge sur main ; la cible existe pour les chemins où ce hook ne se
+# déclenche pas — un rebase, un merge conclu à la main après conflits, ou un clone qui
+# n'a pas encore `core.hooksPath`.
+sync-status: ## Passe à « done » les stories dont le travail est sur la branche principale
+	@.githooks/sync-sprint-status.sh

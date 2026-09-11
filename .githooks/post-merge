@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+#
+# Après un merge sur la branche principale, recale le suivi de sprint.
+#
+# `post-merge` se déclenche après `git merge` et après le `git pull` qui en fait un —
+# `pull.rebase` vaut `false` sur ce dépôt, donc les deux chemins passent ici. Il ne se
+# déclenche pas après un `git rebase`, ni après la conclusion manuelle d'un merge qui a
+# eu des conflits : dans ces deux cas, `make sync-status` fait le même travail à la main.
+#
+# Un hook ne fait jamais échouer l'opération qui l'a appelé : le script appelé sort en 0
+# quoi qu'il arrive, et ce dispatcher ne fait rien d'autre que l'appeler.
+set -euo pipefail
+
+# Le suivi décrit l'état de la branche principale. Un merge de main dans une branche de
+# story n'a rien livré et ne doit rien conclure.
+branch=$(git symbolic-ref --short -q HEAD || echo '')
+[ "$branch" = 'main' ] || exit 0
+
+exec "$(git rev-parse --show-toplevel)/.githooks/sync-sprint-status.sh"
