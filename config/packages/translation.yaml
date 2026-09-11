@@ -1,5 +1,25 @@
 framework:
-    default_locale: en
+    # Le français est la langue **source** du socle (FR-19) : les chaînes sont écrites en
+    # français depuis le tableau de ton du contrat UX, et l'anglais comme le néerlandais
+    # en sont les traductions. Cette ligne doit donc valoir la première valeur de
+    # `App\Core\Enum\SupportedLocale` — l'ordre de cet enum est aussi l'ordre de repli, et
+    # `tests/Core/Translation/CatalogParityTest.php` refuse toute dérive entre les deux.
+    default_locale: fr
+
+    # Les langues **supportées**, et la liste complète de ce que le translator compile.
+    #
+    # Ce n'est pas la liste des langues actives : « actif » est une ligne de la table des
+    # langues, et cela filtre l'**offre** — ce que `?lang=` accepte et ce qu'un sélecteur
+    # proposera — jamais la compilation des catalogues. La distinction est celle que la
+    # revue d'architecture demandait d'écrire noir sur blanc : un catalogue qui cesserait
+    # d'être compilé parce qu'un administrateur a décoché une langue ferait échouer le
+    # rendu d'un email déjà en file, ou d'une page rendue pour un autre utilisateur.
+    #
+    # Les trois valeurs sont recopiées ici parce que la configuration du framework est
+    # lue avant tout code : elles ne peuvent pas venir de l'enum. Le test de parité tient
+    # la coïncidence.
+    enabled_locales: ['fr', 'en', 'nl']
+
     translator:
         default_path: '%kernel.project_dir%/translations'
         providers:

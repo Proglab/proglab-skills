@@ -28,10 +28,12 @@ services:
         App\Core\Contract\ModuleDescriptor:
             tags: ['app.module']
 
-    # Le socle. `Contract/` est exclu : il ne porte que des interfaces et des DTO.
+    # Le socle. La liste d'exclusion est celle des répertoires qui portent des données et
+    # non des services : interfaces, DTO, entités et enums n'ont rien à faire dans le
+    # conteneur.
     App\Core\:
         resource: '../src/Core/'
-        exclude: '../src/Core/{Contract,Dto,Entity}'
+        exclude: '../src/Core/{Contract,Dto,Entity,Enum}'
 
     # Les modules du client. Ajouter un module ne modifie pas ce fichier.
     App\Module\:

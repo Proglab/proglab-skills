@@ -1,0 +1,24 @@
+# Catalogue du socle, domaine `messages` — la convention que toutes les stories
+# suivantes copient.
+#
+# **Clés anglaises pointées, source française.** La clé nomme l'intention et le lieu
+# (`layout.skip_to_content`), jamais le texte : une clé qui *est* la phrase change
+# d'identité le jour où la phrase change, et les trois catalogues divergent en silence.
+#
+# **Un domaine par surface.** `messages` est le domaine par défaut, celui du gabarit et
+# des pages du socle. Un module livre le sien dans `src/Module/<Nom>/translations/`.
+#
+# **Domaine simple, pas ICU.** Aucune de ces trois chaînes ne porte de variable ni de
+# pluriel. La première story qui en a besoin ouvre son **propre** domaine suffixé
+# `+intl-icu` — un domaine ICU se pose à côté, il ne se substitue pas : déplacer une clé
+# d'un domaine simple vers un domaine ICU change ses règles d'échappement.
+#
+# `tests/Core/Translation/CatalogParityTest.php` refuse toute clé qui manquerait ou
+# serait vide dans l'une des trois langues.
+layout:
+    skip_to_content: Aller au contenu
+    main_navigation: Navigation principale
+
+home:
+    index:
+        title: Accueil

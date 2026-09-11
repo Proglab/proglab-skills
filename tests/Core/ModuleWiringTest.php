@@ -13,6 +13,8 @@ use Doctrine\Bundle\DoctrineBundle\Mapping\MappingDriver as BundleMappingDriver;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Mapping\Driver\AttributeDriver;
 use Doctrine\Persistence\Mapping\Driver\MappingDriverChain;
+use Generator;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Contracts\Translation\TranslatorInterface;
@@ -144,16 +146,37 @@ final class ModuleWiringTest extends WebTestCase
         self::assertSame([], array_values(array_diff($entries, ['.', '..', '.gitkeep'])));
     }
 
+    /**
+     * Le critère « un module livre ses catalogues » vaut pour les **trois** langues :
+     * un module qui ne livrerait que le français rendrait sa clé en clair aux deux
+     * autres, et le socle ne s'en apercevrait pas.
+     *
+     * `tests/Core/Translation/CatalogParityTest.php` tient la parité comme une règle,
+     * sur tous les catalogues du dépôt. Celui-ci tient le câblage : le translator
+     * parcourt bien la racine des modules, dans chacune des trois langues.
+     */
     #[Test]
-    public function the_translation_catalogue_of_a_module_is_read(): void
+    #[DataProvider('lesCataloguesDuModuleDeDemonstration')]
+    public function the_translation_catalogue_of_a_module_is_read(string $locale, string $expected): void
     {
         self::bootKernel();
 
         $translator = self::getContainer()->get(TranslatorInterface::class);
 
         self::assertSame(
-            'Widgets de démonstration',
-            $translator->trans('widget.index.title', [], 'demo', 'fr'),
+            $expected,
+            $translator->trans('widget.index.title', [], 'demo', $locale),
+            \sprintf('Le catalogue « demo.%s.yaml » du module de démonstration n\'est pas lu.', $locale),
         );
+    }
+
+    /**
+     * @return Generator<string, array{string, string}>
+     */
+    public static function lesCataloguesDuModuleDeDemonstration(): Generator
+    {
+        yield 'français' => ['fr', 'Widgets de démonstration'];
+        yield 'anglais' => ['en', 'Demonstration widgets'];
+        yield 'néerlandais' => ['nl', 'Demonstratiewidgets'];
     }
 }

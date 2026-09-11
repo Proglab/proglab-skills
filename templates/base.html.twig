@@ -15,12 +15,14 @@
    `tests/Core/Accessibility/AccessibilityFloorTest.php` le tient comme une règle sur
    toute page rendue.
 
-   Les deux textes visibles de ce fichier sont écrits en français en clair. Les catalogues
-   de traduction arrivent à la story 1.5 ; y renvoyer maintenant afficherait une clé. #}
+   Les deux textes visibles de ce fichier passent par le catalogue `messages` du socle
+   (`translations/messages.{fr,en,nl}.yaml`). Clés anglaises pointées, source française :
+   `tests/Core/Translation/CatalogParityTest.php` refuse toute clé qui manquerait dans
+   l'une des trois langues. #}
 {# `lang` est une étiquette BCP 47, pas une locale Symfony : `fr_BE` s'écrit `fr-BE` en
    HTML, et un lecteur d'écran ignore la forme à tiret bas — il retombe alors sur la langue
-   du système. Le socle ne sert qu'un `fr` aujourd'hui ; la story 1.5 pose les catalogues
-   et les premières locales régionales, où l'écart deviendrait visible. #}
+   du système. La locale est posée par `App\Core\EventListener\LocaleListener`, seule
+   autorité du socle sur la langue de la requête ; ce gabarit ne fait que la déclarer. #}
 <html lang="{{ (app.request ? app.request.locale : 'fr')|replace({'_': '-'}) }}">
     <head>
         <meta charset="UTF-8">
@@ -63,7 +65,7 @@
         <a
             href="#contenu"
             class="sr-only rounded-lg bg-card text-label text-foreground transition-all duration-[var(--motion-fade)] focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-3 focus:py-2"
-        >Aller au contenu</a>
+        >{{ 'layout.skip_to_content'|trans }}</a>
 
         {# Repère `banner`. Rendu même vide : c'est un critère de la story, et la story 2.3
            y posera l'en-tête applicatif. #}
@@ -75,7 +77,7 @@
            Sidebar de la story 2.3 le remplira. Même raisonnement pour le pied de page. #}
         {% set nav_content %}{% block nav %}{% endblock %}{% endset %}
         {% if nav_content|trim is not empty %}
-            <nav aria-label="{% block nav_label %}Navigation principale{% endblock %}">{{ nav_content }}</nav>
+            <nav aria-label="{% block nav_label %}{{ 'layout.main_navigation'|trans }}{% endblock %}">{{ nav_content }}</nav>
         {% endif %}
 
         {# `id` = cible du lien d'évitement ; `tabindex="-1"` pour que ce lien y déplace

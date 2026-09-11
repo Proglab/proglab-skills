@@ -37,34 +37,52 @@ final class TestDatabaseEngineTest extends TestCase
         self::assertSame(self::SERVER_VERSION, self::serverVersionOf(self::databaseUrlOf('.env.test')));
     }
 
+    /**
+     * **Tout** job qui monte une base, pas seulement celui des tests. « Accessibility » en
+     * a gagné une, et un job cadré sur son seul identifiant laisserait le prochain passer
+     * en `mysql:8.0` sans que rien ne le dise.
+     */
     #[Test]
     public function the_ci_runs_the_suite_against_the_same_engine(): void
     {
-        $job = GateFiles::job('tests');
+        $jobIds = array_values(GateFiles::jobIdsByName());
 
-        $env = $job['env'] ?? null;
-        self::assertIsArray($env, 'Le job de tests ne définit aucune variable d\'environnement.');
+        $checked = 0;
 
-        $dsn = $env['DATABASE_URL'] ?? null;
-        self::assertIsString($dsn, 'Le job de tests ne définit pas `DATABASE_URL`.');
-        self::assertSame(self::SERVER_VERSION, self::serverVersionOf($dsn));
+        foreach ($jobIds as $jobId) {
+            $job = GateFiles::job($jobId);
 
-        $services = $job['services'] ?? null;
-        self::assertIsArray($services, 'Le job de tests ne déclare aucun service de base de données.');
+            $services = $job['services'] ?? null;
 
-        $images = [];
+            if (!\is_array($services) || [] === $services) {
+                continue;
+            }
 
-        foreach ($services as $service) {
-            $image = \is_array($service) ? $service['image'] ?? null : null;
-            self::assertIsString($image);
-            $images[] = $image;
+            ++$checked;
+
+            $env = $job['env'] ?? null;
+            self::assertIsArray($env, \sprintf('Le job « %s » monte une base et ne définit aucune variable d\'environnement.', $jobId));
+
+            $dsn = $env['DATABASE_URL'] ?? null;
+            self::assertIsString($dsn, \sprintf('Le job « %s » monte une base et ne définit pas `DATABASE_URL`.', $jobId));
+            self::assertSame(self::SERVER_VERSION, self::serverVersionOf($dsn));
+
+            $images = [];
+
+            foreach ($services as $service) {
+                $image = \is_array($service) ? $service['image'] ?? null : null;
+                self::assertIsString($image);
+                $images[] = $image;
+            }
+
+            self::assertSame(
+                ['mysql:'.self::SERVER_VERSION],
+                $images,
+                'L\'image de la base de CI doit être celle du moteur contractuel — pas une version majeure en fin de vie, et surtout pas un autre moteur.',
+            );
         }
 
-        self::assertSame(
-            ['mysql:'.self::SERVER_VERSION],
-            $images,
-            'L\'image de la base de CI doit être celle du moteur contractuel — pas une version majeure en fin de vie, et surtout pas un autre moteur.',
-        );
+        self::assertGreaterThan(0, $checked, 'Aucun job de CI ne monte de base de données : la suite ne s\'exécute plus contre le moteur de production.');
     }
 
     /**

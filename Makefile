@@ -66,6 +66,12 @@ test: ## Exécute la suite de tests, comme le job « Tests » de la CI
 # `tailwind:build` pour la meme raison que dans `test` : le plancher rend de vraies pages,
 # et sans la feuille compilee chaque rendu tombe sur `missing_import_mode: strict`.
 #
+# Les migrations sont la depuis la story 1.5, et pour la meme raison : la resolution de
+# locale lit les langues actives en base a chaque requete, donc une page ne sait plus dire
+# sa langue tant que la table des langues n'existe pas. `make qa` joue `test` avant `a11y`
+# et migrerait de toute facon — mais `make a11y` seul, sur un clone frais, ne le ferait
+# pas, et c'est justement l'appel qu'on fait quand on travaille l'accessibilite.
+#
 # Les deux dernieres lignes sont **la seule etape Node de tout le depot**. Quatre lignes
 # de la matrice d'edge cases de la story 1.4 decrivent du comportement JavaScript — le
 # focus replace apres une navigation Turbo, la recopie d'un message dans la region
@@ -89,6 +95,7 @@ test: ## Exécute la suite de tests, comme le job « Tests » de la CI
 # depot ; le README explique le plancher de version, la seule etape Node et pourquoi elle
 # existe.
 a11y: ## Vérifie le plancher d'accessibilité sur les pages rendues, les sources et les deux contrôleurs Stimulus
+	php bin/console --env=test doctrine:migrations:migrate --no-interaction --allow-no-migration
 	php bin/console tailwind:build
 	php vendor/bin/phpunit --testsuite Accessibility
 	@command -v node > /dev/null 2>&1 || { \
@@ -143,5 +150,5 @@ lint: ## Lint le conteneur, les templates, le YAML, le mapping Doctrine et compo
 	composer validate --strict
 	php bin/console lint:container
 	php bin/console lint:twig templates/
-	php bin/console lint:yaml config/ .github/
+	php bin/console lint:yaml config/ .github/ translations/
 	php bin/console doctrine:schema:validate --skip-sync
