@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-10-2026 11:30
-last_updated: 09-11-2026 15:12
+last_updated: 09-12-2026 02:02
 project: proglab-skills
 project_key: NOKEY
 tracking_system: file-system
@@ -45,7 +45,7 @@ development_status:
   1-7-ralentir-les-tentatives-de-connexion-répétées: backlog
   1-8-sortir-l-envoi-des-emails-de-la-requête: backlog
   1-9-réinitialiser-un-mot-de-passe-oublié: backlog
-  1-10-rendre-les-pages-403-404-et-500-lisibles: review
+  1-10-rendre-les-pages-403-404-et-500-lisibles: done
   1-11-initialiser-un-dérivé-en-une-commande: backlog
   1-12-écrire-le-guide-de-dérivation: backlog
   epic-1-retrospective: optional
