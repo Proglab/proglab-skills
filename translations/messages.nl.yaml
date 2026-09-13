@@ -19,3 +19,13 @@ error:
         title: Er is iets misgegaan
         message: "Probeer het opnieuw; blijft dit gebeuren, waarschuw dan uw beheerder."
     back_home: Terug naar de startpagina
+security:
+    login:
+        title: Aanmelden
+        language: Taal
+        email: E-mailadres
+        password: Wachtwoord
+        submit: Aanmelden
+        error:
+            invalid_credentials: E-mailadres of wachtwoord is onjuist.
+            account_disabled: Dit account is uitgeschakeld. Neem contact op met uw beheerder.

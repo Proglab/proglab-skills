@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace App\Tests\Core\Accessibility;
 
 use App\Tests\Core\Quality\GateFiles;
+use App\Tests\Core\Security\FirewallUrls;
 use App\Tests\Core\Theme\ThemeSheet;
 use DOMElement;
 use PHPUnit\Framework\Attributes\Test;
+use ReflectionMethod;
+use ReflectionNamedType;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\Finder\Finder;
@@ -767,12 +770,72 @@ final class AccessibilityFloorTest extends WebTestCase
 
             $client->request('GET', $route->getPath());
 
+            // Une action qui déclare `: never` ne rend aucun écran — elle ne rend rien du
+            // tout. C'est la forme que prend une route dont le pare-feu s'empare avant le
+            // contrôleur : `app_logout` (story 1.6) existe pour que l'URL soit routable et
+            // nommable, son corps lève une exception que personne ne verra jamais, et la
+            // réponse est une redirection posée par la sécurité.
+            //
+            // Ce n'est pas une exemption nominative — aucune route n'est listée ici — et ce
+            // n'est pas non plus un blanc-seing donné à une signature : la route est
+            // **quand même appelée**, et elle doit répondre une redirection. Une action qui
+            // déclarerait `: never` parce qu'elle lève toujours — une page 410, un
+            // garde-fou — rendrait une page d'erreur et échouerait ici, au lieu de sortir
+            // du plancher en silence.
+            //
+            // La déconnexion exige son jeton CSRF : sans lui elle répond 403, et le
+            // plancher mesurerait la protection CSRF au lieu de la route. `FirewallUrls`
+            // demande donc à la sécurité elle-même l'URL qu'elle attend, et la requête est
+            // rejouée.
+            if (self::neverReturns($controller)) {
+                if (!$client->getResponse()->isRedirect()) {
+                    $client->request('GET', FirewallUrls::signed($client, self::getContainer(), $route->getPath()));
+                }
+
+                self::assertTrue(
+                    $client->getResponse()->isRedirect(),
+                    \sprintf(
+                        'La route « %s » (%s) déclare `: never` mais ne répond pas une redirection (%d) : une action inatteignable est prise en charge par le pare-feu avant le contrôleur, elle ne lève pas.',
+                        $name,
+                        $route->getPath(),
+                        $client->getResponse()->getStatusCode(),
+                    ),
+                );
+
+                continue;
+            }
+
             self::assertResponseIsSuccessful(\sprintf('La route « %s » (%s) ne se rend pas : le plancher d\'accessibilité ne peut rien vérifier dessus.', $name, $route->getPath()));
 
             $pages[\sprintf('%s (%s)', $route->getPath(), $name)] = $client->getCrawler();
         }
 
         return $this->pages = $pages;
+    }
+
+    /**
+     * Le contrôleur d'une route déclare-t-il `: never` ?
+     *
+     * `_controller` a la forme « Classe::méthode » pour toute route posée par attribut,
+     * qui est la seule forme que ce dépôt utilise. Tout le reste — un service invocable,
+     * une closure — répond « non » et reste donc dans le plancher, ce qui est le sens
+     * prudent de la question.
+     */
+    private static function neverReturns(string $controller): bool
+    {
+        if (2 !== \count($parts = explode('::', $controller))) {
+            return false;
+        }
+
+        [$class, $method] = $parts;
+
+        if (!method_exists($class, $method)) {
+            return false;
+        }
+
+        $returnType = new ReflectionMethod($class, $method)->getReturnType();
+
+        return $returnType instanceof ReflectionNamedType && 'never' === $returnType->getName();
     }
 
     /**

@@ -35,4 +35,9 @@ return [
     // une configuration que personne ne relit ne tient le mot « canal » que par accident.
     // `tests/Core/Observability/ErrorLoggingTest.php` en vérifie la forme et l'effet.
     Symfony\Bundle\MonologBundle\MonologBundle::class => ['all' => true],
+    // La sécurité du socle (story 1.6) : entité User, provider, pare-feu et hachage.
+    // `config/packages/security.yaml` est écrit à la main — la recette de Flex pose un
+    // provider `users_in_memory` et un pare-feu sans authenticator, qui ne laisse
+    // entrer personne en silence.
+    Symfony\Bundle\SecurityBundle\SecurityBundle::class => ['all' => true],
 ];
