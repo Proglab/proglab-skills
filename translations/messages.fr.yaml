@@ -67,3 +67,36 @@ security:
         error:
             invalid_credentials: Email ou mot de passe incorrect.
             account_disabled: Ce compte est désactivé. Adressez-vous à votre administrateur.
+        # L'entrée du flux de la story 1.9, rendue sous le formulaire de connexion.
+        forgot_password: Mot de passe oublié ?
+
+# La réinitialisation d'un mot de passe oublié (story 1.9). Les trois textes que le tableau
+# *Voice and Tone* du contrat UX fixe sont repris **au mot près** : la confirmation de la
+# demande, le Flash d'arrivée, et le message du lien mort. Le reste — titres, intitulés de
+# champs, libellés de boutons — n'y figure pas et relève donc de cette story, écrit sous les
+# mêmes règles : court, vouvoyé, sans identifiant technique, et un message d'erreur dit
+# toujours quoi faire ensuite.
+#
+# `password.reset.done` est une **clé**, pas une phrase : c'est elle que le contrôleur pose
+# en Flash avant de rediriger, et c'est la page d'arrivée qui la traduit. Poser la phrase
+# figerait le Flash dans la langue de la requête qui l'a produit.
+password:
+    request:
+        title: Mot de passe oublié
+        intro: "Saisissez votre adresse. Si un compte lui correspond, vous recevrez un lien pour choisir un nouveau mot de passe."
+        email: Email
+        submit: Envoyer le lien
+        confirmation: "Si un compte existe pour cette adresse, un lien vient d'être envoyé. Il est valable une heure."
+        too_many: Trop de demandes depuis cet appareil.
+        back_to_login: Revenir à la connexion
+    reset:
+        title: Nouveau mot de passe
+        intro: "Choisissez un nouveau mot de passe, puis saisissez-le une seconde fois."
+        password: Nouveau mot de passe
+        confirmation: Confirmez le nouveau mot de passe
+        submit: Changer mon mot de passe
+        done: "Mot de passe changé. Connectez-vous avec le nouveau."
+    expired:
+        title: Lien expiré
+        message: "Ce lien a expiré. Demandez-en un nouveau."
+        action: Demander un nouveau lien

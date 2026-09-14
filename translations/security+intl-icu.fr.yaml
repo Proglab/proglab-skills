@@ -25,3 +25,11 @@
 login:
     error:
         retry_after: '{seconds, plural, one {Patientez # seconde avant de réessayer.} other {Patientez # secondes avant de réessayer.}}'
+
+# Le ralentissement de la demande de lien (story 1.9), qui a exactement le même besoin que
+# celui de la connexion : un pluriel. La clé vit sous `password.` et non sous `login.` —
+# réutiliser celle de la connexion ferait dépendre le texte d'une page du nom d'une autre,
+# et les deux phrases divergeraient le jour où l'une d'elles gagnerait un détail.
+password:
+    request:
+        retry_after: '{seconds, plural, one {Patientez # seconde avant de réessayer.} other {Patientez # secondes avant de réessayer.}}'

@@ -13,3 +13,16 @@ layout:
     # Le pied de page de `templates/emails/base.html.twig`. `%app_name%` est le nom du
     # dérivé, passé par le gabarit.
     footer: "Ce message vous est envoyé automatiquement par %app_name%. Merci de ne pas y répondre."
+
+# Le premier email réel du socle (story 1.9). Le tableau de ton du contrat UX ne couvre pas
+# le corps d'un email — il s'arrête aux écrans —, donc ces quatre chaînes sont une décision
+# de cette story, écrite sous les mêmes règles : courte, vouvoyée, sans identifiant
+# technique, et elle dit quoi faire ensuite.
+#
+# Le lien lui-même n'est pas une clé : il est composé par le gabarit avec `url()`, hors
+# catalogue, parce qu'une URL n'est pas une phrase à traduire.
+password_reset:
+    subject: Choisissez un nouveau mot de passe
+    body: "Vous avez demandé à changer le mot de passe de votre compte. Ouvrez le lien ci-dessous pour en choisir un nouveau."
+    action: Choisir un nouveau mot de passe
+    expiry: "Ce lien est valable une heure et ne fonctionne qu'une fois. Si vous n'avez rien demandé, ignorez ce message : rien ne change."

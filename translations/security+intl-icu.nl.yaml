@@ -3,3 +3,7 @@
 login:
     error:
         retry_after: '{seconds, plural, one {Wacht # seconde voordat u het opnieuw probeert.} other {Wacht # seconden voordat u het opnieuw probeert.}}'
+
+password:
+    request:
+        retry_after: '{seconds, plural, one {Wacht # seconde voordat u het opnieuw probeert.} other {Wacht # seconden voordat u het opnieuw probeert.}}'

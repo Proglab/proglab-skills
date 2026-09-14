@@ -1,0 +1,24 @@
+# La validation du socle (story 1.9) — la recette de Flex, relue comme les précédentes.
+#
+#   php bin/console debug:config framework validation
+#
+# `symfony/validator` entre pour une seule raison : la décision **D-1** garde
+# `symfony/form` dehors, donc le contrôleur hydrate lui-même un DTO d'entrée `final
+# readonly` et appelle `ValidatorInterface`. Les contraintes vivent sur les DTO de
+# `src/Core/Dto/Input/`, nulle part ailleurs.
+#
+# **Ce que la relecture a retiré, et pourquoi.**
+#
+# - `auto_mapping`, que la recette laisse en commentaire : il infère des contraintes depuis
+#   le mapping Doctrine, c'est-à-dire **sur des entités**. Le socle ne valide jamais une
+#   entité — la règle 4 met la validation sur les DTO d'entrée —, et une contrainte inférée
+#   serait une règle que personne n'a écrite et qu'aucun test ne nomme.
+# - le bloc `when@test` qui désactivait `not_compromised_password` : cette contrainte est
+#   **écartée** du socle (décision D-2 de la story 1.9, entrée dans `deferred-work.md`),
+#   donc il n'y a rien à neutraliser sous test. Le jour où elle entrera — c'est-à-dire le
+#   jour où le socle aura déjà `symfony/http-client` pour autre chose —, ce bloc reviendra
+#   avec elle, et il faudra le remettre : sans lui, la suite de tests appellerait une API
+#   tierce à chaque validation de mot de passe.
+framework:
+    validation:
+        enabled: true

@@ -1,0 +1,21 @@
+# Le domaine des messages de contraintes — et il ne porte que ce que le composant ne dit
+# pas déjà.
+#
+# **`validators` est un nom imposé, pas un choix.** Le validateur traduit chaque message de
+# violation dans ce domaine-là, sans qu'on puisse lui en désigner un autre par contrainte.
+# La convention du socle — un domaine par surface — s'y plie : ce fichier est la surface
+# « messages de validation », et il se superpose au catalogue de `symfony/validator` clé par
+# clé plutôt que de le remplacer.
+#
+# **Une seule clé, et une seule raison de l'écrire.** Les contraintes du socle utilisent les
+# messages du composant, déjà traduits dans les trois langues, précisément pour n'avoir rien
+# à maintenir ici. L'exception est l'égalité des deux saisies de mot de passe : le message
+# par défaut d'`EqualTo` est « Cette valeur doit être identique à {{ compared_value }} »,
+# et `{{ compared_value }}` est le mot de passe saisi — rendu tel quel, il repartirait dans
+# le HTML de la page d'erreur, dans l'historique du navigateur et dans les caches
+# intermédiaires. Cette clé dit la même chose sans aucun paramètre.
+#
+# `tests/Core/Translation/CatalogParityTest.php` voit ce fichier comme le domaine
+# `validators` et en exige les trois langues.
+password:
+    confirmation_mismatch: "Les deux mots de passe ne sont pas identiques."

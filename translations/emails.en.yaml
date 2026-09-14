@@ -1,2 +1,8 @@
 layout:
     footer: "This message was sent automatically by %app_name%. Please do not reply."
+
+password_reset:
+    subject: Choose a new password
+    body: "You asked to change the password of your account. Open the link below to choose a new one."
+    action: Choose a new password
+    expiry: "This link is valid for one hour and works only once. If you did not ask for it, ignore this message: nothing changes."

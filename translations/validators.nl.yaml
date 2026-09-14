@@ -1,0 +1,4 @@
+# Traduction du catalogue du socle. La source est `validators.fr.yaml` : une clé n'existe
+# ici que parce qu'elle existe là-bas.
+password:
+    confirmation_mismatch: "De twee wachtwoorden zijn niet hetzelfde."

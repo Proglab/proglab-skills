@@ -11,9 +11,11 @@ use DOMElement;
 use PHPUnit\Framework\Attributes\Test;
 use ReflectionMethod;
 use ReflectionNamedType;
+use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\Finder\Finder;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Le plancher d'accessibilité, vérifié plutôt que relu.
@@ -661,22 +663,72 @@ final class AccessibilityFloorTest extends WebTestCase
     /** @var array<string, Crawler>|null */
     private ?array $errorPages = null;
 
+    /** @var array<string, Crawler>|null */
+    private ?array $refusedPages = null;
+
+    private ?KernelBrowser $client = null;
+
     /**
      * Tout ce que les neuf règles de DOM ci-dessus regardent.
      *
-     * Deux sources, et elles ne se ressemblent pas : les écrans du socle sont découverts
+     * Trois sources, et elles ne se ressemblent pas : les écrans du socle sont découverts
      * par la `RouteCollection` et rendus par une vraie requête HTTP ; les pages d'erreur
-     * n'ont aucune route et sont rendues hors requête. Les fusionner ici plutôt que dans
-     * `pages()` garde chaque source honnête — `pages()` continue d'exiger
-     * `assertResponseIsSuccessful()`, ce qu'une page d'erreur ne pourrait jamais satisfaire.
+     * n'ont aucune route et sont rendues hors requête ; les pages de **refus** ont bien une
+     * route, mais répondent un statut que `pages()` ne peut pas accepter. Les fusionner ici
+     * plutôt que dans `pages()` garde chaque source honnête — `pages()` continue d'exiger
+     * `assertResponseIsSuccessful()`, ce qu'aucune des deux autres ne pourrait satisfaire.
      *
      * @return array<string, Crawler>
      */
     private function crawlers(): array
     {
         // `pages()` d'abord : c'est lui qui crée le client, donc le conteneur dont
-        // `errorPages()` tire Twig.
-        return $this->crawlers ??= array_merge($this->pages(), $this->errorPages());
+        // `errorPages()` tire Twig et dont `refusedPages()` réutilise le navigateur.
+        return $this->crawlers ??= array_merge($this->pages(), $this->errorPages(), $this->refusedPages());
+    }
+
+    /**
+     * Les écrans que le socle rend avec un statut de **refus**, et que le balayage ne peut
+     * donc pas collecter.
+     *
+     * `pages()` exige `assertResponseIsSuccessful()` sur chaque route GET, et c'est ce qui
+     * rend son résultat digne de confiance. Une page qui répond délibérément autre chose
+     * qu'un 2xx — la page « lien expiré » de la story 1.9, qui est la réponse **normale**
+     * des cinq façons dont un lien peut être mort — en sort donc mécaniquement, et
+     * sortirait du plancher avec elle. `errorPages()` est le précédent : une page que le
+     * balayage ne sait pas atteindre entre par une seconde porte, nommée.
+     *
+     * Elle est demandée par le **vrai** chemin HTTP et non rendue hors requête : c'est une
+     * page d'application, avec son contrôleur et sa route, et ce qui est vérifié doit être
+     * ce qu'un navigateur reçoit.
+     *
+     * **Ajouter une entrée ici est une décision, pas une commodité.** Une page qui répond
+     * 4xx parce qu'elle est cassée n'a rien à y faire — c'est `pages()` qui doit rougir.
+     *
+     * @return array<string, Crawler>
+     */
+    private function refusedPages(): array
+    {
+        if (null !== $this->refusedPages) {
+            return $this->refusedPages;
+        }
+
+        // `pages()` d'abord : il crée le client que celui-ci réutilise.
+        $this->pages();
+
+        $client = $this->client;
+
+        self::assertInstanceOf(KernelBrowser::class, $client);
+
+        $crawler = $client->request('GET', '/password/reset/aucun-jeton-ne-porte-cette-valeur');
+
+        self::assertSame(
+            Response::HTTP_GONE,
+            $client->getResponse()->getStatusCode(),
+            'La page « lien expiré » ne répond plus 410 : elle est peut-être servie ailleurs, et le plancher mesure alors autre chose.',
+        );
+
+        return $this->refusedPages = ['/password/reset/{token} (lien mort, 410)' => $crawler];
     }
 
     /**
@@ -728,9 +780,12 @@ final class AccessibilityFloorTest extends WebTestCase
     /**
      * Toute route GET du socle, réellement rendue.
      *
-     * Les routes à paramètre sont hors périmètre : le socle n'en a pas encore, et en
-     * inventer une valeur ferait rendre une page d'erreur au lieu d'un écran. Elles
-     * entrent avec les stories qui les posent.
+     * **Les routes à paramètre sont entrées avec la story 1.9**, qui a posé la première —
+     * `/password/reset/{token}`. Elles ne sont pas sautées : leurs paramètres viennent de
+     * `RouteSamples`, et une route à paramètre que cette classe ne connaît pas fait
+     * **échouer** le plancher en se nommant. C'est l'inverse du silence d'avant, et c'est
+     * le point : sans cela, une classe entière d'écrans du dérivé cesserait d'être
+     * vérifiée sans qu'aucun test ne bouge.
      *
      * @return array<string, Crawler>
      */
@@ -740,7 +795,7 @@ final class AccessibilityFloorTest extends WebTestCase
             return $this->pages;
         }
 
-        $client = self::createClient();
+        $client = $this->client = self::createClient();
 
         $router = self::getContainer()->get('router');
 
@@ -760,15 +815,32 @@ final class AccessibilityFloorTest extends WebTestCase
                 continue;
             }
 
-            if (str_contains($route->getPath(), '{')) {
-                continue;
-            }
-
             if ([] !== $methods && !\in_array('GET', $methods, true)) {
                 continue;
             }
 
-            $client->request('GET', $route->getPath());
+            $path = $route->getPath();
+
+            // Une route à paramètre a besoin d'une valeur qui fasse rendre un **écran** —
+            // un jeton inventé rendrait la page « lien expiré », qui en est une autre.
+            // `RouteSamples` la fournit, et l'absence d'échantillon est un échec nommé,
+            // jamais un saut silencieux.
+            if (str_contains($path, '{')) {
+                $parameters = RouteSamples::for($name, self::getContainer());
+
+                self::assertNotNull(
+                    $parameters,
+                    \sprintf(
+                        'La route « %s » (%s) porte un paramètre et `App\Tests\Core\Accessibility\RouteSamples` ne sait pas la rendre : elle sortirait du plancher d\'accessibilité en silence. Ajoutez-lui son échantillon.',
+                        $name,
+                        $path,
+                    ),
+                );
+
+                $path = $router->generate($name, $parameters);
+            }
+
+            $client->request('GET', $path);
 
             // Une action qui déclare `: never` ne rend aucun écran — elle ne rend rien du
             // tout. C'est la forme que prend une route dont le pare-feu s'empare avant le

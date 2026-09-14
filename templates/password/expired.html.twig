@@ -1,0 +1,36 @@
+{% extends 'base.html.twig' %}
+
+{# La page que rendent **les cinq** façons dont un lien de réinitialisation peut être mort :
+   jeton inconnu, malformé, expiré, déjà consommé, ou compte désactivé entre-temps.
+
+   Une seule page, un seul statut — 410. Trois pages distinctes diraient à qui essaie des
+   jetons au hasard lesquels ont existé ; un 404 distinguerait « jamais émis » d'« expiré ».
+   « A existé, n'existe plus » est vrai des cinq cas, et c'est exactement ce que 410 dit.
+
+   **Aucun formulaire.** Elle propose de recommencer, elle ne laisse pas croire qu'un mot de
+   passe saisi ici servirait à quelque chose.
+
+   Le texte est celui du tableau de ton du contrat UX, au mot près. #}
+
+{% block title %}{{ 'password.expired.title'|trans }}{% endblock %}
+
+{% block body %}
+    <div class="mx-auto flex min-h-[70vh] w-full max-w-[480px] flex-col justify-center gap-4 px-4 py-10">
+        <twig:Card>
+            <twig:Card:Header>
+                <twig:Card:Title as="h1">{{ 'password.expired.title'|trans }}</twig:Card:Title>
+            </twig:Card:Header>
+
+            <twig:Card:Content class="flex flex-col gap-4">
+                <p class="text-sm">{{ 'password.expired.message'|trans }}</p>
+
+                {# Un lien, rendu avec l'apparence d'un bouton : ce qu'il fait est une
+                   navigation, et un `<button>` qui navigue n'est ni copiable, ni ouvrable
+                   dans un nouvel onglet, ni annoncé comme un lien. #}
+                <twig:Button as="a" href="{{ path('app_password_request') }}" class="w-fit">
+                    {{- 'password.expired.action'|trans -}}
+                </twig:Button>
+            </twig:Card:Content>
+        </twig:Card>
+    </div>
+{% endblock %}

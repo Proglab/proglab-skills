@@ -58,3 +58,30 @@ framework:
             policy: fixed_window
             limit: 20
             interval: '15 minutes'
+
+        # La demande de lien de réinitialisation (story 1.9) — **un troisième limiteur,
+        # nommé à part, et c'est le point**.
+        #
+        # `login_throttling` ne couvre pas cette page : il ne compte que les échecs
+        # d'authentification levés par le pare-feu, et une demande de lien n'en produit
+        # aucun — elle réussit toujours, du point de vue du pare-feu, puisqu'elle ne
+        # s'authentifie pas. Sans limiteur propre, la page est un moyen d'inonder
+        # n'importe quelle boîte aux lettres et de fabriquer autant de lignes qu'on veut
+        # dans la file des emails.
+        #
+        # Le mélanger aux deux autres serait pire que de n'en avoir aucun : cinq erreurs
+        # de mot de passe fermeraient la demande de lien, et cinq demandes de lien
+        # fermeraient la connexion — l'inverse exact du service rendu à quelqu'un qui a
+        # oublié son mot de passe. `PasswordResetThrottlingTest` tient les deux sens.
+        #
+        # **Indexé sur l'adresse IP seule.** Indexer sur l'email saisi ferait de ce
+        # limiteur un oracle : le comportement varierait selon l'adresse demandée, ce que
+        # toute la story existe pour empêcher.
+        #
+        # `fixed_window` comme les deux autres : `getRetryAfter()` rend la fin du seau
+        # courant, donc les secondes affichées décroissent d'une soumission à l'autre au
+        # lieu de remonter. Le contrôleur les **lit** sur le limiteur, jamais ne les déduit.
+        password_request:
+            policy: fixed_window
+            limit: 5
+            interval: '15 minutes'

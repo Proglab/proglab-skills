@@ -107,16 +107,39 @@ when@test:
 
         # Le hacheur de mots de passe, rendu atteignable depuis les tests.
         #
-        # Aucun service du socle ne l'injecte encore — la commande d'initialisation de la
-        # story 1.11 sera la première — donc le conteneur le supprime comme inutilisé, et
-        # `tests/Core/Security/Accounts.php` ne peut plus créer de compte avec le hacheur
-        # du projet. C'est la concession la plus étroite possible : l'alternative serait
-        # de hacher dans le test avec un algorithme écrit en dur, c'est-à-dire de vérifier
-        # la connexion sur un mécanisme que la production n'utilise pas.
+        # **La consigne de retrait de la story 1.6 a été arbitrée par la story 1.9, et
+        # l'alias reste — pour une raison qui a changé.** Elle disait « à retirer le jour
+        # où un service du socle l'injecte pour de bon » : `App\Core\Service\PasswordReset`
+        # l'injecte désormais, donc le conteneur ne le supprime plus comme inutilisé, et la
+        # raison d'origine est éteinte. Ce que l'alias achète encore est autre chose : il
+        # est **public**, et `tests/Core/Security/Accounts.php` comme
+        # `PasswordResetTest::passwordIsNow()` l'obtiennent par
+        # `getContainer()->get(UserPasswordHasherInterface::class)` — un identifiant
+        # d'autowiring, que le conteneur de test n'expose pas de lui-même. Sans lui, les
+        # tests hacheraient avec un algorithme écrit en dur, c'est-à-dire vérifieraient la
+        # connexion et la réinitialisation sur un mécanisme que la production n'utilise pas.
         #
-        # À retirer le jour où un service du socle l'injecte pour de bon.
+        # Il n'y a donc plus de date de retrait : cet alias est le point d'entrée des tests
+        # vers le hacheur du projet, et il le restera.
         Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface:
             alias: security.user_password_hasher
+            public: true
+
+        # Le limiteur de la demande de réinitialisation (story 1.9), rendu lisible depuis
+        # les tests.
+        #
+        # Même raison que `app.test.login_rate_limiter` juste en dessous : les secondes
+        # attendues se lisent **sur le limiteur** et non dans le texte rendu — un test qui
+        # relit le message pour vérifier le message ne vérifie rien.
+        #
+        # L'identifiant `limiter.password_request` est celui que `framework.rate_limiter`
+        # fabrique à partir du nom déclaré dans `config/packages/rate_limiter.yaml` ; le
+        # contrôleur, lui, le reçoit par l'alias d'autowiring
+        # `RateLimiterFactoryInterface $passwordRequestLimiter`.
+        #
+        # À retirer le jour où les secondes restantes se liront ailleurs.
+        app.test.password_request_limiter:
+            alias: limiter.password_request
             public: true
 
         # Le magasin du ralentissement de connexion, rendu effaçable depuis les tests.
@@ -169,7 +192,17 @@ when@test:
         # supprimerait comme inutilisé, et `tests/Core/Mail/EmailQueueTest.php` ne
         # pourrait plus l'atteindre.
         #
-        # À retirer le jour où un cas d'usage réel du socle envoie un email : ce sera la
-        # story 1.9, et ce chemin-là n'aura plus rien à prouver.
+        # **La consigne de retrait de la story 1.8 a été arbitrée par la story 1.9, et la
+        # classe reste.** Elle disait « à retirer le jour où un cas d'usage réel du socle
+        # envoie un email : ce sera la story 1.9 ». Ce cas d'usage existe désormais —
+        # `App\Core\Service\PasswordResetRequest` —, mais y rebrancher `EmailQueueTest`
+        # ferait dépendre la preuve de l'**infrastructure** des règles d'une
+        # fonctionnalité : il faudrait un compte actif, un jeton CSRF et un limiteur non
+        # épuisé pour vérifier qu'un INSERT n'est pas visible avant son commit. Le jour où
+        # l'une de ces trois règles changerait, c'est le critère central de la story 1.8
+        # qui rougirait, en accusant la mauvaise chose.
+        #
+        # Il n'y a donc plus de date de retrait : cette classe est le cas d'usage **minimal**
+        # qui exerce la frontière de transaction, et c'est ce qui la rend utile.
         App\Tests\Fixtures\Mail\DemoEmailDispatch:
             public: true

@@ -178,6 +178,42 @@ continuent de tourner sur le code de la release précédente.
 La table `messenger_messages` vient d'une migration relue, jamais d'`auto_setup` : aucun
 DDL n'est émis à l'exécution, en développement comme en production.
 
+### Le mot de passe oublié
+
+Deux pages publiques, `/password/forgot` et `/password/reset/{token}`, et une entité à
+jeton — `App\Core\Entity\AccountToken` — que l'invitation de l'Epic 2 réutilisera telle
+quelle.
+
+Ce qu'il faut savoir avant d'y toucher :
+
+- **La demande répond exactement la même chose à toute adresse** — connue, inconnue, ou
+  connue mais désactivée. La règle vit dans `App\Core\Service\PasswordResetRequest`, pas
+  dans le contrôleur : le service décide de ne rien faire et ne rend rien à interpréter.
+  Un message, un statut ou une redirection qui différerait selon le cas rouvrirait un
+  moyen de savoir quels comptes existent.
+- **La table `account_token` ne garde que l'empreinte SHA-256 du jeton.** La version
+  lisible n'apparaît dans aucun journal, aucun flash et aucune réponse HTTP. Elle a
+  cependant **deux** porteurs : l'URL de l'email, et la ligne de file
+  (`messenger_messages.body`) tant que le worker n'a pas consommé le message — donc
+  indéfiniment si l'envoi a échoué et que le message attend sur le transport `failed`.
+  `messenger:failed:show` l'affiche en clair ; la file d'échec se lit et se vide comme un
+  magasin de secrets à durée limitée.
+- **Une nouvelle demande supprime le lien précédent** : un seul lien vivant à la fois.
+- **Un lien mort — inconnu, malformé, expiré, déjà consommé, ou dont le compte a été
+  désactivé entre-temps — rend une seule et même page, en 410.** Jamais un 404, qui
+  distinguerait « jamais émis » d'« expiré ».
+- **Le changement de mot de passe incrémente `securityToken` sur le compte**, et
+  `User::isEqualTo()` en fait le critère de ré-authentification : les sessions ouvertes
+  ailleurs sont déauthentifiées à leur requête suivante. C'est le mécanisme d'AD-9, et
+  c'est aussi celui que la désactivation d'un compte (Epic 2) et la réinitialisation du
+  second facteur (Epic 5) utiliseront — il suffira de l'incrémenter.
+- **La demande est bornée par son propre limiteur**, `password_request`, distinct des deux
+  du `login_throttling`. Épuiser l'un ne ferme pas l'autre, et c'est vérifié dans les deux
+  sens.
+
+En développement, il faut Mailpit **et** un worker (`make worker`) pour voir l'email
+arriver — c'est le chemin de production, sans raccourci `sync`.
+
 ### Le frontend, sans Node
 
 AssetMapper sert les assets en modules ES natifs et Tailwind 4 est compilé par un binaire
