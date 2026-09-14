@@ -66,9 +66,20 @@
                    `aria-invalid` dirait lequel des deux était faux. `Alert` porte déjà
                    `role="alert"` ; `tabindex="-1"` le rend focalisable par programme sans
                    l'ajouter à l'ordre de tabulation. #}
+                {# Le délai du ralentissement (story 1.7) est une **seconde phrase dans le
+                   même bloc**, jamais une seconde région : `page-focus` focalise le
+                   premier `[role="alert"]` de `<main>`, et un second bloc serait annoncé
+                   après — ou pas du tout. Il n'est pas non plus assemblé en PHP : le
+                   pluriel de « seconde » est une règle de langue, et elle vit dans le
+                   catalogue ICU `security+intl-icu`, pas dans un `{% if %}` d'ici. #}
                 {% if error_message %}
                     <twig:Alert variant="destructive" tabindex="-1">
-                        <twig:Alert:Description>{{ error_message|trans }}</twig:Alert:Description>
+                        <twig:Alert:Description>
+                            {{- error_message.key|trans }}
+                            {%- if error_message.retryAfterSeconds is not null %}
+                                {{ 'login.error.retry_after'|trans({seconds: error_message.retryAfterSeconds}, 'security+intl-icu') }}
+                            {%- endif -%}
+                        </twig:Alert:Description>
                     </twig:Alert>
                 {% endif %}
 

@@ -13,7 +13,6 @@
 # aucune session.
 #
 # Ce que ce fichier ne porte **pas**, volontairement :
-# - `login_throttling` : c'est la story 1.7, et `symfony/rate-limiter` n'entre pas ici ;
 # - un `access_control` au-delà de l'accès anonyme à `/login` : aucune zone n'existe
 #   encore, et une règle qui ne défend rien n'est vérifiée par rien (Epic 2) ;
 # - `stateless_token_ids` sous `framework.csrf_protection` : le CSRF sans état exige son
@@ -58,6 +57,30 @@ security:
                 # que `templates/security/login.html.twig` passe à `csrf_token()`, et un
                 # couplage qui n'est visible qu'à un seul bout se casse en silence.
                 csrf_token_id: authenticate
+
+            # Le ralentissement des tentatives répétées (story 1.7).
+            #
+            # **Pourquoi `limiter:` plutôt que `max_attempts` et `interval`.** Sans cette
+            # clé, `LoginThrottlingFactory` fabrique lui-même une paire de limiteurs qui
+            # partagent le même intervalle — `max_attempts` par identifiant+IP et cinq fois
+            # plus par IP, sur la même fenêtre. Cela ne sait pas dire « une minute d'abord,
+            # un quart d'heure ensuite », qui est exactement ce que la story demande. La
+            # clé désigne donc notre propre `DefaultLoginRateLimiter` — la classe native,
+            # pas une classe maison —, composé dans `config/services.yaml` des deux
+            # limiteurs nommés de `config/packages/rate_limiter.yaml`.
+            #
+            # **Ce que ce branchement retire.** Avec `limiter:`, le service
+            # `security.login_throttling.main.limiter` n'existe pas : le bundle n'en
+            # fabrique aucun. C'est le nôtre, et lui seul, que l'écouteur natif reçoit.
+            #
+            # Le refus est levé sur `CheckPassportEvent` à la priorité 2080, donc **avant**
+            # le `UserChecker` et avant la vérification du mot de passe : de bons
+            # identifiants ne contournent pas le délai, et un POST sans jeton CSRF non plus.
+            # Les secondes restantes affichées sont lues sur le limiteur par
+            # `App\Core\EventListener\LoginFailureListener` — jamais déduites du message de
+            # l'exception native, dont le seuil est un `ceil()` de minutes (AD-18).
+            login_throttling:
+                limiter: Symfony\Component\Security\Http\RateLimiter\DefaultLoginRateLimiter
 
             # Aucun écran. La route est vide : le pare-feu intercepte la requête avant
             # qu'elle n'atteigne le contrôleur.

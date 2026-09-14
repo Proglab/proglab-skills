@@ -35,7 +35,7 @@ use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
 final class SecurityController extends AbstractController
 {
     /**
-     * @return array{last_username: string, error_message: string|null}|Response
+     * @return array{last_username: string, error_message: LoginFailureMessage|null}|Response
      */
     #[Route('/login', name: 'app_login', methods: ['GET', 'POST'])]
     #[Template('security/login.html.twig')]

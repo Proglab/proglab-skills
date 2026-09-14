@@ -1,0 +1,60 @@
+# Les deux paliers du ralentissement de connexion (story 1.7).
+#
+#   php bin/console debug:container limiter
+#   php bin/console debug:firewall main
+#
+# **Ici vit le « croissant ».** Le mécanisme est le `login_throttling` natif du
+# SecurityBundle ; ce fichier ne fait que lui fournir ses deux limiteurs, et
+# `config/services.yaml` les compose dans le `DefaultLoginRateLimiter` natif. Aucune
+# classe ne compte d'échecs, aucune colonne ne mémorise un blocage.
+#
+# **Pourquoi deux limiteurs nommés plutôt que les valeurs par défaut.** Sans `limiter:`,
+# le bundle fabrique lui-même une paire dont les deux moitiés partagent le même
+# intervalle : `max_attempts` par identifiant+IP, et `5 × max_attempts` par IP, sur la
+# même fenêtre. Cela ne sait pas exprimer « une minute d'abord, un quart d'heure ensuite ».
+# En les nommant, chaque moitié porte son propre palier :
+#
+# - `login_attempt` — **le palier court**, celui que voit une personne qui se trompe. Cinq
+#   échecs par minute sur le couple identifiant + IP ; le refus dure donc environ une
+#   minute et se lève tout seul.
+# - `login_address` — **le palier long**, celui que voit une machine. Vingt échecs par
+#   quart d'heure sur l'adresse seule. Il existe pour l'attaque en largeur — une adresse
+#   qui essaie mille comptes avec un mot de passe chacun ne déclenche jamais le palier
+#   court, puisqu'aucun identifiant n'atteint cinq échecs — et c'est lui qui plafonne le
+#   ralentissement à quinze minutes quand l'acharnement se prolonge.
+#
+# **La politique `compound` n'est pas utilisable ici, et ce n'est pas un oubli.** Elle
+# produit un `CompoundRateLimiterFactory`
+# (`framework-bundle/DependencyInjection/FrameworkExtension.php`), qui implémente
+# `RateLimiterFactoryInterface` mais **n'est pas** un `RateLimiterFactory` — or
+# `DefaultLoginRateLimiter::__construct()` type ses deux arguments sur la classe concrète.
+# Lui passer un limiteur composé est une `TypeError` au démarrage du conteneur. Les deux
+# paliers se répartissent donc sur les deux moitiés natives — le court en local, le long
+# en global — au lieu d'être empilés sur la même. C'est le repli que la story prévoyait,
+# et il tient la même promesse.
+#
+# **`policy: fixed_window` plutôt que `sliding_window`.** C'est la politique de la paire
+# native, et c'est elle qui donne une date de fin de fenêtre stable : `getRetryAfter()`
+# rend la fin du seau courant, donc les secondes affichées décroissent d'une soumission à
+# l'autre au lieu de repartir en arrière. Une fenêtre glissante rendrait un délai qui
+# remonte à chaque nouvelle tentative — un compte à rebours qui recule.
+#
+# **`lock_factory` reste à son défaut `auto`**, qui vaut `null` tant que `symfony/lock`
+# n'est pas configuré : sans verrou, deux requêtes simultanées peuvent dépasser le seuil
+# d'un cran ou deux. La fenêtre borne l'attaque de toute façon ; le choix est assumé et
+# reporté dans `deferred-work.md` avec ce qui le rouvrirait.
+#
+# **`cache_pool` reste `cache.rate_limiter`**, un adaptateur de fichiers. Sur un
+# déploiement multi-serveurs il devra être partagé (Redis, ou la base) — sinon chaque
+# serveur tient son propre compteur et la limite effective est multipliée par leur nombre.
+framework:
+    rate_limiter:
+        login_attempt:
+            policy: fixed_window
+            limit: 5
+            interval: '1 minute'
+
+        login_address:
+            policy: fixed_window
+            limit: 20
+            interval: '15 minutes'

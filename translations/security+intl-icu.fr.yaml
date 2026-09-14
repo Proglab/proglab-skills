@@ -1,0 +1,27 @@
+# Le premier domaine ICU du socle (story 1.7) — et il n'y a qu'une raison à son
+# existence : un pluriel.
+#
+# L'en-tête de `messages.fr.yaml` le prescrit noir sur blanc : « la première story qui a
+# besoin d'une variable ou d'un pluriel ouvre son **propre** domaine suffixé
+# `+intl-icu` ». Un domaine ICU se pose **à côté**, il ne se substitue pas — déplacer une
+# clé d'un domaine simple vers un domaine ICU change ses règles d'échappement, et les
+# clés du domaine `messages` n'en ont aucun besoin.
+#
+# Le suffixe est lu par le translator : le domaine réel est `security`, et `+intl-icu`
+# lui dit de formater avec `MessageFormatter` (ext-intl). Côté Twig, c'est bien
+# `'security+intl-icu'` qu'on écrit en troisième argument de `trans`.
+#
+# **Pourquoi le pluriel est ici et pas dans un `{% if %}`.** « 1 seconde » contre « 40
+# secondes » est une règle de langue, et elle n'est pas la même dans les trois : le
+# français et l'anglais ont deux formes autour de 1, le néerlandais aussi, mais rien ne
+# garantit qu'une quatrième langue s'y conformerait. Un `if` dans le template porterait
+# la grammaire française dans le code et la ferait mentir ailleurs.
+#
+# `#` rend la valeur formatée selon la locale — c'est ce qui donne l'espace insécable
+# des milliers en français le jour où un nombre dépassera mille.
+#
+# `tests/Core/Translation/CatalogParityTest.php` voit ce fichier comme le domaine
+# `security+intl-icu` et en exige les trois langues, sans aucune modification.
+login:
+    error:
+        retry_after: '{seconds, plural, one {Patientez # seconde avant de réessayer.} other {Patientez # secondes avant de réessayer.}}'
