@@ -1,0 +1,6 @@
+# La traduction anglaise du domaine ICU du socle. Voir `security+intl-icu.fr.yaml` pour
+# pourquoi ce domaine existe : le français est la langue source, celui-ci en est une
+# traduction.
+login:
+    error:
+        retry_after: '{seconds, plural, one {Please wait # second before trying again.} other {Please wait # seconds before trying again.}}'

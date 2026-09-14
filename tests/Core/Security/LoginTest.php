@@ -28,6 +28,19 @@ final class LoginTest extends WebTestCase
 {
     private const string PASSWORD = 'un-mot-de-passe-assez-long';
 
+    /**
+     * Le ralentissement de la story 1.7 pose un état **hors base** : le pool
+     * `cache.rate_limiter` est un adaptateur de fichiers, que DAMA n'annule pas et qui
+     * survit à l'exécution entière. Cette classe multiplie les échecs de connexion, donc
+     * sans cette remise à zéro elle s'auto-ralentit dès qu'on la relance dans le quart
+     * d'heure qui suit. Le noyau est démarré puis refermé parce que `createClient()`
+     * refuse de s'exécuter derrière un noyau déjà démarré.
+     */
+    protected function setUp(): void
+    {
+        LoginThrottling::forget();
+    }
+
     #[Test]
     public function the_login_page_renders_for_an_anonymous_visitor(): void
     {
@@ -120,7 +133,10 @@ final class LoginTest extends WebTestCase
         self::assertResponseStatusCodeSame(422, 'Un échec de connexion réaffiche le formulaire en 422, il ne redirige pas.');
         self::assertSelectorCount(1, '[role="alert"]');
         self::assertSame('-1', $crawler->filter('[role="alert"]')->attr('tabindex'), 'Le bloc d\'erreur doit être focalisable par programme pour recevoir le focus au rendu.');
-        self::assertSelectorTextContains('[role="alert"]', 'Email ou mot de passe incorrect.');
+        // `Same` et non `Contains` : c'est ce qui prouve que le premier échec ne porte
+        // **rien de plus** que le message générique — pas le délai que la story 1.7 ajoute
+        // à partir du sixième.
+        self::assertSelectorTextSame('[role="alert"]', 'Email ou mot de passe incorrect.');
         self::assertSelectorNotExists('[aria-invalid="true"]', 'L\'erreur de connexion n\'appartient à aucun champ : aucun champ n\'est marqué en erreur.');
         self::assertSame('marc@example.test', $crawler->filter('input[name="_username"]')->attr('value'), 'L\'adresse saisie doit être conservée.');
         self::assertNull(

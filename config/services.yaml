@@ -16,6 +16,28 @@ parameters:
     # encore quand la base ne répond plus.
     app.name: '%env(APP_NAME)%'
 
+    # Le sel qui hache l'adresse IP et l'identifiant avant d'en faire une clé de cache,
+    # pour le limiteur de connexion ci-dessous.
+    #
+    # `DefaultLoginRateLimiter` exige un secret **non vide** et refuse de se construire
+    # sans. Le SecurityBundle lui passe `container.build_hash`, qui n'existe qu'à l'instant
+    # où le conteneur est dumpé : ce n'est pas une entrée du sac de paramètres, donc
+    # `%container.build_hash%` écrit en YAML échoue à la compilation — vérifié, message
+    # « You have requested a non-existent parameter ». Seule une définition écrite en PHP
+    # pourrait passer l'objet `Parameter` que le dumper sait lire, et ce dépôt configure en
+    # YAML.
+    #
+    # `APP_SECRET` est donc le sel, avec un repli **parce qu'il est vide dans `.env`** et
+    # n'a aucun chemin de production (entrée connue de `deferred-work.md`) : sans repli,
+    # cette story transformerait ce trou silencieux en 500 sur chaque connexion. Le
+    # processeur `default:` ne se replie que sur une valeur vide ou absente, donc dès
+    # qu'`APP_SECRET` existe, c'est lui qui sert.
+    #
+    # Ce que le sel achète, et ce qu'il n'achète pas : le magasin du limiteur ne contient
+    # aucune adresse email en clair. Il ne protège de rien d'autre — qui peut lire le pool
+    # de cache peut déjà lire les sessions.
+    app.login_throttling.fallback_secret: '%kernel.project_dir%'
+
 services:
     _defaults:
         autowire: true
@@ -39,6 +61,30 @@ services:
     App\Module\:
         resource: '../src/Module/*/'
         exclude: '../src/Module/*/{Dto,Entity}'
+
+    # Le limiteur du ralentissement de connexion (story 1.7).
+    #
+    # La classe est **celle de Symfony** : `login_throttling` la fabrique lui-même quand on
+    # lui laisse ses valeurs par défaut, et tout ce que cette définition change, c'est de
+    # quoi elle est faite. Les deux moitiés portent chacune un palier
+    # (`config/packages/rate_limiter.yaml`) :
+    #
+    # - `$globalFactory` est indexé sur l'**adresse seule** — le palier long, vingt échecs
+    #   par quart d'heure ;
+    # - `$localFactory` sur le couple **identifiant + adresse** — le palier court, cinq
+    #   échecs par minute.
+    #
+    # L'ordre des deux arguments est celui du constructeur natif, et il n'est pas
+    # interchangeable : les inverser indexerait le palier long sur l'identifiant et
+    # laisserait une machine essayer vingt comptes par minute depuis la même adresse.
+    #
+    # `$secret` est le sel de hachage des clés de cache ; voir le paramètre en tête de
+    # fichier pour pourquoi ce n'est pas `container.build_hash`.
+    Symfony\Component\Security\Http\RateLimiter\DefaultLoginRateLimiter:
+        arguments:
+            $globalFactory: '@limiter.login_address'
+            $localFactory: '@limiter.login_attempt'
+            $secret: '%env(default:app.login_throttling.fallback_secret:APP_SECRET)%'
 
 when@test:
     services:
@@ -64,6 +110,33 @@ when@test:
         # À retirer le jour où un service du socle l'injecte pour de bon.
         Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface:
             alias: security.user_password_hasher
+            public: true
+
+        # Le magasin du ralentissement de connexion, rendu effaçable depuis les tests.
+        #
+        # L'état du limiteur ne vit pas en base : il vit dans ce pool, un adaptateur de
+        # fichiers sous `var/cache/test/`. DAMA n'a donc aucune prise dessus — il survit à
+        # la méthode de test, à la classe, et à l'exécution entière. Sans remise à zéro
+        # entre deux méthodes, les compteurs fuient et la suite devient dépendante de son
+        # ordre ; pire, la fenêtre du palier long durant un quart d'heure, deux `make test`
+        # lancés coup sur coup partageraient leurs compteurs.
+        #
+        # À retirer le jour où le magasin du limiteur cesse d'être un état global au
+        # processus — un pool par noyau, par exemple.
+        app.test.rate_limiter_pool:
+            alias: cache.rate_limiter
+            public: true
+
+        # Le limiteur lui-même, rendu lisible depuis les tests.
+        #
+        # Deux lignes de la matrice de la story ne sont pas vérifiables sans lui : les
+        # secondes attendues se lisent sur le limiteur et non dans le texte rendu, et
+        # « après le délai » demande de vieillir la fenêtre — `FixedWindowLimiter` lit
+        # l'heure par `microtime(true)`, donc aucune horloge simulée ne peut la décaler.
+        #
+        # À retirer le jour où un service du socle l'injecte pour de bon.
+        app.test.login_rate_limiter:
+            alias: Symfony\Component\Security\Http\RateLimiter\DefaultLoginRateLimiter
             public: true
 
         # Miroir du glob des modules ci-dessus, sur les modules de démonstration.

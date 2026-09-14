@@ -1,0 +1,5 @@
+# De Nederlandse vertaling van het ICU-domein. Zie `security+intl-icu.fr.yaml` voor de
+# reden waarom dit domein bestaat: het Frans is de brontaal, dit is een vertaling.
+login:
+    error:
+        retry_after: '{seconds, plural, one {Wacht # seconde voordat u het opnieuw probeert.} other {Wacht # seconden voordat u het opnieuw probeert.}}'

@@ -6,6 +6,7 @@ namespace App\Tests\Core\Translation;
 
 use App\Core\Enum\SupportedLocale;
 use App\Tests\Core\Security\Accounts;
+use App\Tests\Core\Security\LoginThrottling;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -22,6 +23,17 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 final class LoginLocaleTest extends WebTestCase
 {
     private const string PASSWORD = 'un-mot-de-passe-assez-long';
+
+    /**
+     * Cette classe soumet le formulaire de connexion, donc elle part d'un limiteur vide —
+     * même invariant, même appel unique que `LoginTest` et `LoginThrottlingTest`. L'état
+     * du ralentissement vit dans un pool de fichiers, hors de portée de DAMA, et il
+     * survit à l'exécution entière.
+     */
+    protected function setUp(): void
+    {
+        LoginThrottling::forget();
+    }
 
     #[Test]
     public function after_signing_in_the_account_language_is_served(): void

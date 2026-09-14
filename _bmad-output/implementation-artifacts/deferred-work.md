@@ -433,3 +433,129 @@ Entrees ajoutees par bmad-build. Append-only : ne pas modifier les entrees exist
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-10-rendre-les-pages-403-404-et-500-lisibles.md`
   summary: Le 429 du ralentissement de connexion devra rejoindre `excluded_http_codes`.
   evidence: Même raisonnement que le 401, autre story : `symfony/rate-limiter` n'entre qu'à la story 1.7, nommément exclue de celle-ci. Une fois qu'elle existe, une rafale de tentatives de connexion viderait le buffer de journaux à chaque refus — exactement le bruit que `excluded_http_codes` existe pour empêcher. Le texte générique « Réessayez » y est en plus contre-indiqué, puisque c'est précisément ce qu'il ne faut pas faire tout de suite.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-7-ralentir-les-tentatives-de-connexion-repetees.md`
+  status: CLOS — tranché par le test, story 1.7
+  summary: Résolution de l'entrée « Le 429 du ralentissement de connexion devra rejoindre `excluded_http_codes` » ci-dessus. Il n'y rejoint rien, et `config/packages/monolog.yaml` n'a pas bougé.
+  evidence: |
+    La story 1.7 posait la condition : ajouter `429` aux deux listes **si et seulement si**
+    un test montre qu'un refus ralenti vide le buffer `fingers_crossed`. Le test existe —
+    `LoginThrottlingTest::a_throttled_refusal_does_not_flush_the_log_buffer()` — et il
+    montre l'inverse : zéro enregistrement après un refus en 429.
+
+    **Pourquoi.** La supposition de la story 1.10 raisonnait par analogie avec la 403 et la
+    404, qui sont des `HttpException` journalisées par `ErrorListener`. Le 429 du
+    ralentissement n'est pas une exception du tout : `LoginFailureListener` **pose une
+    réponse** sur `LoginFailureEvent`, le pare-feu la retourne, et aucun listener
+    d'exception ne s'exécute. Il n'y a donc aucune ligne `error` à exclure.
+
+    Le test a été vérifié par mutation (`action_level: debug` sous `when@test`) : il vire
+    au rouge dès qu'un vidage a réellement lieu. Une règle qui ne défend rien serait
+    vérifiée par rien ; c'est le test qui tranche, et il tranche pour ne rien ajouter.
+
+    **Ce qui rouvrirait la question :** un futur chemin qui lèverait une
+    `TooManyRequestsHttpException` — l'attribut `#[RateLimit]` de la réinitialisation de
+    mot de passe (story 1.9), par exemple — produirait, lui, une vraie exception
+    journalisée. C'est cette story-là qui devra reposer la question, avec son propre test.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-7-ralentir-les-tentatives-de-connexion-repetees.md`
+  summary: Le ralentissement de connexion n'a aucun verrou (`symfony/lock` absent) : deux requêtes simultanées peuvent dépasser le seuil d'un cran ou deux.
+  evidence: |
+    Choix assumé de la story, pas un oubli. Sans verrou, deux requêtes concurrentes lisent
+    puis écrivent la même fenêtre de cache et l'une écrase l'autre. La fenêtre borne
+    l'attaque de toute façon — au pire quelques tentatives de plus par minute — et
+    installer `symfony/lock` ajouterait un composant et un magasin pour fermer un
+    dépassement marginal.
+
+    Ce qui le rouvrirait : un **déploiement multi-serveurs**. Le pool `cache.rate_limiter`
+    est un adaptateur de fichiers ; sur plusieurs serveurs, chacun tient son propre
+    compteur et la limite effective est multipliée par leur nombre — un problème bien plus
+    grave que la course locale, et qui se règle au même endroit (un magasin partagé,
+    Redis ou la base, plus le `lock_factory` qui va avec). La story de déploiement (3.1)
+    est celle qui saura si ce cas existe.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-7-ralentir-les-tentatives-de-connexion-repetees.md`
+  summary: `DefaultLoginRateLimiter` est salé par `APP_SECRET` avec un repli sur `%kernel.project_dir%`, parce que `container.build_hash` n'est pas exprimable en YAML.
+  evidence: |
+    Vérifié dans `vendor/` : `LoginThrottlingFactory` passe `new Parameter('container.build_hash')`,
+    une valeur que **seul le dumper** matérialise (`PhpDumper.php:374`) et qui n'existe pas
+    dans le sac de paramètres — `%container.build_hash%` écrit en YAML échoue à la
+    compilation avec « You have requested a non-existent parameter ». Seule une définition
+    de service écrite en PHP pourrait passer l'objet `Parameter` ; ce dépôt configure en
+    YAML, et mélanger les deux formats pour un seul service coûtait plus que le repli.
+
+    Le sel retenu est `%env(default:app.login_throttling.fallback_secret:APP_SECRET)%`.
+    Le repli existe **parce qu'`APP_SECRET` est vide dans `.env` et n'a aucun chemin de
+    production** (entrée ouverte plus haut dans ce fichier) : sans lui,
+    `DefaultLoginRateLimiter` lèverait « A non-empty secret is required » et la connexion
+    répondrait 500 en production. Dès qu'`APP_SECRET` est renseigné, c'est lui qui sert.
+
+    Ce que ce sel achète : le magasin du limiteur ne contient aucune adresse email en
+    clair. Ce qu'il n'achète pas : une protection contre qui peut lire le pool de cache —
+    cette personne lit déjà les sessions. La question se referme d'elle-même le jour où
+    l'entrée `APP_SECRET` ci-dessus est traitée.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-7-ralentir-les-tentatives-de-connexion-repetees.md`
+  summary: `framework.trusted_proxies` n'est configuré nulle part, or le palier long du ralentissement est indexé sur l'adresse IP seule.
+  evidence: |
+    Vérifié inatteignable aujourd'hui : le dépôt ne configure aucun proxy, `public/` ne
+    porte aucun `.htaccess`, et `symfony/apache-pack` sert l'application sur le même hôte —
+    `REMOTE_ADDR` est donc bien l'adresse du client.
+
+    Ce qui le rend réel : le jour où un dérivé est servi derrière un reverse proxy, un
+    répartiteur de charge ou un CDN, `Request::getClientIp()` rend l'adresse du proxy pour
+    **toutes** les requêtes. Le limiteur `login_address` (vingt échecs par quart d'heure)
+    dégénère alors en un compteur unique pour le site entier : vingt échecs, d'où qu'ils
+    viennent, refusent la connexion à tout le monde pendant quinze minutes. Le palier
+    court se dégrade de la même façon, sa clé devenant « identifiant + adresse du proxy ».
+
+    Même conséquence, sans proxy, pour un client dont tout le personnel sort par une seule
+    adresse publique — bureau derrière NAT, VPN, CGNAT mobile. Le dimensionnement du SPEC
+    (jusqu'à cinquante utilisateurs par dérivé) rend vingt échecs par quart d'heure
+    atteignable un lundi matin, sans la moindre attaque.
+
+    Ce qui trancherait : la cible de déploiement réelle, qui appartient à la story 3.1
+    « Déployer le dérivé chez le client » — c'est elle qui possède le `deploy.php`, la
+    configuration Apache et la topologie réseau. Deux leviers y répondront : déclarer
+    `trusted_proxies` quand il y en a un, et relever la limite du palier long quand
+    l'adresse est partagée.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-7-ralentir-les-tentatives-de-connexion-repetees.md`
+  summary: Un refus de ralentissement ne laisse aucune ligne dans le journal applicatif, et l'assertion qui le constate interdit d'en ajouter une.
+  evidence: |
+    Vérifié : le 429 est une `Response` **posée** sur `LoginFailureEvent`, pas une exception
+    — aucun listener d'exception ne s'exécute, et `ErrorListener` ne voit rien. La tâche du
+    spec demandait de n'ajouter `429` à `excluded_http_codes` que si un test montrait un
+    vidage du buffer ; le test montre l'inverse, la condition est donc résolue et
+    `monolog.yaml` n'a pas bougé. C'est juste, et c'est aussi ce qui rend cette entrée
+    nécessaire.
+
+    Conséquence à assumer : une campagne de bourrage d'identifiants contre un dérivé ne
+    laisse **aucune** trace applicative. Rien à alerter, rien à corréler, et rien pour
+    expliquer à un utilisateur pourquoi il ne peut pas se connecter. Ce n'est pas de
+    l'audit au sens de l'Epic 4 — un objet métier modifié par quelqu'un — mais une ligne de
+    sécurité : identifiant haché, adresse, secondes restantes, au niveau `notice`.
+
+    À refermer par la story d'observabilité, qui possède les canaux, les processors et le
+    masquage. Elle devra aussi desserrer
+    `LoginThrottlingTest::a_throttled_refusal_does_not_flush_the_log_buffer()`, dont
+    l'assertion `assertSame([], …)` est plus forte que la question posée (« le buffer
+    est-il vidé ? ») et rejetterait la ligne qu'il faudra ajouter.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-7-ralentir-les-tentatives-de-connexion-repetees.md`
+  summary: Le sel de repli du limiteur vaut `%kernel.project_dir%`, qui change à chaque release sur un déploiement Deployer.
+  evidence: |
+    Vérifié : `.env` laisse `APP_SECRET` vide et n'a aucun chemin de production (entrée
+    ouverte depuis la story 1.1), donc c'est bien le repli qui sert en production. Or
+    Deployer déploie dans `releases/<horodatage>` : `kernel.project_dir` change à chaque
+    mise en production, le sel avec lui, et tous les compteurs de ralentissement en cours
+    repartent de zéro.
+
+    Portée réelle : marginale. Le sel ne sert qu'à hacher l'adresse et l'identifiant avant
+    d'en faire une clé de cache, et une attaque qui traverserait précisément une mise en
+    production est une coïncidence, pas une méthode. L'entrée existe pour que la
+    conséquence soit écrite plutôt que découverte.
+
+    Ce qui la referme : la même chose que l'entrée `APP_SECRET` de la story 1.1 — un
+    secret de production réel, par le coffre Symfony. Dès qu'`APP_SECRET` est renseigné, le
+    processeur `default:` cesse de se replier et cette entrée devient sans objet.
