@@ -127,6 +127,57 @@ php bin/console --env=test doctrine:migrations:migrate --no-interaction
 Une surcharge locale du DSN se met dans `.env.local` **et** dans `.env.test.local` :
 Symfony ne charge pas `.env.local` en environnement de test.
 
+### Le worker, et les emails
+
+Aucun email ne part depuis une requête. Un cas d'usage dispatche `App\Core\Message\SendEmail`
+sur le bus, le message est mis en file sur le transport Doctrine, et c'est un **worker**
+qui compose et envoie l'email — dans la langue que le message porte, pas dans celle du
+navigateur. Le message ne transporte que des scalaires et une `SupportedLocale` : jamais
+une entité, jamais un objet `Email`. Le seul endroit du **code applicatif** qui appelle
+`MailerInterface::send()` est `App\Core\Service\EmailSender` ; la suite de tests
+l'appelle aussi, pour vérifier qu'un appel direct part bien de façon synchrone.
+
+**Conséquence directe en développement : sans worker, rien n'arrive.** C'est voulu — aucun
+routage `sync` n'est posé en `when@dev`, donc le développement exerce exactement le chemin
+de production, file, retry et file d'échec comprises. Il faut donc deux choses qui
+tournent :
+
+```bash
+mailpit                  # Mailpit : SMTP sur 1025, interface sur http://localhost:8025
+make worker              # dépile la file (messenger:consume async)
+```
+
+`MAILER_DSN` pointe sur `smtp://127.0.0.1:1025` dans `.env` et `MAILER_SENDER` porte
+l'expéditeur par défaut ; un dérivé change les deux dans son `.env.local`, sans toucher
+`src/` ni `config/`. En test, `.env.test` met `null://null` et les deux transports
+passent en `in-memory://` : la suite ne lance aucun worker et ne contacte aucun SMTP.
+
+Les commandes qui servent réellement :
+
+```bash
+php bin/console debug:messenger          # quel handler traite quel message
+php bin/console messenger:stats          # ce qui attend, par transport
+php bin/console messenger:failed:show    # ce qui a définitivement échoué, avec l'exception
+php bin/console messenger:failed:retry   # après avoir corrigé la cause
+```
+
+Un envoi qui échoue est retenté **trois fois**, à 1 s, 2 s puis 4 s — à ±30 % près, le
+`jitter` évitant que tous les workers ne rejouent à la même milliseconde contre un SMTP
+qui vient de tomber. Il part ensuite sur le transport `failed` : une file Doctrine, donc
+persistante — elle survit à un redémarrage et elle est encore là le lendemain matin. Rien
+ne l'alerte encore ; la lire fait partie de l'exploitation jusqu'à l'Epic 6.
+
+En production, le worker est un service systemd. L'unité est livrée dans
+`deploy/systemd/proglab-worker.service` avec ses deux limites — `--time-limit=3600` et
+`--memory-limit=128M`, sans lesquelles un processus PHP de longue durée finit tué au
+milieu d'un message — et `Restart=always` pour le relancer derrière elles. **Elle n'est
+pas encore installée par le déploiement :** c'est la story 3.1 qui l'installera, et qui
+devra lancer `messenger:stop-workers` avant chaque redémarrage, sans quoi les workers
+continuent de tourner sur le code de la release précédente.
+
+La table `messenger_messages` vient d'une migration relue, jamais d'`auto_setup` : aucun
+DDL n'est émis à l'exécution, en développement comme en production.
+
 ### Le frontend, sans Node
 
 AssetMapper sert les assets en modules ES natifs et Tailwind 4 est compilé par un binaire

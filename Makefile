@@ -28,7 +28,7 @@ SHELL := bash.exe
 endif
 
 .DEFAULT_GOAL := help
-.PHONY: help qa test stan stan-baseline cs cs-check deptrac audit lint a11y container-cache sync-status
+.PHONY: help qa test stan stan-baseline cs cs-check deptrac audit lint a11y container-cache sync-status worker
 
 # Le `0-9` de la classe n'est pas decoratif : `a11y` porte un chiffre, et sans lui la
 # cible existe, s'execute et n'apparait dans aucune liste.
@@ -159,6 +159,27 @@ lint: ## Lint le conteneur, les templates, le YAML, le mapping Doctrine et compo
 	php bin/console lint:twig templates/
 	php bin/console lint:yaml config/ .github/ translations/
 	php bin/console doctrine:schema:validate --skip-sync
+
+# Hors de la porte de qualité, et donc hors de la table `# qa-category:` : cette cible ne
+# verifie rien, elle depile la file. `QualityGateParityTest` ne reclame une categorie que
+# pour les prerequis de `qa` ; la porte reste a six, et aucun worker ne tourne pendant la
+# suite de tests (sous `when@test`, les deux transports sont `in-memory://`).
+#
+# **Le developpement exerce exactement le chemin de production** (decision D-2) : aucun
+# routage `sync` n'est pose en `when@dev`, donc un email dispatche reste en file tant que
+# cette cible ne tourne pas. C'est voulu — la file, le retry et la file d'echec se
+# decouvrent en developpement, pas chez le client. Il faut donc Mailpit d'un cote et cette
+# cible de l'autre ; le README dit comment.
+#
+# Les deux limites ne sont pas decoratives : PHP n'est pas fait pour les processus de
+# longue duree, et un worker sans `--memory-limit` finit tue par l'OOM killer au milieu
+# d'un message. Ici il n'y a pas de superviseur pour le relancer — le worker s'arrete, et
+# on le relance a la main. En production, c'est `deploy/systemd/proglab-worker.service`
+# qui s'en charge.
+#
+# `-vv` pour voir passer chaque message : c'est la reponse a « mon email n'arrive pas ».
+worker: ## Dépile la file des emails en développement (Mailpit doit tourner)
+	php bin/console messenger:consume async --time-limit=3600 --memory-limit=128M -vv
 
 # Hors de la porte de qualité, et donc hors de la table `# qa-category:` : cette cible ne
 # vérifie rien, elle recale le suivi de sprint. `.githooks/post-merge` l'exécute tout

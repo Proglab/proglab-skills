@@ -1,0 +1,104 @@
+# La file du socle (story 1.8), écrite à la main par-dessus la recette Flex.
+#
+#   bin/console debug:messenger                          # quel handler traite quel message
+#   bin/console debug:config framework messenger         # la configuration fusionnée
+#   bin/console debug:config --env=test framework messenger
+#   bin/console messenger:stats                          # ce qui attend, par transport
+#   bin/console messenger:failed:show                    # ce qui a définitivement échoué
+#
+# **Ce que la recette écrivait, et pourquoi rien n'en est resté.** Elle pose un transport
+# `sync://`, commente `failure_transport` et laisse le routage vide. Les trois sont
+# inutilisables ici : `sync://` ne sort rien de la requête — c'est précisément ce que
+# cette story existe pour supprimer —, une file d'échec commentée est une perte de données
+# le jour où le SMTP tombe, et un routage vide fait passer nos messages par le bus sans
+# jamais les mettre en file.
+#
+# **Messenger n'est pas un bus de commandes ici** (`README.md`). Aucun cas d'usage du socle
+# ne transite par le bus : seul l'envoi d'email le fait. Un contrôleur appelle son service
+# directement, et ce service dispatche `SendEmail` quand — et seulement quand — personne
+# n'attend le résultat.
+framework:
+    messenger:
+        # Un message qui a épuisé ses tentatives va sur ce transport et **y reste**. Sans
+        # cette ligne, il serait simplement rejeté : plus de trace, plus de rejeu possible.
+        failure_transport: failed
+
+        transports:
+            async:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                options:
+                    queue_name: default
+
+                    # Jamais de DDL à l'exécution. La table `messenger_messages` vient
+                    # d'une migration relue (`migrations/`), comme toutes les autres :
+                    # `auto_setup` la créerait au premier message, sur la connexion de
+                    # l'application et sans que personne n'ait relu le schéma.
+                    #
+                    # Écrit ici **en plus** du `auto_setup=0` du DSN : la variable
+                    # d'environnement est surchargeable par un dérivé, cette ligne ne
+                    # l'est pas.
+                    auto_setup: false
+
+                # Trois tentatives à 1 s, 2 s puis 4 s. Le `jitter` évite que tous les
+                # workers d'une machine ne rejouent à la même milliseconde contre un SMTP
+                # qui vient de tomber ; il vaut 0.1 par défaut, et l'augmenter est une
+                # assurance gratuite.
+                retry_strategy:
+                    max_retries: 3
+                    delay: 1000
+                    multiplier: 2
+                    jitter: 0.3
+
+            # La même base, une autre file. Persistant, donc toujours là le lendemain
+            # matin — et lisible par `messenger:failed:show`, qui est la seule chose qui
+            # transforme une file d'échec en information.
+            failed:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                options:
+                    queue_name: failed
+                    auto_setup: false
+
+        # **Aucun `routing:` ici, et c'est le sujet de ce paragraphe.**
+        #
+        # Le seul message routé du socle est `App\Core\Message\SendEmail`, et son routage
+        # vit sur la classe elle-même : `#[AsMessage('async')]`. Ce bloc est réservé aux
+        # messages **tiers**, ceux sur lesquels on ne peut pas poser d'attribut parce
+        # qu'ils appartiennent à quelqu'un d'autre. Un routage écrit à côté de la classe
+        # se lit en même temps qu'elle et ne peut pas être oublié lors d'un renommage.
+        #
+        # **`Symfony\Component\Mailer\Messenger\SendEmailMessage` est justement un message
+        # volontairement routé nulle part, et cette absence est la décision la plus
+        # importante de ce fichier.**
+        #
+        # La façon Symfony de rendre l'email asynchrone est de router ce message-là :
+        # `MailerInterface::send()` devient alors une mise en file, et l'objet `Email`
+        # complet part dans la charge utile. Deux raisons de ne pas le faire ici.
+        #
+        # 1. Ce que la file transporterait serait un objet `Email`, pas des scalaires
+        #    et une locale (AR-10). Et cela ne résoudrait pas la langue : le corps
+        #    serait rendu par le worker, mais le sujet et les chaînes traduites
+        #    l'auraient déjà été dans la locale de la requête.
+        # 2. Le handler de `SendEmail` appelle `MailerInterface` **depuis le worker**.
+        #    Router `SendEmailMessage` remettrait donc chaque email en file une
+        #    seconde fois, pour être dépilé par le même worker au tour suivant.
+        #
+        # Conséquence à connaître : un service qui appellerait `MailerInterface::send()`
+        # directement enverrait de façon **synchrone**. Ce n'est pas un chemin du
+        # socle, et rien ne le rend asynchrone par surprise.
+
+when@test:
+    framework:
+        messenger:
+            transports:
+                # Seul le **DSN** change ; les noms de transport, le routage, la politique
+                # de retry et la file d'échec restent ceux de la production. Ce qui est
+                # exercé sous test est donc le routage de production, et la suite tourne
+                # sans worker, sans base pour la file et sans SMTP.
+                #
+                # La propriété transactionnelle, elle, ne s'observe que sur le vrai
+                # transport Doctrine : `tests/Core/Mail/EmailQueueTest.php` le fabrique à
+                # la main sur la connexion de l'application, et explique pourquoi.
+                async:
+                    dsn: 'in-memory://'
+                failed:
+                    dsn: 'in-memory://'

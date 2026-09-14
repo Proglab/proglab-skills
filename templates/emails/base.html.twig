@@ -1,0 +1,70 @@
+{#
+    Le gabarit de tous les emails du socle (story 1.8).
+
+    **Ce n'est pas `base.html.twig`, et ce n'en est pas une variante.** Le gabarit de page
+    porte le lien « Aller au contenu », les repères de page, la région d'annonces et
+    l'importmap : aucun de ces mécanismes n'existe dans un client de messagerie, et le
+    plancher d'accessibilité ne visite pas cette page. L'étendre pour « ne pas se répéter »
+    ferait entrer un `<main>` focalisable et un contrôleur Stimulus dans un email.
+
+    **Les styles sont en ligne, et il n'y a aucune couleur.** Les clients de messagerie
+    ignorent les blocs `<style>` de façon inégale, donc ce qui doit tenir est écrit en
+    attribut `style`. Mais le socle est achromatique et le restera ici :
+    `tests/Core/Theme/HardcodedColorTest.php` refuse toute couleur littérale dans
+    `templates/`, et un email n'a pas accès aux jetons du thème — le worker n'a ni
+    feuille compilée ni AssetMapper sous la main. Une bordure sans couleur hérite de
+    `currentColor`, et c'est tout ce dont ce gabarit a besoin. Un dérivé qui veut une
+    identité visuelle dans ses emails la pose dans **son** gabarit, pas ici.
+
+    **Toute traduction passe la locale en quatrième argument.** Un email est rendu par le
+    worker, où il n'y a pas de requête et donc pas de `_locale` : sans ce quatrième
+    argument, `|trans` rendrait dans `framework.default_locale` — le français — quelle que
+    soit la langue du destinataire. La variable `locale` vient de
+    `App\Core\Service\EmailSender`, qui l'ajoute au contexte de chaque message.
+
+    **Ce qui n'a pas sa place ici.** `app.request` n'existe pas dans un worker : une URL
+    absolue se génère avec `url()` et `framework.router.default_uri` (`DEFAULT_URI`),
+    jamais avec `path()`. Le global `active_locales` requête la base à chaque appel — il
+    est fait pour une page, pas pour un email.
+
+    Variables fournies par `EmailSender` en plus de celles du message :
+      · `subject` — le sujet déjà traduit
+      · `locale`  — le code de langue du message, à passer à chaque `|trans`
+#}
+<!DOCTYPE html>
+<html lang="{{ locale }}">
+<head>
+    <meta charset="UTF-8">
+    {# Sans cette ligne, un client mobile traite la page comme un document de bureau et
+       dézoome pour faire tenir les 600 px : le corps devient illisible sur téléphone. #}
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ subject }}</title>
+</head>
+<body style="margin: 0; padding: 24px 12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.5;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+    <tr>
+        <td align="center">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 600px; text-align: left;">
+                <tr>
+                    <td style="padding-bottom: 16px;">
+                        <p style="margin: 0; font-size: 14px; font-weight: 600;">{{ app_name }}</p>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding-bottom: 24px;">
+                        {% block content %}{% endblock %}
+                    </td>
+                </tr>
+                <tr>
+                    <td style="border-top: 1px solid;">
+                        <p style="margin: 16px 0 0 0; font-size: 13px;">
+                            {{ 'layout.footer'|trans({'%app_name%': app_name}, 'emails', locale) }}
+                        </p>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+</body>
+</html>

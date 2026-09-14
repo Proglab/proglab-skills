@@ -559,3 +559,177 @@ Entrees ajoutees par bmad-build. Append-only : ne pas modifier les entrees exist
     Ce qui la referme : la même chose que l'entrée `APP_SECRET` de la story 1.1 — un
     secret de production réel, par le coffre Symfony. Dès qu'`APP_SECRET` est renseigné, le
     processeur `default:` cesse de se replier et cette entrée devient sans objet.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-8-sortir-l-envoi-des-emails-de-la-requete.md`
+  summary: AD-21 nomme `dispatch_after_current_bus` comme mécanisme de « consommable seulement après le commit » ; le mécanisme réellement livré est le partage de connexion DBAL, et l'architecture est à corriger sur ce point.
+  evidence: |
+    Décision **D-1** de Fabrice, 2026-09-14. `DispatchAfterCurrentBusMiddleware` ne diffère
+    un dispatch que lorsqu'il est appelé **depuis l'intérieur d'un handler** : il n'a donc
+    d'effet que si Messenger sert de bus de commandes, ce que `README.md` interdit
+    explicitement. Le mécanisme retenu est celui du transport : `doctrine://default` écrit
+    sur la connexion DBAL de l'application, donc un `INSERT` émis à l'intérieur d'une
+    transaction ouverte par le cas d'usage rejoint cette transaction et n'est visible
+    d'aucune autre connexion tant qu'elle n'est pas commitée.
+    `tests/Core/Mail/EmailQueueTest.php` le prouve depuis une seconde connexion DBAL
+    créée à la main, et la vérification par mutation a confirmé que ce test rougit quand
+    on lui fait relire la connexion de l'application.
+
+    Ce qui reste à faire : amender AD-21 sur le nom du mécanisme. L'amendement de
+    l'architecture n'appartient pas à une story d'implémentation.
+
+    Conséquence à tenir dans les stories 1.9, 2.6 et 5.2 : **chaque cas d'usage qui envoie
+    un email ouvre sa transaction explicitement et dispatche dedans.** Rien ne le fait à sa
+    place, et rien ne le vérifie mécaniquement aujourd'hui — c'est une convention écrite
+    dans `tests/Fixtures/Mail/DemoEmailDispatch.php` et dans ce fichier, pas une règle
+    tenue par deptrac ou PHPStan.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-8-sortir-l-envoi-des-emails-de-la-requete.md`
+  summary: Un module client ne peut pas envoyer d'email : `App\Core\Message\SendEmail` vit hors de `Core\Contract`, donc le contrat de couches refuse `ModuleDemo on Core`.
+  evidence: |
+    Constaté en implémentant le consommateur de démonstration. Le spec le plaçait dans
+    `tests/Fixtures/Module/Demo/` ; or `deptrac.yaml` n'accorde à une couche de module que
+    `CoreContract` (AD-2), et `tests/Core/BoundaryTest.php` tient déjà exactement ce cas
+    (« un module atteint une classe interne du socle » → `(ModuleDemo on Core)`). Le spec
+    ne relevait que la couche technique `Message`, dont le ruleset est bien satisfait ;
+    c'est la dimension **racine** qui refuse.
+
+    Le consommateur de démonstration a donc été posé dans `tests/Fixtures/Mail/`, hors de
+    la racine des modules — deptrac n'y analyse rien — et déclaré à la main sous
+    `when@test` dans `config/services.yaml`. Le mécanisme de la story est prouvé à
+    l'identique ; ce qui n'est pas prouvé, c'est qu'un module puisse s'en servir.
+
+    Ce qui trancherait : savoir si un module client devra un jour envoyer un email. Si
+    oui, deux options, et aucune n'est une correction locale — déplacer `SendEmail` dans
+    `Core\Contract\` (ce qui y ferait entrer `SupportedLocale`, que le ruleset
+    `CoreContract: ~` interdit de référencer depuis ailleurs), ou exposer un contrat
+    d'envoi dans `Core\Contract\` que le socle implémente. À traiter quand un module réel
+    en aura besoin, pas avant.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-8-sortir-l-envoi-des-emails-de-la-requete.md`
+  summary: Le retry peut produire un double envoi : un SMTP qui accepte le message puis échoue avant l'acquittement fait recevoir deux fois le même email.
+  evidence: |
+    Choix assumé, pas un oubli. L'effet de bord est chez le serveur SMTP et pas dans notre
+    base : aucun état vérifiable ne permet au handler de savoir qu'il a déjà envoyé, donc
+    aucune idempotence n'est atteignable au sens de la règle 2 du standard asynchrone.
+    `SendEmailHandlerTest::handling_the_same_message_twice_sends_it_twice_and_nothing_else()`
+    en fait une propriété testée plutôt qu'une affirmation.
+
+    Ce qui trancherait : une table de journal d'envois avec une clé d'idempotence portée
+    par le message, écrite dans la même transaction que la consommation. C'est un artefact
+    par email envoyé, et le socle n'envoie encore aucun email — à rouvrir si un client
+    signale des doublons.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-8-sortir-l-envoi-des-emails-de-la-requete.md`
+  summary: `deploy/systemd/proglab-worker.service` est livré mais n'a jamais été exercé : rien ne l'installe, et la story 3.1 devra le faire.
+  evidence: |
+    Décision **D-3** de Fabrice, 2026-09-14. Le critère 3 de la story se ferme sur la
+    livraison du fichier, en sachant qu'aucun déploiement ne le copie encore — `deploy.php`
+    et l'orchestration SSH appartiennent à la story 3.1, et ce spec interdit d'y toucher.
+
+    Ce que 3.1 devra en faire, dans cet ordre : substituer les trois valeurs entre
+    chevrons de l'unité (utilisateur, chemin du projet, binaire PHP), la copier vers
+    `/etc/systemd/system/`, `daemon-reload` puis `enable --now`, et surtout lancer
+    `bin/console messenger:stop-workers` **avant** `systemctl restart` à chaque release —
+    sans quoi les workers continuent de tourner sur le code de la release précédente,
+    désérialisant de nouveaux messages avec de vieux handlers.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-8-sortir-l-envoi-des-emails-de-la-requete.md`
+  summary: Ni files priorisées, ni Scheduler, ni alerte sur la file d'échec, ni health check de la file — la file d'échec n'est lue que par quelqu'un qui pense à taper la commande.
+  evidence: |
+    Périmètre explicitement exclu par le spec, et renvoyé à l'Epic 6 (FR-18). Le socle
+    consomme un seul transport `async` ; un import long et une confirmation d'inscription
+    y attendront donc dans la même file le jour où les deux existeront — c'est le problème
+    que `async_high` / `async_low` résoudront, et il ne se pose pas tant que l'email est le
+    seul message routé.
+
+    La limite qui compte réellement est l'autre : **un message qui atteint le transport
+    `failed` ne déclenche aucune alerte.** Le standard asynchrone dit qu'une file d'échec
+    que personne ne lit est un mécanisme de perte de données avec des étapes en plus. Le
+    mécanisme appartient à `symfony-proglab-observability` (un listener sur
+    `WorkerMessageFailedEvent`, et un sink qui ne repasse pas par Messenger — surtout pas
+    `symfony_mailer`). Jusqu'à l'Epic 6, la lecture de `messenger:failed:show` est une
+    tâche d'exploitation humaine, et c'est écrit dans le README.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-8-sortir-l-envoi-des-emails-de-la-requete.md`
+  summary: Le cas d'usage de démonstration ne persiste aucune entité, contrairement à ce que demandait le spec — `DemoWidget` n'a volontairement pas de table.
+  evidence: |
+    Le spec demandait un cas d'usage « qui persiste un `DemoWidget` **et** dispatche un
+    `SendEmail` dans la même frontière de transaction ». La première moitié est
+    irréalisable en l'état : le docblock de `tests/Fixtures/Module/Demo/Entity/DemoWidget.php`
+    dit « aucune migration ne la crée : la suite lit ses métadonnées, jamais une table »,
+    et lui en créer une déposerait une table de démonstration dans la base de chaque
+    dérivé. Créer la table au vol depuis un test est pire : un DDL MySQL provoque un commit
+    implicite, ce qui détruirait l'isolation DAMA de toute la suite.
+
+    Ce qui est livré à la place : la frontière de transaction est bien explicite
+    (`wrapInTransaction()`) et le dispatch a bien lieu dedans, et la propriété — la ligne
+    de `messenger_messages` invisible d'une autre connexion, puis disparue au rollback —
+    est vérifiée directement sur le transport Doctrine par `EmailQueueTest`. Ce qui n'est
+    pas exercé, c'est la coexistence d'un `flush()` et d'un dispatch dans la même
+    transaction ; la story 1.9, qui persistera un vrai jeton de réinitialisation avant
+    d'envoyer son email, sera le premier chemin à le faire — et c'est là qu'il faut
+    regarder.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-8-sortir-l-envoi-des-emails-de-la-requete.md`
+  summary: `config/packages/mailer.yaml` porte une seconde clé, `headers.from`, là où le spec demandait « `dsn` et rien d'autre ».
+  evidence: |
+    Écart constaté à l'exécution, pas un choix de confort : `Symfony\Component\Mime\Message`
+    lève « An email must have a "From" or a "Sender" header » au moment de l'envoi, donc
+    sans expéditeur par défaut aucun email ne part — `SendEmailHandlerTest` était rouge sur
+    exactement cette exception. Ce que le spec écartait par cette phrase était le garde-fou
+    `envelope.recipients`, et celui-là reste écarté.
+
+    L'expéditeur vient de `MAILER_SENDER` (`.env`, valeur par défaut `no-reply@localhost`,
+    volontairement inutilisable en production). Rien ne vérifie aujourd'hui qu'un dérivé
+    l'a surchargé : un déploiement qui l'oublie enverra depuis `no-reply@localhost`, que
+    la plupart des relais SMTP refuseront. À rapprocher de l'entrée `APP_SECRET` ci-dessus
+    — même trou, même story de déploiement pour le fermer.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-8-sortir-l-envoi-des-emails-de-la-requete.md`
+  summary: La partie `text/plain` des emails est dérivée automatiquement du HTML, et le gabarit étant une mise en page en tableaux, elle sort truffée de lignes vides et d'espaces encodés.
+  evidence: |
+    Constaté sur un envoi réel, capturé au niveau SMTP pendant la vérification manuelle :
+    la partie alternative en texte brut du message contient une trentaine de lignes de
+    blancs autour de deux phrases. C'est le comportement normal de Symfony quand
+    `TemplatedEmail` n'a qu'un `htmlTemplate()` — il déshabille le HTML —, et le skill
+    `symfony-proglab-async` le dit : il faut écrire un gabarit texte dès que le HTML est
+    assez chargé en mise en page pour que ce dépouillement produise du bruit. Les
+    tableaux imbriqués qu'exigent les clients de messagerie le sont.
+
+    Conséquence réelle : un client en mode texte, et certains filtres anti-spam qui
+    comparent les deux parties, verront un message quasi vide. Le correctif est un
+    `templates/emails/base.txt.twig` et un `textTemplate()` dérivé du même nom dans
+    `App\Core\Service\EmailSender` — un gabarit de plus par email, donc à poser avec le
+    premier email réel (story 1.9), pas sur une infrastructure que rien n'envoie encore.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-8-sortir-l-envoi-des-emails-de-la-requete.md`
+  summary: Le gabarit d'email ne fixe ni couleur de texte ni couleur de fond : le contraste rendu est entierement decide par le client de messagerie, mode sombre compris.
+  evidence: |
+    Releve par la revue de la story 1.8, verdict medium, reporte faute d'une decision de
+    conception a prendre ici. La tension est reelle et n'a pas de correctif local :
+    `tests/Core/Theme/HardcodedColorTest.php` refuse toute couleur litterale dans
+    `templates/`, et un email n'a acces ni aux jetons du theme ni a la feuille compilee —
+    le worker n'a ni AssetMapper ni CSS sous la main. Le gabarit s'en remet donc a
+    `currentColor` et a ce que le client applique, alors que plusieurs clients inversent
+    partiellement les couleurs heritees en mode sombre.
+
+    Ce qui trancherait : une decision de conception a prendre avec le premier email reel
+    (story 1.9) — soit une paire noir/blanc nommee et une exemption assumee de
+    `HardcodedColorTest` pour `templates/emails/`, soit une feuille d'email en ligne via
+    `twig/cssinliner-extra`, que le skill `symfony-proglab-async` prescrit deja. A
+    rapprocher de l'entree sur la partie `text/plain`, qui se referme par le meme geste.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-8-sortir-l-envoi-des-emails-de-la-requete.md`
+  summary: Rien ne purge la file d'echec : `messenger_messages` grossit sans borne dans la base metier.
+  evidence: |
+    Releve par la revue de la story 1.8, verdict medium, reporte parce qu'il ne mord
+    qu'apres des mois d'echecs repetes. Le transport `failed` est persistant par
+    construction — c'est exactement ce qu'on lui demande — mais aucune retention,
+    aucun `messenger:failed:remove` planifie, et aucune borne de taille n'existe. Un SMTP
+    client casse pendant une semaine laisse donc autant de lignes que d'emails tentes,
+    dans la base que le client sauvegarde et restaure.
+
+    Ce qui trancherait : le Scheduler, qui appartient a l'Epic 4 (story 4.4, archivage) et
+    qui y portera deja son propre worker. Une tache de retention sur `queue_name = 'failed'`
+    y a sa place naturelle, avec la meme fenetre que l'archivage du journal d'audit.
+    A rouvrir plus tot si un client signale une base qui gonfle.

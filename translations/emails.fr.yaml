@@ -1,0 +1,15 @@
+# Le domaine des emails du socle — un domaine par surface, clés anglaises pointées,
+# source française (AD-14).
+#
+# **Ce domaine ne porte que le gabarit.** Aucun texte d'email destiné à un utilisateur
+# réel n'est écrit ici : le socle n'a encore rien à envoyer, et le contenu des premiers
+# emails appartient aux stories 1.9, 2.6 et 5.2. Ce qui vit ici est ce que *tous* les
+# emails partagent, et rien d'autre.
+#
+# Pas d'ICU : ce domaine n'a ni pluriel ni sélection. Le jour où il en aura, la règle du
+# socle est un fichier `emails+intl-icu.<locale>.yaml` posé **à côté** de celui-ci, jamais
+# un renommage de ce fichier-ci.
+layout:
+    # Le pied de page de `templates/emails/base.html.twig`. `%app_name%` est le nom du
+    # dérivé, passé par le gabarit.
+    footer: "Ce message vous est envoyé automatiquement par %app_name%. Merci de ne pas y répondre."

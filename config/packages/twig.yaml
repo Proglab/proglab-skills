@@ -23,3 +23,18 @@ twig:
 when@test:
     twig:
         strict_variables: true
+
+        # Le gabarit de l'email de démonstration (story 1.8), et rien d'autre.
+        #
+        # Même forme que le miroir `when@test` de `config/packages/translation.yaml` : le
+        # socle n'a aucun email à envoyer aujourd'hui, donc le seul consommateur livré est
+        # une fixture — et une fixture ne doit pas déposer de gabarit dans `templates/`,
+        # que `lint:twig`, le plancher d'accessibilité et `HardcodedColorTest` traitent
+        # comme la surface du dérivé.
+        #
+        # Le chemin est ajouté au namespace principal, donc
+        # `tests/Fixtures/templates/emails/demo.html.twig` se résout comme
+        # `emails/demo.html.twig` et peut étendre `emails/base.html.twig`, qui vit bien,
+        # lui, dans `templates/`.
+        paths:
+            '%kernel.project_dir%/tests/Fixtures/templates': ~
