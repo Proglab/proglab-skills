@@ -1,0 +1,18 @@
+{#
+    Le gabarit du seul email livré par le socle, et il n'est livré que sous test.
+
+    Il existe pour la même raison que `DemoErrorController` : une infrastructure que rien
+    n'exerce est une infrastructure non vérifiée. Le socle n'a aujourd'hui aucun email à
+    envoyer — le premier est celui de la story 1.9 —, donc le consommateur de
+    démonstration et son gabarit vivent dans les fixtures, et le chemin
+    `tests/Fixtures/templates` n'est ajouté à Twig que sous `when@test`
+    (`config/packages/twig.yaml`).
+
+    `widget` vient du contexte du message, et c'est la même valeur que `%widget%` dans le
+    sujet : un seul tableau sert des deux côtés.
+#}
+{% extends 'emails/base.html.twig' %}
+
+{% block content %}
+    <p style="margin: 0;">{{ widget }}</p>
+{% endblock %}

@@ -1,0 +1,89 @@
+; L'unité systemd du worker Messenger — la file des emails du socle (story 1.8).
+;
+; **Ce fichier est livré deux epics avant son installateur, et il faut le savoir avant de
+; s'y fier.** Rien dans ce dépôt ne le copie sur un serveur aujourd'hui : c'est la story
+; 3.1 qui possède Deployer et l'orchestration SSH. Elle devra, dans cet ordre :
+;
+;   1. copier ce fichier vers /etc/systemd/system/proglab-worker.service en substituant
+;      les trois valeurs entre chevrons ci-dessous (utilisateur, chemin de la release,
+;      binaire PHP) ;
+;   2. `systemctl daemon-reload` puis `systemctl enable --now proglab-worker` ;
+;   3. à **chaque** release, `bin/console messenger:stop-workers` avant
+;      `systemctl restart proglab-worker` — sans quoi les workers continuent de tourner
+;      sur le code de la release précédente, désérialisant de nouveaux messages avec de
+;      vieux handlers.
+;
+; Tant que cela n'est pas fait, l'unité n'a jamais été exercée : `deferred-work.md` porte
+; l'entrée correspondante. Décision D-3 de la story 1.8.
+;
+; `WorkingDirectory` pointe volontairement sur `current/` et non sur une release
+; horodatée : après un déploiement, `systemctl restart` doit repartir sur le nouveau code
+; sans qu'on ait à réécrire l'unité.
+
+[Unit]
+Description=Worker Messenger du socle ERP proglab (file des emails)
+; Le transport est la base de données de l'application : démarrer avant elle ne sert à
+; rien, et produit une rafale d'erreurs de connexion au boot. Le nom de l'unité de la
+; base est à substituer comme les trois autres valeurs entre chevrons — il vaut
+; « mysql.service » sur Debian et Ubuntu, « mariadb.service » ailleurs, et un `Wants=`
+; qui nomme une unité inexistante est ignoré **en silence**.
+After=network.target <UNITE_DE_LA_BASE>
+Wants=<UNITE_DE_LA_BASE>
+
+; Sans ces deux lignes, `Restart=always` + `RestartSec=1` fait exactement l'inverse de ce
+; qu'il promet : systemd compte cinq démarrages en dix secondes par défaut, et au
+; sixième il passe l'unité en `failed` **définitivement**. Une base encore indisponible
+; au boot suffit à y arriver, et le worker ne redémarre plus jamais tout seul. Ces
+; valeurs autorisent une minute de tentatives à une seconde d'intervalle avant
+; d'abandonner.
+StartLimitIntervalSec=60
+StartLimitBurst=60
+
+[Service]
+Type=simple
+User=<www-data>
+Group=<www-data>
+WorkingDirectory=<CHEMIN_DU_PROJET>/current
+
+; L'environnement du worker. `.env.local.php` porte le reste, mais pas ceux-ci : un
+; worker démarré sans `APP_ENV` tourne en `dev`, donc avec le profiler, le conteneur
+; de debug et des logs verbeux — en production, sur la file des emails du client.
+Environment=APP_ENV=prod
+Environment=APP_DEBUG=0
+
+; Les deux limites sont le cœur de cette unité, et elles ne fonctionnent que parce que
+; `Restart=always` est là pour relancer derrière elles.
+;
+; PHP n'a pas été conçu pour les processus de longue durée : Messenger réinitialise les
+; services entre deux messages, ce qui gère l'identity map de Doctrine, mais ni les
+; allocations au niveau des extensions, ni les caches statiques, ni la fragmentation du
+; tas. Sans `--memory-limit`, le processus est tué par l'OOM killer **au milieu d'un
+; message**, à un moment imprévisible ; avec elle, il se termine proprement **entre** deux
+; messages et systemd le relance. `--time-limit` est la même assurance contre les fuites
+; lentes et les connexions périmées.
+;
+; Un seul transport consommé, `async` : le socle n'a ni files priorisées ni Scheduler
+; (Epic 6, FR-18).
+ExecStart=<CHEMIN_DU_PHP> <CHEMIN_DU_PROJET>/current/bin/console messenger:consume async \
+    --time-limit=3600 \
+    --memory-limit=128M \
+    -v
+
+Restart=always
+RestartSec=1
+
+; Le budget d'arrêt propre. Messenger s'arrête sur SIGTERM **après avoir terminé le
+; message en cours** ; trop court, et systemd envoie un SIGKILL à un handler en plein
+; envoi — le message est alors redistribué après `redeliver_timeout` et le destinataire
+; peut recevoir l'email deux fois.
+TimeoutStopSec=20
+
+; Les journaux partent sur la sortie standard, donc dans journald : c'est la même
+; décision que `php://stderr` dans `config/packages/monolog.yaml` — c'est au serveur de
+; décider où le flux atterrit, pas à l'application.
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=proglab-worker
+
+[Install]
+WantedBy=multi-user.target

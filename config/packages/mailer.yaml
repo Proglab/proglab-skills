@@ -1,0 +1,35 @@
+# Le mailer du socle (story 1.8).
+#
+#   bin/console debug:config framework mailer
+#
+# Deux clés, et pas une de plus : le DSN, et l'expéditeur par défaut sans lequel aucun
+# message ne part (la raison détaillée est écrite au-dessus de `headers`).
+#
+# Ce qui est volontairement **absent** est le garde-fou `envelope.recipients`, qui
+# réécrit tous les destinataires en développement. Il n'a pas lieu d'être tant que le
+# développement pointe sur Mailpit (`MAILER_DSN` dans `.env`) : Mailpit intercepte déjà
+# tout, et un second filet cacherait à qui lit ce fichier vers qui l'email serait
+# réellement parti. Il redeviendra nécessaire le jour où un environnement de recette
+# tournera sur une copie des données de production — ce n'est pas cette story.
+#
+# **Ce fichier ne rend rien asynchrone.** Le passage hors requête est celui de
+# `config/packages/messenger.yaml`, et il passe par `App\Core\Message\SendEmail`, jamais
+# par le routage de `SendEmailMessage`. Un appel direct à `MailerInterface::send()` envoie
+# donc de façon synchrone : c'est écrit là-bas, avec la raison.
+framework:
+    mailer:
+        dsn: '%env(MAILER_DSN)%'
+
+        # **L'expéditeur par défaut, et pourquoi il y a deux lignes ici et non une.**
+        # Le spec de la story demandait « `dsn` et rien d'autre », en écartant le
+        # garde-fou `envelope.recipients`. Celui-là reste écarté. Mais un message sans
+        # en-tête `From` ne part pas du tout : `Symfony\Component\Mime\Message` lève
+        # « An email must have a "From" or a "Sender" header » au moment de l'envoi —
+        # constaté, et c'est ce qui a fait rougir `SendEmailHandlerTest`.
+        #
+        # L'expéditeur est donc posé ici, une fois, plutôt que dans
+        # `App\Core\Service\EmailSender` : tout email du socle le reçoit sans que le code
+        # qui le compose ait à s'en souvenir, et un dérivé le change en changeant une
+        # variable d'environnement — pas un fichier de `src/` ni de `config/`.
+        headers:
+            from: '%env(MAILER_SENDER)%'

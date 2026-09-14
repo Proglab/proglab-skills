@@ -1,0 +1,14 @@
+# Le sujet de l'email de démonstration, dans le domaine `emails` du socle.
+#
+# Il vit ici et non dans `translations/emails.fr.yaml` pour la même raison que
+# `DemoErrorController` vit dans un module de fixture : c'est un chemin livré uniquement
+# pour prouver un mécanisme, et le catalogue du socle ne doit porter aucune clé de
+# démonstration. Le translator lit `tests/Fixtures/Module` sous `when@test`
+# (`config/packages/translation.yaml`), donc les deux fichiers fusionnent dans le même
+# domaine — sans que le dérivé n'hérite jamais de cette clé.
+#
+# `%widget%` vient du contexte du message : `App\Core\Service\EmailSender` présente les
+# clés du contexte au translator entourées de `%`, et le gabarit lit la même valeur sous
+# le nom `widget`.
+demo:
+    subject: "Démonstration : %widget%"

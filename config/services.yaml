@@ -53,9 +53,16 @@ services:
     # Le socle. La liste d'exclusion est celle des répertoires qui portent des données et
     # non des services : interfaces, DTO, entités et enums n'ont rien à faire dans le
     # conteneur.
+    #
+    # `Message` a rejoint la liste avec la story 1.8, après vérification par
+    # `debug:container App\Core\Message\SendEmail` : sans lui, le message était bien
+    # enregistré comme service. Un message est un objet de données, construit par son
+    # appelant avec ses valeurs — un conteneur qui prétend savoir le fabriquer ne peut
+    # qu'échouer à l'autowiring de ses scalaires. `MessageHandler`, lui, reste dans le
+    # glob : un handler *est* un service, et c'est `#[AsMessageHandler]` qui le tague.
     App\Core\:
         resource: '../src/Core/'
-        exclude: '../src/Core/{Contract,Dto,Entity,Enum}'
+        exclude: '../src/Core/{Contract,Dto,Entity,Enum,Message}'
 
     # Les modules du client. Ajouter un module ne modifie pas ce fichier.
     App\Module\:
@@ -143,3 +150,26 @@ when@test:
         App\Tests\Fixtures\Module\:
             resource: '../tests/Fixtures/Module/*/'
             exclude: '../tests/Fixtures/Module/*/{Dto,Entity}'
+
+        # Le seul consommateur de `App\Core\Message\SendEmail` livré par la story 1.8.
+        #
+        # Il vit **hors** de
+        # `tests/Fixtures/Module/` : le contrat de couches n'accorde à un module que
+        # `App\Core\Contract\`, or ce cas d'usage référence un message du socle. Le mettre
+        # dans le module de démonstration serait la violation `ModuleDemo on Core` que
+        # `tests/Core/BoundaryTest.php` tient déjà — la classe explique le raisonnement en
+        # entier, et `deferred-work.md` porte la question qu'il laisse ouverte.
+        #
+        # Il est déclaré **nommément**, et non par un glob sur le répertoire : le
+        # `public: true` ci-dessous s'appliquerait sinon à toute classe qu'on y déposerait
+        # ensuite. Les trois alias `when@test` ci-dessus se nomment un par un pour la même
+        # raison, et chacun porte sa consigne de retrait.
+        #
+        # `public: true` parce que rien dans le socle ne l'injecte : le conteneur le
+        # supprimerait comme inutilisé, et `tests/Core/Mail/EmailQueueTest.php` ne
+        # pourrait plus l'atteindre.
+        #
+        # À retirer le jour où un cas d'usage réel du socle envoie un email : ce sera la
+        # story 1.9, et ce chemin-là n'aura plus rien à prouver.
+        App\Tests\Fixtures\Mail\DemoEmailDispatch:
+            public: true
