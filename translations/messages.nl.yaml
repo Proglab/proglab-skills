@@ -29,3 +29,25 @@ security:
         error:
             invalid_credentials: E-mailadres of wachtwoord is onjuist.
             account_disabled: Dit account is uitgeschakeld. Neem contact op met uw beheerder.
+        forgot_password: Wachtwoord vergeten?
+
+password:
+    request:
+        title: Wachtwoord vergeten
+        intro: "Vul uw e-mailadres in. Als er een account bij hoort, ontvangt u een link om een nieuw wachtwoord te kiezen."
+        email: E-mailadres
+        submit: Stuur de link
+        confirmation: "Als er een account bestaat voor dit adres, is er zojuist een link verstuurd. Die is een uur geldig."
+        too_many: Te veel aanvragen vanaf dit apparaat.
+        back_to_login: Terug naar aanmelden
+    reset:
+        title: Nieuw wachtwoord
+        intro: "Kies een nieuw wachtwoord en typ het daarna nog een keer."
+        password: Nieuw wachtwoord
+        confirmation: Bevestig het nieuwe wachtwoord
+        submit: Mijn wachtwoord wijzigen
+        done: "Wachtwoord gewijzigd. Meld u aan met het nieuwe."
+    expired:
+        title: Link verlopen
+        message: "Deze link is verlopen. Vraag een nieuwe aan."
+        action: Een nieuwe link aanvragen

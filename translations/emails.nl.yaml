@@ -1,2 +1,8 @@
 layout:
     footer: "Dit is een automatisch bericht van %app_name%. Gelieve hier niet op te antwoorden."
+
+password_reset:
+    subject: Kies een nieuw wachtwoord
+    body: "U hebt gevraagd om het wachtwoord van uw account te wijzigen. Open de link hieronder om een nieuw wachtwoord te kiezen."
+    action: Een nieuw wachtwoord kiezen
+    expiry: "Deze link is een uur geldig en werkt maar één keer. Hebt u hier niet om gevraagd, negeer dit bericht dan: er verandert niets."

@@ -29,3 +29,25 @@ security:
         error:
             invalid_credentials: Incorrect email or password.
             account_disabled: This account is disabled. Please contact your administrator.
+        forgot_password: Forgot your password?
+
+password:
+    request:
+        title: Forgotten password
+        intro: "Enter your address. If an account matches it, you will receive a link to choose a new password."
+        email: Email
+        submit: Send the link
+        confirmation: "If an account exists for this address, a link has just been sent. It is valid for one hour."
+        too_many: Too many requests from this device.
+        back_to_login: Back to sign in
+    reset:
+        title: New password
+        intro: "Choose a new password, then type it a second time."
+        password: New password
+        confirmation: Confirm the new password
+        submit: Change my password
+        done: "Password changed. Sign in with the new one."
+    expired:
+        title: Link expired
+        message: "This link has expired. Ask for a new one."
+        action: Ask for a new link

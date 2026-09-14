@@ -7,6 +7,7 @@ namespace App\Core\Entity;
 use App\Core\Enum\SupportedLocale;
 use Deprecated;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Security\Core\User\EquatableInterface;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 
@@ -29,14 +30,17 @@ use Symfony\Component\Security\Core\User\UserInterface;
  * et aucun chargement d'utilisateur ne porte de jointure. Une langue désactivée que porte
  * encore un compte se replie au rendu, comme n'importe quel autre repli de la story 1.5.
  *
- * Pas de jeton de sécurité de session (AD-9) ni d'`EquatableInterface` : rien dans cette
- * story ne les incrémenterait, et une mécanique que rien ne déclenche n'est vérifiée par
- * rien. Ils arrivent avec la première story qui désactive un compte ou change un mot de
- * passe.
+ * **Le jeton de sécurité de session et `isEqualTo()` sont arrivés avec la story 1.9**,
+ * celle qui change un mot de passe — c'est ce que le paragraphe précédent annonçait
+ * (AD-9). `isEqualTo()` est **la seule méthode de comportement admise sur une entité de ce
+ * socle**, et l'écart est énoncé plutôt que dissimulé : c'est `EquatableInterface` qui
+ * l'impose, et l'interface est interrogée par `ContextListener` sur l'objet désérialisé de
+ * la session — il n'y a aucun service à interroger à cet instant, donc aucune façon de
+ * porter la règle ailleurs.
  */
 #[ORM\Entity]
 #[ORM\Table(name: '`user`')]
-class User implements UserInterface, PasswordAuthenticatedUserInterface
+class User implements UserInterface, PasswordAuthenticatedUserInterface, EquatableInterface
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -69,6 +73,24 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     #[ORM\Column(length: 5, enumType: SupportedLocale::class)]
     private SupportedLocale $language = SupportedLocale::Fr;
+
+    /**
+     * Le jeton de sécurité de session (AD-9) — un compteur, rien de plus.
+     *
+     * Il est incrémenté par tout ce qui doit fermer les sessions ouvertes d'un compte :
+     * le changement de mot de passe (story 1.9), la désactivation (Epic 2), la
+     * réinitialisation du second facteur (Epic 5). `isEqualTo()` en fait le critère de
+     * ré-authentification ; le reste du mécanisme est natif.
+     *
+     * Il commence à 1 et non à 0 : une colonne dont la valeur initiale est la valeur
+     * « vide » de son type ne permet pas de distinguer « jamais posé » de « posé à zéro »
+     * le jour où quelqu'un lira la table à la main.
+     *
+     * Jamais visible, jamais modifiable depuis une interface : ce n'est pas un réglage,
+     * c'est une conséquence.
+     */
+    #[ORM\Column(options: ['default' => 1])]
+    private int $securityToken = 1;
 
     public function getId(): ?int
     {
@@ -158,6 +180,61 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->language = $language;
 
         return $this;
+    }
+
+    public function getSecurityToken(): int
+    {
+        return $this->securityToken;
+    }
+
+    public function setSecurityToken(int $securityToken): static
+    {
+        $this->securityToken = $securityToken;
+
+        return $this;
+    }
+
+    /**
+     * **La seule méthode de comportement de cette entité, et l'écart est assumé** (AD-9).
+     *
+     * `ContextListener` recharge l'utilisateur depuis le provider à chaque requête, puis
+     * compare l'objet **désérialisé de la session** au **fraîchement chargé**. Dès que
+     * cette interface est implémentée, elle devient le **seul** critère : la comparaison
+     * native des hachages de mot de passe n'est plus consultée du tout
+     * (`ContextListener::hasUserChanged()`). Les trois lignes ci-dessous doivent donc
+     * couvrir au moins ce que le défaut couvrait.
+     *
+     * Pourquoi la règle ne peut pas vivre dans un service : à cet instant il n'y a ni
+     * conteneur atteignable depuis l'objet, ni point d'extension — l'interface est
+     * interrogée sur l'instance elle-même. Le déplacer demanderait de remplacer le
+     * `ContextListener` natif, c'est-à-dire de réécrire le mécanisme pour respecter la
+     * forme d'une règle qui tient en trois comparaisons.
+     *
+     * Ce qui est comparé, et pourquoi chaque ligne y est :
+     *
+     * - **la classe**, parce qu'un provider qui rendrait un autre type d'utilisateur pour
+     *   le même identifiant ne doit pas passer pour le même compte ;
+     * - **l'identifiant**, qui est l'email : le changer est un changement d'identité, et
+     *   la session qui porte l'ancien n'a plus de titre à rester ouverte ;
+     * - **le jeton de sécurité**, qui est le mécanisme d'AD-9. C'est lui qui ferme les
+     *   sessions à la réinitialisation du mot de passe — et, quand les stories suivantes
+     *   l'incrémenteront, à la désactivation d'un compte et à la réinitialisation du
+     *   second facteur, deux changements qui ne touchent aucun hachage.
+     *
+     * Le hachage du mot de passe n'est **pas** comparé, et ce n'est pas un oubli : le
+     * jeton de sécurité est incrémenté par le même cas d'usage, dans la même transaction
+     * (`App\Core\Service\PasswordReset`). Comparer les deux ferait dépendre la fermeture
+     * de session d'une redondance qu'un futur appelant pourrait rompre en croyant bien
+     * faire.
+     */
+    public function isEqualTo(UserInterface $user): bool
+    {
+        if (!$user instanceof self) {
+            return false;
+        }
+
+        return $this->email === $user->getUserIdentifier()
+            && $this->securityToken === $user->getSecurityToken();
     }
 
     /**

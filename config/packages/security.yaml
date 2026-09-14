@@ -103,8 +103,19 @@ security:
     # `/login-admin` : la règle la plus permissive de la liste s'appliquerait alors à des
     # chemins que personne n'a voulu ouvrir, et elle gagnerait contre le `^/` final
     # puisque seule la première correspondance compte.
+    #
+    # Les deux chemins de la story 1.9 rejoignent la liste. Sans eux, le jour où l'Epic 2
+    # ajoute un `^/` en dernier, un lien reçu par email redirigerait vers `/login` — donc
+    # vers la page qu'on ne peut justement pas atteindre : le lien serait inutilisable
+    # exactement pour qui en a besoin.
+    #
+    # `^/password/reset/` n'est pas ancré à droite par un `$` mais par ce qui suit : un
+    # segment, et un seul. `^/password/reset/` seul couvrirait `/password/reset/x/y`,
+    # c'est-à-dire des chemins que personne n'a voulu ouvrir.
     access_control:
         - { path: ^/login$, roles: PUBLIC_ACCESS }
+        - { path: ^/password/forgot$, roles: PUBLIC_ACCESS }
+        - { path: ^/password/reset/[^/]+$, roles: PUBLIC_ACCESS }
 
 when@test:
     security:

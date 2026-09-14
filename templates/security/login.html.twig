@@ -72,6 +72,17 @@
                    après — ou pas du tout. Il n'est pas non plus assemblé en PHP : le
                    pluriel de « seconde » est une règle de langue, et elle vit dans le
                    catalogue ICU `security+intl-icu`, pas dans un `{% if %}` d'ici. #}
+                {# Le Flash de la story 1.9 — rendu **dans** `<main>`, comme le bloc
+                   d'erreur, et pour la même raison : `page-focus` ne cherche que là. Il
+                   arrive après une redirection 303 (« Mot de passe changé. »), donc il ne
+                   coexiste jamais avec le bloc d'erreur ci-dessous ; l'ordre du DOM le dit
+                   quand même — une erreur est plus urgente qu'une confirmation. #}
+                {# `with {} only`, comme sur les pages de mot de passe : sans lui, le
+                   partiel hérite du contexte de cette page, et une variable `messages`
+                   ajoutée un jour ici détournerait la région de Flash sans que rien ne le
+                   signale. #}
+                {% include '_flash.html.twig' with {} only %}
+
                 {% if error_message %}
                     <twig:Alert variant="destructive" tabindex="-1">
                         <twig:Alert:Description>
@@ -125,6 +136,17 @@
 
                     <twig:Button type="submit">{{ 'security.login.submit'|trans }}</twig:Button>
                 </form>
+
+                {# L'entrée du flux de la story 1.9 (`EXPERIENCE.md`, Surfaces). Après le
+                   formulaire et non avant : quelqu'un qui connaît son mot de passe ne doit
+                   pas croiser ce lien avant le bouton de connexion, au clavier comme à
+                   l'œil. #}
+                <p class="text-sm">
+                    <a
+                        href="{{ path('app_password_request') }}"
+                        class="rounded-sm underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                    >{{ 'security.login.forgot_password'|trans }}</a>
+                </p>
             </twig:Card:Content>
         </twig:Card>
     </div>

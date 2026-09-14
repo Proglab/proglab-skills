@@ -1,0 +1,73 @@
+{% extends 'base.html.twig' %}
+
+{# La seconde page publique : deux saisies, et un lien qui ne sert qu'une fois.
+
+   **Le jeton n'apparaît nulle part dans le HTML.** Le formulaire poste sur l'URL courante
+   — `action` vide — plutôt que de recopier le jeton dans un champ caché : il vit dans
+   l'URL et dans l'email, et nulle part ailleurs.
+
+   **Aucune valeur n'est réémise.** Un mot de passe refusé qui repartirait dans le HTML du
+   422 repartirait aussi dans l'historique du navigateur et dans les caches intermédiaires.
+   C'est la même règle que sur `/login`, où le champ de mot de passe est le seul à ne pas
+   être ressaisi.
+
+   Le formulaire est écrit à la main (décision D-1) ; `templates/password/request.html.twig`
+   porte le raisonnement en entier.
+
+   Variables :
+     · `errors` — messages de violation par nom de champ #}
+
+{% block title %}{{ 'password.reset.title'|trans }}{% endblock %}
+
+{% block body %}
+    <div class="mx-auto flex min-h-[70vh] w-full max-w-[480px] flex-col justify-center gap-4 px-4 py-10">
+        <twig:Card>
+            <twig:Card:Header>
+                <twig:Card:Title as="h1">{{ 'password.reset.title'|trans }}</twig:Card:Title>
+                <twig:Card:Description>{{ 'password.reset.intro'|trans }}</twig:Card:Description>
+            </twig:Card:Header>
+
+            <twig:Card:Content>
+                {# `action=""` : la soumission repart sur l'URL courante, jeton compris,
+                   sans que le gabarit ait à le connaître. #}
+                <form method="post" action="" class="flex flex-col gap-4">
+                    <div class="flex flex-col gap-2">
+                        <twig:Label for="password-reset-password">{{ 'password.reset.password'|trans }}</twig:Label>
+                        <twig:Input
+                            type="password"
+                            id="password-reset-password"
+                            name="password"
+                            autocomplete="new-password"
+                            required
+                            :aria-invalid="errors.password is defined ? 'true' : false"
+                            :aria-describedby="errors.password is defined ? 'password-reset-password-error' : false"
+                        />
+                        {% if errors.password is defined %}
+                            <p id="password-reset-password-error" class="text-sm text-destructive" data-field-error>{{ errors.password }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div class="flex flex-col gap-2">
+                        <twig:Label for="password-reset-confirmation">{{ 'password.reset.confirmation'|trans }}</twig:Label>
+                        <twig:Input
+                            type="password"
+                            id="password-reset-confirmation"
+                            name="confirmation"
+                            autocomplete="new-password"
+                            required
+                            :aria-invalid="errors.confirmation is defined ? 'true' : false"
+                            :aria-describedby="errors.confirmation is defined ? 'password-reset-confirmation-error' : false"
+                        />
+                        {% if errors.confirmation is defined %}
+                            <p id="password-reset-confirmation-error" class="text-sm text-destructive" data-field-error>{{ errors.confirmation }}</p>
+                        {% endif %}
+                    </div>
+
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token(constant('App\\Core\\Controller\\PasswordController::CSRF_RESET')) }}">
+
+                    <twig:Button type="submit">{{ 'password.reset.submit'|trans }}</twig:Button>
+                </form>
+            </twig:Card:Content>
+        </twig:Card>
+    </div>
+{% endblock %}

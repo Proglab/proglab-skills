@@ -733,3 +733,153 @@ Entrees ajoutees par bmad-build. Append-only : ne pas modifier les entrees exist
     qui y portera deja son propre worker. Une tache de retention sur `queue_name = 'failed'`
     y a sa place naturelle, avec la meme fenetre que l'archivage du journal d'audit.
     A rouvrir plus tot si un client signale une base qui gonfle.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-9-reinitialiser-un-mot-de-passe-oublie.md`
+  summary: `EXPERIENCE.md:323` est devenu faux sur le mécanisme — il place le jeton `autocomplete` « dans le FormType », alors que le socle n'a pas `symfony/form`.
+  evidence: |
+    Décision D-1 de la story : `symfony/validator` entre seul, le contrôleur hydrate un DTO
+    d'entrée `final readonly` et rerend la page en 422 à la main. Il n'y a donc aucun
+    FormType, ni dans cette story ni dans celles qui la copieront. Le contrat UX reste vrai
+    sur l'**exigence** — chaque champ porte son jeton `autocomplete`, et `PasswordResetTest`
+    le vérifie sur les trois champs livrés — et faux sur l'**endroit** où il est posé.
+
+    La même ligne nomme aussi « FormType (`symfony-proglab-http`) » dans la colonne « Où vit
+    le comportement » de *Component Patterns › Champ de formulaire*, et *Component Patterns
+    › Button* parle de désactivation pendant l'envoi, que Turbo fait déjà.
+
+    Ce qui trancherait : un amendement du contrat UX, qui n'appartient pas à une story
+    d'implémentation. Tant qu'il n'est pas fait, c'est `templates/password/request.html.twig`
+    qui est le patron des formulaires du socle, pas `EXPERIENCE.md:323`.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-9-reinitialiser-un-mot-de-passe-oublie.md`
+  summary: `#[Assert\NotCompromisedPassword]` est écarté du socle, alors que le tableau de durcissement du skill sécurité le liste sans réserve.
+  evidence: |
+    Décision D-2 de la story. La contrainte interroge l'API Have I Been Pwned : l'activer
+    ferait dépendre la page de récupération d'accès d'un service tiers et ajouterait
+    `symfony/http-client` au socle pour ce seul usage. Sans client HTTP, elle lève
+    `LogicException` à la première validation.
+
+    Ce que l'écart coûte réellement : le credential stuffing fonctionne contre les comptes
+    dont le nouveau mot de passe apparaît dans une fuite publique. `#[Assert\PasswordStrength]`
+    au seuil `STRENGTH_MEDIUM` ne le couvre pas — une phrase de passe fuitée peut être
+    parfaitement entropique.
+
+    **Déclencheur nommé :** le jour où le socle aura `symfony/http-client` pour autre chose
+    (l'Epic 6 en aura un si elle appelle une API), la contrainte coûte une ligne sur
+    `App\Core\Dto\Input\PasswordResetInput` — et une seconde dans
+    `config/packages/validator.yaml`, dont le bloc `when@test`
+    (`not_compromised_password: false`) a été retiré avec elle et devra revenir, sans quoi
+    la suite de tests appellerait l'API tierce à chaque validation.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-9-reinitialiser-un-mot-de-passe-oublie.md`
+  summary: Rien ne purge les jetons expirés : `account_token` garde indéfiniment les liens que personne n'a ouverts.
+  evidence: |
+    `AccountTokenRepository::invalidateLiveFor()` ne supprime que les jetons **vivants** du
+    compte concerné, au moment d'une nouvelle demande — c'est ce que son nom dit, et
+    l'élargir aux jetons expirés ferait d'une demande la purge silencieuse d'autre chose.
+    Un lien émis puis jamais ouvert reste donc en base après son heure, indéfiniment.
+
+    L'impact est faible et lent : une ligne de quelques centaines d'octets par demande non
+    suivie d'effet, dans la base que le client sauvegarde et restaure. Il devient visible
+    sur un dérivé à beaucoup d'utilisateurs, ou après un incident qui pousse tout le monde
+    à demander un lien.
+
+    Ce qui trancherait : le Scheduler, qui n'est pas livré (Epic 6, FR-18) et dont la
+    rétention appartient à l'archivage de l'Epic 4. Une tâche de rétention sur
+    `account_token` y a sa place naturelle, avec la même fenêtre que l'archivage du journal
+    d'audit et que la purge de la file d'échec — même entrée, même geste.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-9-reinitialiser-un-mot-de-passe-oublie.md`
+  summary: Ce qu'AD-15 laisse à l'Epic 2 — `AccountToken::$intendedRole` et `AccountTokenPurpose::Invitation` sont livrés vides de tout usage.
+  evidence: |
+    L'entité à jeton est le mécanisme **partagé** que la story 2.6 (invitation, FR-4)
+    réutilisera telle quelle : AD-15 l'exige complète dès maintenant, parce que la
+    découvrir incomplète à la 2.6 imposerait une seconde migration sur une table déjà en
+    production chez un dérivé. Deux éléments sont donc en base sans qu'aucun code ne les
+    lise ni ne les écrive :
+
+    - la colonne `intended_role_id`, toujours `NULL` sur ce que le socle émet ;
+    - le cas `AccountTokenPurpose::Invitation`, qu'aucune ligne ne porte.
+
+    Ce que l'Epic 2 devra faire : poser `intendedRole` à l'invitation, écrire `Invitation`
+    en `purpose`, et lui donner sa propre durée de vie — sept jours, contre une heure ici.
+    Cette durée n'est **pas** portée par l'enum : `App\Core\Service\PasswordResetRequest::LIFETIME`
+    ne décrit que cet usage, et livrer la seconde sans le cas d'usage qui l'exerce serait
+    livrer une moitié de l'Epic 2 sans le test qui la tiendrait.
+
+    Conséquence immédiate à connaître : `deptrac` et PHPStan ne voient rien à redire à une
+    colonne que personne ne lit, donc rien ne signalera son oubli. C'est cette entrée, et
+    le docblock de `App\Core\Entity\AccountToken`, qui le font.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-9-reinitialiser-un-mot-de-passe-oublie.md`
+  summary: Le Flash du socle n'est pas fermable au clic, alors que le contrat UX le demande (« Fermable au clic ; ne disparaît pas seul »).
+  evidence: |
+    `templates/_flash.html.twig` porte tout le reste du contrat — `role="status"`,
+    `tabindex="-1"`, `[data-flash]` et le contrôleur `announce` posé sur le message — et il
+    ne disparaît effectivement jamais tout seul. Ce qui manque est le bouton de fermeture et
+    son contrôleur Stimulus `dismiss`, que *Component Patterns › Flash* nomme.
+
+    Pourquoi il n'est pas livré ici : il ajoute un troisième contrôleur Stimulus, donc un
+    fichier de test sous `tests/js/` dans la catégorie « Accessibility », un bouton
+    icône-seule avec son `aria-label` et son jeton de traduction, et une cible tactile à
+    dimensionner. Le spec de cette story ne le liste pas parmi les livrables du partiel, et
+    le Flash est parfaitement utilisable sans lui — il part à la navigation suivante.
+
+    Ce qui trancherait : la story 2.3, qui pose la coque applicative et les premiers
+    boutons icône-seule du socle ; le `dismiss` y coûte alors ce qu'il coûte vraiment.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-9-reinitialiser-un-mot-de-passe-oublie.md`
+  summary: La demande de lien répond en un temps qui dépend de l'existence du compte — la seule voie par laquelle elle révèle encore quelque chose.
+  evidence: |
+    Trouvaille G3 de la passe de revue. Pour une adresse connue et active, `request()` fait
+    un DELETE, un INSERT, un dispatch et un commit ; pour une adresse inconnue, il rend
+    après un unique SELECT. Les réponses sont identiques au caractère près — c'est vérifié
+    en entier par `PasswordResetTest` — mais leur durée ne l'est pas, et qui mesure peut
+    énumérer les comptes.
+
+    Pourquoi ce n'est pas corrigé ici : le spec énumère ce qui doit être identique — même
+    page, même statut, même message — et la durée n'y figure pas. Les deux correctifs
+    connus ouvrent leur propre surface : un délai artificiel aligné sur le pire cas
+    ralentit tout le monde et devient un levier de déni de service, et faire passer les
+    trois cas par la file d'emails met une ligne en base pour une adresse qui n'existe pas.
+
+    Ce qui trancherait : une mesure sur une cible réelle — pas sur la suite de tests, dont
+    l'isolation DAMA et le transport en mémoire effacent précisément l'écart qu'on cherche.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-9-reinitialiser-un-mot-de-passe-oublie.md`
+  summary: `/password/reset/{token}` n'est bornée par aucun limiteur, là où la demande en a un nommé.
+  evidence: |
+    Trouvaille G2 de la passe de revue. `password_request` borne `/password/forgot` ; la
+    page de réinitialisation ne consomme rien, ni au GET ni au POST.
+
+    Le préjudice atteignable est mince, et c'est pourquoi l'asymétrie est nommée plutôt que
+    comblée : 32 octets tirés au hasard mettent la devinette hors de portée, et un jeton
+    mort coûte un `SELECT` sur une colonne unique, sans hachage. Seul un jeton **vivant**
+    déclenche un hachage, et le posséder rend le sondage inutile.
+
+    Ce qui le rouvrirait : le jour où cette entité sert aussi l'invitation (story 2.6), la
+    même route publique acceptera des jetons à sept jours de durée de vie — une fenêtre
+    bien plus large, sur une surface que rien ne borne.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-9-reinitialiser-un-mot-de-passe-oublie.md`
+  summary: Le jeton de réinitialisation en clair vit aussi dans `messenger_messages.body`, et indéfiniment si le message part en file d'échec.
+  evidence: |
+    La contrainte de la story dit « le jeton en clair ne vit que dans l'URL et dans
+    l'email ». C'est vrai de la table `account_token`, qui ne porte que l'empreinte
+    SHA-256, et faux du transport : en production `MESSENGER_TRANSPORT_DSN` vaut
+    `doctrine://default`, donc le `SendEmail` sérialisé — contexte compris, jeton compris —
+    est écrit en clair dans `messenger_messages.body` au commit de la transaction.
+
+    En marche nominale c'est quelques secondes : le worker consomme, la ligne disparaît. Le
+    trou est ailleurs — un SMTP injoignable épuise les trois tentatives et le message part
+    sur le transport `failed`, **persistant par construction**. Le jeton y reste lisible
+    par `messenger:failed:show` et par tout `SELECT` sur la base métier, longtemps après
+    l'heure où il a cessé d'ouvrir quoi que ce soit. Il reste inutilisable — `expiresAt`
+    est dépassé — mais il est là, et il part dans les sauvegardes.
+
+    Ce qui trancherait, par ordre de coût croissant : une rétention sur la file d'échec
+    (même geste que l'entrée « rien ne purge la file d'échec » ci-dessus, Epic 4) ; ou
+    cesser de faire voyager le jeton et faire lire l'empreinte au gabarit, ce qui est
+    impossible par construction — c'est le clair que l'URL doit porter. La conséquence est
+    donc à connaître et à documenter, pas à supprimer : `README.md` et le docblock de
+    `App\Core\Service\PasswordResetRequest` la nomment tous les deux.

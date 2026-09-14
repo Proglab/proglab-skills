@@ -1,0 +1,39 @@
+{# Le Flash du socle — le premier, et le patron des suivants.
+
+   **Son contrat n'est pas décoratif, il est déjà écrit ailleurs.**
+   `assets/controllers/page_focus_controller.js` cherche `[data-flash]` dans le `<main>`
+   du gabarit : un `role="status"` seul ne conviendrait pas comme sélecteur, il
+   désignerait aussi des régions d'état qui ne sont pas des messages de navigation. Le
+   `tabindex="-1"` le rend focalisable par programme sans l'ajouter à l'ordre de
+   tabulation, et `data-controller="announce"` est posé **sur le message**, jamais sur la
+   région : c'est le message qui se recopie dans `#annonces`, et `#annonces` qui annonce.
+
+   **`role="status"` et non `role="alert"`.** Un Flash de succès ne doit pas interrompre
+   la lecture en cours ; `assertive` est réservé à une erreur. C'est aussi pourquoi ce
+   partiel n'utilise pas le composant `Alert` du kit, qui porte `role="alert"` en dur :
+   un second `role` posé par les attributs serait ignoré par le navigateur, qui garde le
+   premier.
+
+   **Rendu dans `{% block body %}`, jamais dans le `<header>`** — `templates/base.html.twig`
+   pose la règle, et `page-focus` ne cherche que dans le `<main>`.
+
+   Il ne disparaît pas tout seul : le contrat UX l'interdit. Il n'est pas fermable au clic
+   non plus, faute du contrôleur Stimulus `dismiss` que le socle ne livre pas encore —
+   l'écart est nommé dans `deferred-work.md`.
+
+   Variables :
+     · `messages` — une liste de **clés de traduction**. Par défaut, les Flashes de session
+       du type `success`. Des clés et non des phrases : un Flash posé avant une redirection
+       serait sinon figé dans la langue de la requête qui l'a produit, et non dans celle de
+       la page qui l'affiche. #}
+{% set flash_messages = messages|default(app.flashes(constant('App\\Core\\Controller\\PasswordController::FLASH_SUCCESS'))) %}
+
+{% for message in flash_messages %}
+    <div
+        class="rounded-lg border bg-card px-2.5 py-2 text-sm text-card-foreground"
+        role="status"
+        tabindex="-1"
+        data-flash
+        data-controller="announce"
+    >{{ message|trans }}</div>
+{% endfor %}

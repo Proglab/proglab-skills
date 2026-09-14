@@ -9,15 +9,12 @@ use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
- * Le repository des comptes — et rien de plus que ce que le provider exige.
+ * Le repository des comptes — et rien de plus que ce que le socle demande réellement.
  *
  * Le provider `entity` de Symfony charge par propriété (`email`) et n'a besoin d'aucune
- * méthode d'ici. Il n'y a donc **aucune requête à écrire** : une méthode ajoutée « pour
- * plus tard » serait une requête que personne n'appelle et que rien ne teste.
- *
- * La classe existe quand même, pour deux raisons concrètes : elle est le point d'ancrage
- * de la première requête réelle (l'écran Utilisateurs de l'Epic 2), et elle est le seul
- * endroit où le contrat de couches autorisera à l'écrire.
+ * méthode d'ici : la connexion n'en a donc jamais ouvert. La story 1.9 est la première à
+ * poser une vraie question — « qui porte cette adresse ? » — depuis un cas d'usage, et
+ * c'est cette question qui vit ci-dessous.
  *
  * @extends ServiceEntityRepository<User>
  */
@@ -26,5 +23,23 @@ class UserRepository extends ServiceEntityRepository
     public function __construct(ManagerRegistry $registry)
     {
         parent::__construct($registry, User::class);
+    }
+
+    /**
+     * Le compte qui porte cette adresse, actif ou non.
+     *
+     * **L'état n'est pas filtré ici, et c'est délibéré.** La règle « un compte désactivé
+     * ne reprend pas son accès seul » appartient à `App\Core\Service\PasswordResetRequest`,
+     * qui doit répondre la même chose à une adresse désactivée et à une adresse inconnue.
+     * Une requête qui ne rendrait que les comptes actifs rendrait les deux cas
+     * indiscernables **pour l'appelant aussi** — donc impossibles à traiter différemment
+     * le jour où l'un des deux devra l'être, et invisibles dans un journal d'audit.
+     *
+     * La méthode est écrite plutôt que laissée au `__call` magique de Doctrine : celui-là
+     * rend `object|null` et PHPStan ne peut rien en dire.
+     */
+    public function findOneByEmail(string $email): ?User
+    {
+        return $this->findOneBy(['email' => $email]);
     }
 }

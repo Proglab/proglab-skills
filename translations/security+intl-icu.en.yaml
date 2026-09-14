@@ -4,3 +4,7 @@
 login:
     error:
         retry_after: '{seconds, plural, one {Please wait # second before trying again.} other {Please wait # seconds before trying again.}}'
+
+password:
+    request:
+        retry_after: '{seconds, plural, one {Please wait # second before trying again.} other {Please wait # seconds before trying again.}}'

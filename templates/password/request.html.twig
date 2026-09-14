@@ -1,0 +1,105 @@
+{% extends 'base.html.twig' %}
+
+{# « Mot de passe oublié ? » — la première des deux pages publiques de la story 1.9.
+
+   **Cette page répond exactement la même chose à toute adresse.** Le champ est rendu vide
+   après une soumission acceptée, la confirmation ne nomme personne, et aucun message ne
+   dépend de l'existence d'un compte : `PasswordResetTest` compare les réponses **en
+   entier**, hors jeton CSRF, pour trois adresses — connue, inconnue, désactivée.
+
+   **Le formulaire est écrit à la main** (décision D-1) : `symfony/form` n'entre pas dans
+   le socle. Ce fichier est donc le patron que les formulaires des Epics 2 à 6 copieront —
+   un label réel, le jeton `autocomplete`, `aria-invalid` et `aria-describedby` posés
+   ensemble, et le jeton CSRF en champ caché comme sur `/login`.
+
+   L'ordre du DOM suit UX-DR-6 : `h1` → bloc d'alerte → message d'état → champ → bouton.
+   `page-focus` cherche `[role="alert"]`, puis le premier champ `aria-invalid`, puis
+   `[data-flash]` — tous rendus ici, dans le `<main>` du gabarit.
+
+   Rien sur cette page n'a besoin de JavaScript (AD-17) : soumission pleine page.
+
+   Variables :
+     · `email`                — l'adresse ressaisie, vide sauf au rendu 422
+     · `errors`               — messages de violation par nom de champ
+     · `confirmed`            — la demande vient d'être acceptée
+     · `retry_after_seconds`  — les secondes restantes quand le limiteur a refusé #}
+
+{% block title %}{{ 'password.request.title'|trans }}{% endblock %}
+
+{% block body %}
+    <div class="mx-auto flex min-h-[70vh] w-full max-w-[480px] flex-col justify-center gap-4 px-4 py-10">
+        <twig:Card>
+            <twig:Card:Header>
+                <twig:Card:Title as="h1">{{ 'password.request.title'|trans }}</twig:Card:Title>
+                <twig:Card:Description>{{ 'password.request.intro'|trans }}</twig:Card:Description>
+            </twig:Card:Header>
+
+            <twig:Card:Content class="flex flex-col gap-4">
+                {# Le refus du limiteur. Une seule région, et le délai est une seconde
+                   phrase dans le même bloc — jamais une seconde région, que `page-focus`
+                   n'annoncerait qu'après, ou pas du tout. Le pluriel de « seconde » est
+                   une règle de langue : il vit dans le catalogue ICU, pas dans un `{% if %}`
+                   d'ici. #}
+                {% if retry_after_seconds is not null %}
+                    <twig:Alert variant="destructive" tabindex="-1">
+                        <twig:Alert:Description>
+                            {{- 'password.request.too_many'|trans }}
+                            {{ 'password.request.retry_after'|trans({seconds: retry_after_seconds}, 'security+intl-icu') -}}
+                        </twig:Alert:Description>
+                    </twig:Alert>
+                {% endif %}
+
+                {# La confirmation. Le même partiel que le Flash, parce que c'en est un au
+                   sens du contrat de focus — seulement, il n'a pas traversé de
+                   redirection. #}
+                {% if confirmed %}
+                    {% include '_flash.html.twig' with {messages: ['password.request.confirmation']} only %}
+                {% endif %}
+
+                <form method="post" action="{{ path('app_password_request') }}" class="flex flex-col gap-4">
+                    <div class="flex flex-col gap-2">
+                        <twig:Label for="password-request-email">{{ 'password.request.email'|trans }}</twig:Label>
+                        {# `aria-invalid` **et** `aria-describedby` posés ensemble : une
+                           bordure rouge sans message relié signale l'erreur par la couleur
+                           seule (règle 1), et `AccessibilityFloorTest` refuse un
+                           `aria-describedby` qui pointerait un élément absent.
+
+                           Le préfixe `:` passe une vraie expression, et un attribut à
+                           `false` n'est pas rendu du tout — c'est ainsi qu'on n'écrit
+                           aucun des deux quand il n'y a pas d'erreur, là où ni `{% if %}`
+                           ni commentaire ne se glissent dans la liste d'attributs d'un
+                           composant. #}
+                        <twig:Input
+                            type="email"
+                            id="password-request-email"
+                            name="email"
+                            value="{{ email }}"
+                            autocomplete="email"
+                            required
+                            :aria-invalid="errors.email is defined ? 'true' : false"
+                            :aria-describedby="errors.email is defined ? 'password-request-email-error' : false"
+                        />
+                        {% if errors.email is defined %}
+                            <p id="password-request-email-error" class="text-sm text-destructive" data-field-error>{{ errors.email }}</p>
+                        {% endif %}
+                    </div>
+
+                    {# AD-18, sans exception. Jeton en session : le CSRF sans état exigerait
+                       son contrôleur Stimulus, ce qui contredit AD-17. L'identifiant est
+                       celui que `PasswordController` déclare — un couplage visible aux
+                       deux bouts. #}
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token(constant('App\\Core\\Controller\\PasswordController::CSRF_REQUEST')) }}">
+
+                    <twig:Button type="submit">{{ 'password.request.submit'|trans }}</twig:Button>
+                </form>
+
+                <p class="text-sm">
+                    <a
+                        href="{{ path('app_login') }}"
+                        class="rounded-sm underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                    >{{ 'password.request.back_to_login'|trans }}</a>
+                </p>
+            </twig:Card:Content>
+        </twig:Card>
+    </div>
+{% endblock %}
