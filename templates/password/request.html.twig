@@ -56,7 +56,28 @@
                     {% include '_flash.html.twig' with {messages: ['password.request.confirmation']} only %}
                 {% endif %}
 
-                <form method="post" action="{{ path('app_password_request') }}" class="flex flex-col gap-4">
+                {# `data-turbo="false"` : ce formulaire se soumet en pleine page, hors Turbo.
+
+                   La demande acceptée répond **200 sur la même page** — c'est la matrice
+                   de la story qui l'exige, pour que les trois cas (adresse connue,
+                   inconnue, compte désactivé) rendent la même chose au caractère près.
+                   Or Turbo Drive refuse une réponse de formulaire en 200 sans redirection
+                   (« Form responses must redirect to another location ») : il jette
+                   l'erreur en console et ne remplace rien. La confirmation ne s'affichait
+                   donc jamais, et le champ restait rempli.
+
+                   Les autres réponses de cette page — 422 de validation, 429 du limiteur —
+                   passeraient, elles : Turbo affiche les 4xx et 5xx. C'est le seul chemin
+                   du succès qui est incompatible, et c'est le formulaire entier qu'on sort
+                   plutôt que la seule réponse, parce qu'une soumission ne sait pas d'avance
+                   quel statut elle recevra.
+
+                   L'alternative serait un POST/Redirect/GET, comme le fait
+                   `password/reset.html.twig` en 303. Elle contredirait la ligne « elle ne
+                   redirige pas » de la story : c'est une décision de produit, pas de
+                   gabarit. Le coût d'ici est un rechargement complet — ce qu'AD-17 exige
+                   de toute façon de savoir faire. #}
+                <form method="post" action="{{ path('app_password_request') }}" data-turbo="false" class="flex flex-col gap-4">
                     <div class="flex flex-col gap-2">
                         <twig:Label for="password-request-email">{{ 'password.request.email'|trans }}</twig:Label>
                         {# `aria-invalid` **et** `aria-describedby` posés ensemble : une

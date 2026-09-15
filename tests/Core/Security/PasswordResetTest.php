@@ -82,6 +82,33 @@ final class PasswordResetTest extends WebTestCase
         self::assertCount(1, $crawler->filter('form label'), 'Le champ de la demande doit porter un label réel (règle 3).');
     }
 
+    /**
+     * Le formulaire sort de Turbo, et ce n'est pas un détail de gabarit.
+     *
+     * La demande acceptée répond **200 sur la même page** — la matrice l'exige, et le test
+     * suivant l'assure. Turbo Drive, lui, refuse une réponse de formulaire en 200 sans
+     * redirection : il jette « Form responses must redirect to another location » et ne
+     * remplace rien. Sans cet attribut, la confirmation ne s'affiche jamais dans un
+     * navigateur **alors que toute cette classe reste verte** : `WebTestCase` n'exécute pas
+     * JavaScript, il voit le 200 et y trouve la confirmation. C'est le seul endroit du
+     * dépôt où la promesse se vérifie côté serveur, d'où cette ligne.
+     *
+     * Les autres réponses de la page passeraient Turbo sans rien : il affiche les 4xx et
+     * les 5xx, donc le 422 de validation comme le 429 du limiteur. C'est bien le chemin du
+     * succès, et lui seul, qui impose de sortir le formulaire entier.
+     */
+    #[Test]
+    public function the_request_form_is_submitted_outside_turbo(): void
+    {
+        $client = self::createClient();
+        $client->request('GET', self::REQUEST_PATH);
+
+        self::assertSelectorExists(
+            \sprintf('form[action="%s"][data-turbo="false"]', self::REQUEST_PATH),
+            'Le formulaire de demande doit porter `data-turbo="false"` : sa réponse de succès est un 200 sans redirection, que Turbo Drive rejette en silence côté navigateur.',
+        );
+    }
+
     #[Test]
     public function the_login_page_offers_the_way_in(): void
     {
