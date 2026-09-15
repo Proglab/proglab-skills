@@ -40,4 +40,17 @@ return [
     // provider `users_in_memory` et un pare-feu sans authenticator, qui ne laisse
     // entrer personne en silence.
     Symfony\Bundle\SecurityBundle\SecurityBundle::class => ['all' => true],
+    // L'outillage de débogage, `dev` uniquement — aucun des deux ne doit exister en
+    // production, où le profiler stocke chaque requête sur disque et la barre de debug
+    // publie la configuration de l'application dans le HTML.
+    //
+    // DebugBundle ne fait pas apparaître `dump()` : `symfony/var-dumper` était déjà là,
+    // en transitif. Il branche la sortie sur `debug.dump_destination`, c'est-à-dire sur
+    // le serveur de dump plutôt qu'au milieu de la page — voir `config/packages/debug.yaml`.
+    Symfony\Bundle\DebugBundle\DebugBundle::class => ['dev' => true],
+    // `test` en plus de `dev` : c'est ce qui permet à un WebTestCase de lire le profiler
+    // d'une requête (`$client->enableProfiler()`), pour assurer par exemple un nombre de
+    // requêtes SQL ou un compte d'emails mis en file. `framework.profiler.collect: false`
+    // sous `when@test` garde la collecte éteinte par défaut — chaque test l'allume lui-même.
+    Symfony\Bundle\WebProfilerBundle\WebProfilerBundle::class => ['dev' => true, 'test' => true],
 ];

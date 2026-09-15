@@ -127,6 +127,33 @@ php bin/console --env=test doctrine:migrations:migrate --no-interaction
 Une surcharge locale du DSN se met dans `.env.local` **et** dans `.env.test.local` :
 Symfony ne charge pas `.env.local` en environnement de test.
 
+### Le profiler, et `dump()`
+
+La barre de debug et le profiler sont chargés en `dev` et en `test`, jamais en `prod` :
+`symfony/profiler-pack` et `symfony/debug-bundle` sont des dépendances `require-dev`, et
+`config/bundles.php` ne les enregistre que sur ces deux environnements. Un
+`composer install --no-dev` n'en embarque donc rien — c'est ce que vérifie la liste
+« Ce qu'il faut observer » du skill `symfony-proglab-local-dev` : voir la barre apparaître
+sur la vérification de type production, c'est que `APP_ENV` n'a pas été pris en compte.
+
+En `test`, le bundle est là mais la collecte est éteinte (`framework.profiler.collect:
+false`) : la suite ne paie pas un profil par requête. Un test qui a besoin du profil
+l'allume lui-même, avant la requête, avec `$client->enableProfiler()` — c'est ce qui
+permet d'assurer un nombre de requêtes SQL ou un compte d'emails mis en file.
+
+`dump()` n'écrit pas au milieu de la page : la sortie part sur le serveur de dump, donc
+une réponse JSON ou un flux Turbo restent lisibles.
+
+```bash
+php bin/console server:dump          # laisser tourner dans un terminal, les dumps y arrivent
+```
+
+Sans rien qui écoute sur ce port, ce n'est pas une panne : la sortie retombe dans la page
+ou dans la console. Le port vit dans `VAR_DUMPER_SERVER` (`.env`), écrit à la main parce
+que la recette de Flex référence cette variable sans jamais la définir — elle compte sur
+`symfony server:start` pour l'exporter, et `php bin/console` comme l'hôte `.test` d'Apache
+ne le font pas.
+
 ### Le worker, et les emails
 
 Aucun email ne part depuis une requête. Un cas d'usage dispatche `App\Core\Message\SendEmail`
