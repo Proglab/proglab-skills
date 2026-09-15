@@ -12,6 +12,7 @@
         "ext-intl": "*",
         "doctrine/dbal": "4.4.*",
         "doctrine/doctrine-bundle": "^3.3",
+        "doctrine/doctrine-migrations-bundle": "^3.7.1",
         "doctrine/orm": "3.7.*",
         "symfony/apache-pack": "^1.0",
         "symfony/asset-mapper": "7.4.*",
@@ -44,7 +45,6 @@
     "require-dev": {
         "dama/doctrine-test-bundle": "^8.6",
         "deptrac/deptrac": "^4.7",
-        "doctrine/doctrine-migrations-bundle": "^3.4",
         "php-cs-fixer/shim": "^3.90",
         "phpstan/phpstan": "^2.1",
         "phpstan/phpstan-deprecation-rules": "^2.0",

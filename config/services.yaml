@@ -54,6 +54,11 @@ services:
     # non des services : interfaces, DTO, entités et enums n'ont rien à faire dans le
     # conteneur.
     #
+    # `Exception` a rejoint la liste avec la story 1.11, pour la même raison que `Message` :
+    # une exception est un objet de données qu'un appelant construit avec ses valeurs, pas
+    # un service. `App\Core\Exception\InitializationFailed` n'a d'ailleurs que des
+    # constructeurs nommés et aucun constructeur autowirable.
+    #
     # `Message` a rejoint la liste avec la story 1.8, après vérification par
     # `debug:container App\Core\Message\SendEmail` : sans lui, le message était bien
     # enregistré comme service. Un message est un objet de données, construit par son
@@ -62,7 +67,7 @@ services:
     # glob : un handler *est* un service, et c'est `#[AsMessageHandler]` qui le tague.
     App\Core\:
         resource: '../src/Core/'
-        exclude: '../src/Core/{Contract,Dto,Entity,Enum,Message}'
+        exclude: '../src/Core/{Contract,Dto,Entity,Enum,Exception,Message}'
 
     # Les modules du client. Ajouter un module ne modifie pas ce fichier.
     App\Module\:

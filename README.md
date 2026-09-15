@@ -103,6 +103,13 @@ oubli :
   repli : la suite doit voir le moteur de production, et `dbname_suffix` — le garde-fou
   qui empêche les tests d'écrire dans la base de développement — n'a même aucun effet sur
   cette plateforme.
+- **Un compte MySQL habilité à créer et supprimer une base.** `FreshDerivativeTest` est le
+  seul test à atteindre l'état « dérivé non initialisé » : il lance `app:init` dans un
+  sous-processus sur une base jetable au nom aléatoire, puis la supprime — c'est la seule
+  preuve que cloner le socle et taper une commande suffit. Laragon satisfait déjà cette
+  exigence, son MySQL tournant sous `root` sans mot de passe ; un serveur partagé où le
+  compte applicatif n'a droit qu'à sa propre base ne la satisfait pas, et le workflow de CI
+  élargit les droits de son utilisateur `app` pour cette raison.
 - **`make`**, déjà présent sur la plupart des hôtes. Sous Windows le `Makefile` bascule
   sur Git Bash, livré avec Git.
 - **Node 22.15 ou plus récent**, pour la seule étape Node du dépôt : les tests des deux
