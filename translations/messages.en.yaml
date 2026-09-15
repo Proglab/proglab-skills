@@ -44,6 +44,7 @@ password:
         title: New password
         intro: "Choose a new password, then type it a second time."
         password: New password
+        hint: "At least 16 characters. Three or four linked words make a good password."
         confirmation: Confirm the new password
         submit: Change my password
         done: "Password changed. Sign in with the new one."

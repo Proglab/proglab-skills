@@ -93,6 +93,7 @@ password:
         title: Nouveau mot de passe
         intro: "Choisissez un nouveau mot de passe, puis saisissez-le une seconde fois."
         password: Nouveau mot de passe
+        hint: "Au moins 16 caractères. Trois ou quatre mots liés font un bon mot de passe."
         confirmation: Confirmez le nouveau mot de passe
         submit: Changer mon mot de passe
         done: "Mot de passe changé. Connectez-vous avec le nouveau."

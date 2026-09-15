@@ -1,4 +1,5 @@
 # Traduction du catalogue du socle. La source est `validators.fr.yaml` : une clé n'existe
 # ici que parce qu'elle existe là-bas.
 password:
+    too_weak: "This password is too short to be safe."
     confirmation_mismatch: "The two passwords are not the same."

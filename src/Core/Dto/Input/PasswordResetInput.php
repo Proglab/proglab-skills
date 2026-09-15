@@ -17,6 +17,17 @@ use Symfony\Component\Validator\Constraints as Assert;
  * page de récupération d'accès renvoie l'utilisateur vers son administrateur, c'est-à-dire
  * exactement ce que cette story existe pour éviter.
  *
+ * **Le message de robustesse est le nôtre pour la même raison.** Le défaut du composant —
+ * « La force du mot de passe est trop faible. Veuillez utiliser un mot de passe plus
+ * fort. » — énonce un verdict sans son critère, et le raisonnement ci-dessus ne tient pas
+ * si le refus reste indevinable. Il l'est d'autant plus que le score de Symfony
+ * (`unique × log₂(pool) + (longueur − unique) × log₂(unique)`, seuil à 80 bits) dépend
+ * massivement de la **longueur** et presque pas de la complexité : douze caractères mêlant
+ * majuscules, chiffres et symboles sont refusés, seize minuscules liées par des tirets
+ * passent. Personne ne devine cela. La clé `password.too_weak` dit donc le critère, et
+ * `templates/password/reset.html.twig` l'affiche **avant** la saisie plutôt qu'après
+ * l'échec.
+ *
  * `NotCompromisedPassword` est **écarté**, pas oublié : il ferait dépendre cette page d'un
  * service tiers et ajouterait `symfony/http-client` au socle. L'écart au durcissement du
  * skill sécurité est consigné dans `deferred-work.md` avec son déclencheur — le jour où le
@@ -45,7 +56,7 @@ final readonly class PasswordResetInput
     public function __construct(
         #[Assert\NotBlank]
         #[Assert\Length(max: PasswordHasherInterface::MAX_PASSWORD_LENGTH, countUnit: Assert\Length::COUNT_BYTES)]
-        #[Assert\PasswordStrength(minScore: Assert\PasswordStrength::STRENGTH_MEDIUM)]
+        #[Assert\PasswordStrength(minScore: Assert\PasswordStrength::STRENGTH_MEDIUM, message: 'password.too_weak')]
         public string $password = '',
         /**
          * La contrainte est portée par la **confirmation** et non par le mot de passe :

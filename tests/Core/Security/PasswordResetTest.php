@@ -466,6 +466,61 @@ final class PasswordResetTest extends WebTestCase
      * de longueur, le message d'égalité — est une règle du DTO, et elle vit dans
      * `tests/Core/Dto/PasswordResetInputTest.php`, sans noyau ni requête.
      */
+    /**
+     * La règle de robustesse se lit **avant** la saisie, pas seulement après l'échec.
+     *
+     * Le seuil de `PasswordStrength` est indevinable : son score dépend massivement de la
+     * longueur et presque pas de la complexité. Découvrir la règle en échouant, sur la page
+     * où l'on a déjà perdu son accès, est exactement le scénario que la story veut éviter —
+     * d'où un paragraphe rendu dès l'ouverture, relié au champ par `aria-describedby` pour
+     * qu'un lecteur d'écran l'annonce à la prise de focus et non après coup.
+     */
+    #[Test]
+    public function the_reset_page_states_the_password_rule_before_anything_is_typed(): void
+    {
+        $client = self::createClient();
+        $token = self::askForALink($client);
+
+        $crawler = $client->request('GET', self::resetPath($token));
+
+        self::assertResponseIsSuccessful();
+        self::assertSelectorTextContains('#password-reset-password-hint', '16 caractères');
+
+        $described = $crawler->filter('input[name="password"]')->attr('aria-describedby');
+        self::assertIsString($described);
+        self::assertContains('password-reset-password-hint', explode(' ', $described), 'Le champ doit pointer la règle : un texte posé à côté sans lien n\'est pas annoncé à la prise de focus.');
+    }
+
+    /**
+     * Et le refus dit le critère plutôt qu'un verdict.
+     *
+     * C'est ici, et non dans `PasswordResetInputTest`, que le texte **rendu** se lit : le
+     * DTO épingle la clé, le catalogue la formule, et cette ligne est la seule qui prouve
+     * que les deux se rejoignent dans la page.
+     *
+     * **Les deux paragraphes se partagent le travail, ils ne le répètent pas.** L'erreur dit
+     * ce que l'indication ne peut pas dire — que cette saisie-là vient d'être refusée — et
+     * l'indication garde le critère, au même endroit qu'avant la soumission. Écrire le seuil
+     * dans les deux donnait deux phrases superposées disant la même chose ; la dernière
+     * assertion est ce qui empêche d'y revenir sans s'en apercevoir.
+     */
+    #[Test]
+    public function the_strength_refusal_tells_the_user_what_to_do(): void
+    {
+        $client = self::createClient();
+        $token = self::askForALink($client);
+
+        $crawler = $client->submit(self::resetForm($client, $token, 'azerty123', 'azerty123'));
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertSelectorTextContains('#password-reset-password-error', 'trop court');
+        self::assertSelectorTextContains('#password-reset-password-hint', '16 caractères', 'La règle disparaît au moment où elle sert le plus.');
+        self::assertSelectorTextNotContains('#password-reset-password-error', '16 caractères', 'L\'erreur redit le critère que l\'indication porte déjà, juste au-dessus d\'elle.');
+
+        $described = explode(' ', (string) $crawler->filter('input[name="password"]')->attr('aria-describedby'));
+        self::assertSame(['password-reset-password-error', 'password-reset-password-hint'], $described, 'L\'erreur doit précéder la règle : la liste se lit dans l\'ordre écrit.');
+    }
+
     #[Test]
     public function a_password_below_the_threshold_is_refused_and_leaves_the_link_usable(): void
     {

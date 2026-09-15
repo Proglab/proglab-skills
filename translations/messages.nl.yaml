@@ -44,6 +44,7 @@ password:
         title: Nieuw wachtwoord
         intro: "Kies een nieuw wachtwoord en typ het daarna nog een keer."
         password: Nieuw wachtwoord
+        hint: "Minstens 16 tekens. Drie of vier gekoppelde woorden vormen een goed wachtwoord."
         confirmation: Bevestig het nieuwe wachtwoord
         submit: Mijn wachtwoord wijzigen
         done: "Wachtwoord gewijzigd. Meld u aan met het nieuwe."

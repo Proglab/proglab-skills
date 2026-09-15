@@ -33,6 +33,11 @@
                 <form method="post" action="" class="flex flex-col gap-4">
                     <div class="flex flex-col gap-2">
                         <twig:Label for="password-reset-password">{{ 'password.reset.password'|trans }}</twig:Label>
+                        {# `aria-describedby` porte **deux** identifiants quand le champ est
+                           en erreur, et l'erreur vient en premier : la liste se lit dans
+                           l'ordre écrit, et ce qu'il faut corriger passe avant la règle
+                           générale. `AccessibilityFloorTest` lit déjà cet attribut comme une
+                           liste de mots, donc la règle 1 reste vérifiée. #}
                         <twig:Input
                             type="password"
                             id="password-reset-password"
@@ -40,11 +45,18 @@
                             autocomplete="new-password"
                             required
                             :aria-invalid="errors.password is defined ? 'true' : false"
-                            :aria-describedby="errors.password is defined ? 'password-reset-password-error' : false"
+                            :aria-describedby="errors.password is defined ? 'password-reset-password-error password-reset-password-hint' : 'password-reset-password-hint'"
                         />
                         {% if errors.password is defined %}
                             <p id="password-reset-password-error" class="text-sm text-destructive" data-field-error>{{ errors.password }}</p>
                         {% endif %}
+                        {# La règle est affichée **avant** la saisie, pas seulement après
+                           l'échec : le seuil de `PasswordStrength` est indevinable — il
+                           dépend de la longueur bien plus que de la complexité —, et une
+                           page de récupération d'accès est le dernier endroit où faire
+                           deviner. Le paragraphe reste rendu quand le champ est en erreur :
+                           c'est là qu'il sert le plus. #}
+                        <p id="password-reset-password-hint" class="text-sm text-muted-foreground">{{ 'password.reset.hint'|trans }}</p>
                     </div>
 
                     <div class="flex flex-col gap-2">

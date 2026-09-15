@@ -7,15 +7,39 @@
 # « messages de validation », et il se superpose au catalogue de `symfony/validator` clé par
 # clé plutôt que de le remplacer.
 #
-# **Une seule clé, et une seule raison de l'écrire.** Les contraintes du socle utilisent les
-# messages du composant, déjà traduits dans les trois langues, précisément pour n'avoir rien
-# à maintenir ici. L'exception est l'égalité des deux saisies de mot de passe : le message
-# par défaut d'`EqualTo` est « Cette valeur doit être identique à {{ compared_value }} »,
-# et `{{ compared_value }}` est le mot de passe saisi — rendu tel quel, il repartirait dans
-# le HTML de la page d'erreur, dans l'historique du navigateur et dans les caches
-# intermédiaires. Cette clé dit la même chose sans aucun paramètre.
+# **Deux clés, et une raison distincte pour chacune.** Les contraintes du socle utilisent
+# les messages du composant, déjà traduits dans les trois langues, précisément pour n'avoir
+# rien à maintenir ici. Une clé n'entre donc ici que si le message par défaut est
+# activement nuisible — pas parce qu'on l'aurait tourné autrement.
+#
+# `confirmation_mismatch` : le message par défaut d'`EqualTo` est « Cette valeur doit être
+# identique à {{ compared_value }} », et `{{ compared_value }}` est le mot de passe saisi —
+# rendu tel quel, il repartirait dans le HTML de la page d'erreur, dans l'historique du
+# navigateur et dans les caches intermédiaires. Cette clé dit la même chose sans aucun
+# paramètre.
+#
+# `too_weak` : le message par défaut de `PasswordStrength` énonce un verdict sans son
+# critère (« trop faible, utilisez un mot de passe plus fort »), et le critère de Symfony
+# est indevinable — son score dépend massivement de la longueur et presque pas de la
+# complexité, si bien que douze caractères mêlant majuscules, chiffres et symboles sont
+# refusés là où seize minuscules passent. Sur une page de récupération d'accès, un refus
+# qu'on ne sait pas corriger renvoie l'utilisateur vers son administrateur — ce que la
+# story 1.9 existe pour éviter.
+#
+# **Le critère n'est pas écrit ici**, et c'est délibéré : il vit dans `password.reset.hint`
+# (domaine `messages`), affiché sous le champ dès l'ouverture de la page. Le porter aussi
+# dans cette clé donnait deux paragraphes superposés disant la même chose. La règle se lit
+# donc une fois, toujours au même endroit, et ce message ne dit que ce que l'indication ne
+# peut pas dire : que cette saisie-là vient d'être refusée. `aria-describedby` pointe les
+# deux, l'erreur d'abord.
+#
+# Le seuil annoncé par l'indication est 16 caractères : c'est la borne sûre, celle qui
+# passe pour une phrase de mots. La borne réelle descend à 14 quand les quatre classes de
+# caractères sont présentes — une valeur qu'il faut nuancer pour être exacte n'aide
+# personne devant un champ.
 #
 # `tests/Core/Translation/CatalogParityTest.php` voit ce fichier comme le domaine
 # `validators` et en exige les trois langues.
 password:
+    too_weak: "Ce mot de passe est trop court pour être sûr."
     confirmation_mismatch: "Les deux mots de passe ne sont pas identiques."

@@ -166,6 +166,30 @@ final class PasswordResetInputTest extends TestCase
     }
 
     /**
+     * Le refus de robustesse dit ce qu'il faut faire, et pas seulement que c'est refusé.
+     *
+     * Le message par défaut de `PasswordStrength` — « La force du mot de passe est trop
+     * faible. Veuillez utiliser un mot de passe plus fort. » — énonce un verdict sans son
+     * critère : celui qui le lit ne peut que deviner, et devine mal, parce que le seuil de
+     * Symfony dépend massivement de la **longueur** et presque pas de la complexité. Douze
+     * caractères mêlant majuscules, chiffres et symboles sont refusés ; seize minuscules
+     * liées par des tirets passent.
+     *
+     * Sur une page de récupération d'accès, un refus qu'on ne sait pas corriger renvoie
+     * l'utilisateur vers son administrateur — ce que cette story existe pour éviter, et ce
+     * que le DTO invoque lui-même pour justifier `MEDIUM` plutôt que `STRONG`. La clé du
+     * socle porte donc le critère ; le catalogue le formule.
+     */
+    #[Test]
+    public function the_strength_refusal_states_the_criterion(): void
+    {
+        $violations = self::validator()->validate(new PasswordResetInput('azerty123', 'azerty123'));
+
+        self::assertCount(1, $violations);
+        self::assertSame('password.too_weak', $violations->get(0)->getMessageTemplate());
+    }
+
+    /**
      * Les noms de champs en erreur, dans l'ordre du DTO.
      *
      * Les comparer en tableau plutôt qu'un par un est ce qui prouve aussi l'**absence** des
