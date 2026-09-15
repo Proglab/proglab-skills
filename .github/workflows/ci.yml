@@ -84,6 +84,20 @@ jobs:
       - name: Check database isolation is actually enabled
         run: php bin/console --env=test debug:config dama_doctrine_test
 
+      # `tests/Core/Initialization/FreshDerivativeTest.php` est la seule preuve d'AC 1 de la
+      # story 1.11 : il lance `app:init` dans un sous-processus sur une base jetable au nom
+      # aléatoire, donc il lui faut CREATE DATABASE et DROP DATABASE — c'est aussi le seul
+      # test qui atteint l'état `Uninitialized`. L'image `mysql:8.4` n'accorde à `app` que
+      # `app_test.*`, si bien que cette preuve échouerait ici et nulle part ailleurs.
+      #
+      # Le compte root est déjà provisionné par le service ci-dessus (`MYSQL_ROOT_PASSWORD`,
+      # et l'image crée `root@'%'`) : rien à ajouter au conteneur. Par PDO plutôt que par un
+      # client `mysql` — le runner n'en garantit aucun, alors que `pdo_mysql` vient d'être
+      # installé par setup-php.
+      - name: Widen the test user so it can create throwaway databases
+        run: |
+          php -r '$pdo = new PDO("mysql:host=127.0.0.1;port=3306", "root", "root"); $pdo->exec("GRANT ALL PRIVILEGES ON *.* TO `app`@`%`"); $pdo->exec("FLUSH PRIVILEGES");'
+
       # Les migrations, jamais doctrine:schema:create. Une suite qui construit son schéma
       # à partir du mapping n'exerce jamais les migrations, et les migrations sont la
       # première chose que la production exécute : c'est ici qu'une migration cassée doit

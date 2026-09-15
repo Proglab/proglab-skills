@@ -883,3 +883,46 @@ Entrees ajoutees par bmad-build. Append-only : ne pas modifier les entrees exist
     impossible par construction — c'est le clair que l'URL doit porter. La conséquence est
     donc à connaître et à documenter, pas à supprimer : `README.md` et le docblock de
     `App\Core\Service\PasswordResetRequest` la nomment tous les deux.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-11-initialiser-un-derive-en-une-commande.md`
+  summary: La surface de rebranding — favicon absent et `{{ app_name }}` dans le `<h1>` du gabarit — appartient désormais à la seule story 1.12.
+  evidence: |
+    Les deux reports antérieurs (story 1.4 pour le favicon, story 1.5 pour le `<h1>`) nomment
+    « les stories 1.11 et 1.12 » comme propriétaires conjoints. Fabrice a tranché le
+    2026-09-15, à l'étape de planification de la 1.11 : les deux vont à la 1.12.
+
+    La raison est la même que celle qui les a fait reporter la première fois. Ce qui manque
+    n'est pas une ligne de code — le correctif du `<h1>` en tient une — mais une décision sur
+    *de quoi la surface de rebranding est faite* et où vivent les fichiers de marque d'un
+    dérivé. C'est exactement ce que la 1.12 « Écrire le guide de dérivation » a pour objet.
+    La 1.11 livre une commande ; lui faire trancher la surface de marque au passage en ferait
+    un second objectif livrable indépendamment.
+
+    À refermer par la 1.12 : déclarer l'icône dans le gabarit et la ranger avec les autres
+    fichiers rebrandables, remplacer le texte en dur du `<h1>` par `{{ app_name }}`, et
+    étendre le contrat que tient `BaseTemplateTest` aux deux.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-11-initialiser-un-derive-en-une-commande.md`
+  summary: Décider si `doctrine_migrations.transactional: false` est le bon correctif global sur MySQL, plutôt qu'une remise à zéro de connexion chez chaque appelant.
+  evidence: |
+    `doctrine:migrations:migrate` enveloppe chaque version dans une transaction. Sur MySQL le
+    DDL déclenche un *implicit commit* qui détruit transaction et points de sauvegarde sans
+    que DBAL en soit informé : mesuré avec quatre migrations sur une base neuve,
+    `Connection::getTransactionNestingLevel()` vaut **4** une fois la commande terminée.
+
+    Tout code qui joue les migrations puis écrit **dans le même processus** échoue alors sur
+    « SAVEPOINT DOCTRINE_4 does not exist » — et, MySQL étant en autocommit à cet instant,
+    l'écriture passe quand même : un demi-succès qui sort en 255 avec une trace. C'est
+    exactement ce qui arrivait à `app:init` avant `UserRepository::reopenConnection()`, et
+    `tests/Core/Initialization/FreshDerivativeTest.php` le tient rouge.
+
+    Le correctif livré est **local à `app:init`** : il ferme la connexion entre le DDL et la
+    première écriture. C'est délibérément le plus petit — il ne change le comportement
+    d'aucune autre invocation de `migrate`. Ce qui reste à trancher est plus large : sur
+    MySQL, la transaction que le bundle ouvre autour d'une migration **ne protège rien**,
+    puisque le DDL n'y est pas transactionnel. `transactional: false` dirait la vérité et
+    supprimerait la cause plutôt que le symptôme.
+
+    Déclencheur : la première autre place qui enchaîne migrations et écriture dans un même
+    processus. Le déploiement de la story 3.1 est le candidat naturel — s'il lance `migrate`
+    en processus séparé, il n'est pas concerné, et ce report peut rester ouvert.
