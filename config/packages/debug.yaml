@@ -1,0 +1,11 @@
+# `dump()` sort par le serveur de dump plutôt qu'au milieu de la page : une réponse JSON
+# ou un flux Turbo restent lisibles, et le dump se lit dans `symfony server:log` ou dans
+# le terminal qui exécute `bin/console server:dump`.
+#
+# Quand personne n'écoute sur ce port, ce n'est pas une panne : `ServerDumper` retombe sur
+# le dumper enveloppé et la sortie s'affiche dans la page ou la console. `VAR_DUMPER_SERVER`
+# est défini dans `.env` — la recette de Flex, elle, comptait sur `symfony server:start`
+# pour l'exporter, ce qui laissait `php bin/console` et l'hôte `.test` sans valeur.
+when@dev:
+    debug:
+        dump_destination: "tcp://%env(VAR_DUMPER_SERVER)%"

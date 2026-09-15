@@ -1,0 +1,29 @@
+# Le profiler et la barre de debug, jamais chargés ailleurs qu'en `dev` et en `test` :
+# `config/bundles.php` n'enregistre WebProfilerBundle que sur ces deux environnements, et
+# ce fichier n'a donc aucun bloc `when@prod`. C'est volontaire — en production le profiler
+# écrirait un fichier par requête sous `var/cache` et la barre publierait la configuration
+# de l'application dans le HTML.
+#
+#   bin/console --env=dev debug:config framework profiler
+when@dev:
+    web_profiler:
+        toolbar: true
+
+    framework:
+        profiler:
+            # Écrit en toutes lettres. `framework.profiler` est un nœud `canBeEnabled()` :
+            # il est éteint par défaut, et n'importe quelle clé fille l'allume par effet de
+            # bord. La recette de Flex comptait sur ce détour — elle ne posait que
+            # `collect_serializer_data`, retiré ici puisque `symfony/serializer` n'est pas
+            # dans la pile. Sans cette ligne, la barre de debug disparaît sans un mot.
+            enabled: true
+
+# En test, le bundle est chargé mais la collecte est éteinte : la suite ne paie pas le
+# coût d'un profil par requête. Un test qui a besoin du profil l'allume lui-même, avant
+# la requête, avec `$client->enableProfiler()` — c'est ce qui permet d'assurer un nombre
+# de requêtes SQL ou un compte d'emails mis en file.
+when@test:
+    framework:
+        profiler:
+            enabled: true
+            collect: false
