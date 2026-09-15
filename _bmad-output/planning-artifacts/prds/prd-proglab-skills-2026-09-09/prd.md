@@ -582,7 +582,8 @@ Un administrateur peut désactiver ou réactiver une langue d'interface pour le 
 ## 5. Exigences transverses (NFR)
 
 - **Sécurité** : mots de passe hachés selon l'état de l'art ; sessions et jetons
-  d'accès révocables ; protection CSRF sur toute écriture ; aucune donnée sensible dans
+  d'accès révocables ; protection CSRF sur toute écriture, la déconnexion exceptée ;
+  aucune donnée sensible dans
   les journaux applicatifs ; le journal d'audit est en ajout seul.
 - **Accessibilité** : l'interface du socle respecte les règles WCAG 2.1 de la suite
   proglab (couleur jamais seule, contraste, labels, focus visible, une seule h1).

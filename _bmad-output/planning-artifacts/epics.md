@@ -76,7 +76,7 @@ tirées du contrat UX `UX-DR-N`, celles tirées de l'architecture `AR-N`.
 
 ### Exigences non fonctionnelles (NFR)
 
-**NFR-1 — Sécurité** : mots de passe hachés selon l'état de l'art ; sessions et jetons d'accès révocables ; protection CSRF sur toute écriture, sans exception ; aucune donnée sensible dans les journaux applicatifs ; journal d'audit en ajout seul (seule exception : l'anonymisation de FR-20).
+**NFR-1 — Sécurité** : mots de passe hachés selon l'état de l'art ; sessions et jetons d'accès révocables ; protection CSRF sur toute écriture (seule exception : la déconnexion, AD-18) ; aucune donnée sensible dans les journaux applicatifs ; journal d'audit en ajout seul (seule exception : l'anonymisation de FR-20).
 
 **NFR-2 — Accessibilité** : plancher WCAG 2.1 AA de `symfony-proglab-accessibility` — couleur jamais seule, contraste 4,5:1 sur le texte et 3:1 sur les composants, labels réels, focus visible, alternatives textuelles, une seule `h1`, rien derrière le survol seul — porté par un gabarit de base unique et **vérifié par un test automatisé en CI, jamais par relecture**.
 
@@ -112,7 +112,7 @@ tirées du contrat UX `UX-DR-N`, celles tirées de l'architecture `AR-N`.
 - **AR-12 (AD-9)** — Le compte porte un jeton de sécurité incrémenté à la désactivation, au changement de mot de passe et à la réinitialisation de la 2FA ; `EquatableInterface` le compare à chaque requête et déauthentifie les sessions concernées. Sessions en fichiers, aucun second magasin. Écart énoncé : `isEqualTo()` est la seule méthode de comportement admise sur une entité.
 - **AR-13 (AD-5)** — Firewall `/api` **sans état**, n'acceptant que `Authorization: Bearer`. À chaque requête, l'`AccessTokenHandler` vérifie expiration et non-révocation, et un `UserChecker` refuse un compte désactivé ou anonymisé — `EquatableInterface` n'opérant pas ici. Aucun endpoint d'authentification.
 - **AR-14 (AD-15)** — Invitation et réinitialisation partagent **une entité à état** : destinataire, rôle prévu, jeton aléatoire stocké haché, date d'expiration, date d'usage. L'URL transporte le jeton en clair, la base n'en garde que l'empreinte. Aucune URL signée sans état.
-- **AR-15 (AD-18)** — CSRF obligatoire sur toute écriture. `login_throttling` natif adossé à `symfony/rate-limiter` ; limiteurs nommés distincts pour la vérification du second facteur, la demande de réinitialisation et l'acceptation d'invitation. Les **secondes restantes** sont lues sur le limiteur, pas déduites du message. Aucun blocage définitif.
+- **AR-15 (AD-18)** — CSRF obligatoire sur toute écriture, à la seule exception nommée de la déconnexion. `login_throttling` natif adossé à `symfony/rate-limiter` ; limiteurs nommés distincts pour la vérification du second facteur, la demande de réinitialisation et l'acceptation d'invitation. Les **secondes restantes** sont lues sur le limiteur, pas déduites du message. Aucun blocage définitif.
 - **AR-16 (AD-19)** — Le rôle porte un booléen « exige la double authentification » ; le compte porte la date de début de son délai de grâce, posée à la première connexion sous un tel rôle et remise à zéro si le rôle change. Un **unique point d'application** — un listener de requête dans `Core`, `scheb/2fa` n'en fournissant aucun. Délai porté par un paramètre `app.`. Aucun rôle exempté.
 - **AR-17 (AD-10)** — Un **lecteur BMAD unique** dans `Core/Service/` parse les fichiers de façon tolérante et rend des **DTO Output** ; aucun contrôleur, template ou module ne les lit. L'application n'écrit jamais dans le dépôt, seul `var/` est inscriptible. Le résultat du parse est **toujours** mis en cache, invalidé par la version de release en production et par la date de modification en développement — ce cache est le moyen du budget de performance, pas une optimisation reportable.
 - **AR-18 (AD-11)** — Le lancement d'une tâche porte `#[When('dev')]` sur le service **et** le contrôleur, **et** `#[Route(..., env: 'dev')]` sur la route — le premier attribut ne retire pas la route de la table de routage. Un test vérifie qu'en production la route est absente. Le lancement démarre un processus local détaché et ne rend compte que du démarrage.
@@ -680,6 +680,40 @@ So that je livre du code conforme dès le premier jour, sans demander à personn
 **Given** le guide
 **When** je cherche les limites assumées du socle
 **Then** il nomme l'envoi déjà en file qui part à l'ancienne adresse après une anonymisation
+
+### Story 1.13 : Rendre la déconnexion joignable sans jeton
+
+As a utilisateur connecté,
+I want que la déconnexion aboutisse depuis n'importe quel point de l'application,
+So that je ne reste pas connecté parce qu'un jeton manque à l'URL.
+
+**Estimation :** ~30 min de travail agent (implémentation et tests).
+
+**Acceptance Criteria:**
+
+**Given** une session ouverte
+**When** j'ouvre `/logout` sans aucun paramètre — depuis un favori, un lien recopié, une page servie par un cache
+**Then** ma session est fermée et je suis redirigé, jamais refusé en 403
+
+**Given** un lien de déconnexion rendu par `logout_path()`
+**When** j'inspecte l'URL
+**Then** elle ne porte plus de jeton en query string, donc plus rien à fuir dans les journaux d'accès ni dans un `Referer`
+
+**Given** la configuration de la déconnexion
+**When** je la lis
+**Then** l'exception à AD-18 y est nommée et justifiée sur place — le commentaire qui invoquait l'attaque par `<img>` est remplacé par ce que `SameSite=Lax` couvre déjà et ce qu'il laisse passer
+
+**Given** la suite de tests
+**When** je cherche ce qui prouve la déconnexion
+**Then** le test qui exigeait un 403 sans jeton est inversé et exige une déconnexion aboutie, et le helper qui fabriquait l'URL signée disparaît avec son dernier appelant
+
+**Given** le plancher d'accessibilité
+**When** il découvre `app_logout`
+**Then** il obtient une redirection au premier appel, sans rejeu signé
+
+**Given** toute autre écriture du socle, à commencer par le formulaire de connexion
+**When** elle est soumise
+**Then** elle porte toujours son jeton CSRF — l'exception ne s'étend à rien d'autre
 
 ---
 

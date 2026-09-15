@@ -183,7 +183,7 @@ Companion de `SPEC.md`. Pour chaque capacité, l'ensemble des conséquences test
 
 ## Exigences transverses
 
-- **Sécurité** : mots de passe hachés selon l'état de l'art ; sessions et jetons d'accès révocables ; protection CSRF sur toute écriture ; aucune donnée sensible dans les journaux applicatifs ; le journal d'audit est en ajout seul.
+- **Sécurité** : mots de passe hachés selon l'état de l'art ; sessions et jetons d'accès révocables ; protection CSRF sur toute écriture, la déconnexion exceptée ; aucune donnée sensible dans les journaux applicatifs ; le journal d'audit est en ajout seul.
 - **Accessibilité** : plancher WCAG 2.1 de la suite proglab — couleur jamais seule, contraste, labels réels, focus visible, une seule `h1` — porté par un gabarit de base unique et vérifié en CI.
 - **Performance** : connexion, fiche utilisateur, journal d'audit et roadmap répondent sous la seconde au p95, en développement comme en production, pour la fenêtre en ligne ; le journal est paginé, ses libellés résolus par lot, son export streamé. Une requête qui déborde sur l'archive sort de ce budget et l'annonce à l'écran.
 - **Observabilité** : health check (CAP-18) et journaux applicatifs par canal, sans données personnelles.

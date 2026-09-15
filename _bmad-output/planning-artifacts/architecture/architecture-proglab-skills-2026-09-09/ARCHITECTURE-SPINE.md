@@ -401,16 +401,31 @@ graph LR
 ### AD-18 — Les frontières d'écriture sont protégées de façon uniforme
 
 - **Binds :** NFR sécurité, FR-3, FR-5, FR-10, tout formulaire du socle et de tout module.
-- **Prevents :** que chaque formulaire décide seul de sa protection, et que le
+- **Prevents :** que chaque formulaire décide seul de sa protection, que le
   ralentissement exigé par FR-3 soit réécrit à la main dans chaque chemin
-  d'authentification.
-- **Rule :** CSRF obligatoire sur toute écriture, sans exception. Le ralentissement des
-  échecs de connexion utilise le `login_throttling` natif du SecurityBundle, adossé à
-  `symfony/rate-limiter` ; la vérification du second facteur, la demande de
-  réinitialisation et l'acceptation d'invitation portent chacune leur propre limiteur
-  nommé. L'affichage rend les **secondes** restantes, que l'exception native ne fournit
-  pas : le délai restant est lu sur le limiteur, pas déduit du message. Aucun blocage
-  définitif.
+  d'authentification, et qu'un module s'exempte par analogie avec l'exception
+  nommée ci-dessous.
+- **Rule :** CSRF obligatoire sur toute écriture. **Une seule exception, et elle est
+  nommée ici : la déconnexion.** Toute autre exception exige une nouvelle décision
+  d'architecture ; l'analogie avec celle-ci ne vaut pas argument.
+
+  **Pourquoi la déconnexion, et elle seule.** Trois raisons, dont aucune ne se
+  transporte à une écriture qui modifie une donnée. (a) La session du socle porte
+  `SameSite=Lax` : une requête de sous-ressource — le `<img src="…/logout">` du
+  manuel — n'emporte pas le cookie, la contrefaçon est donc déjà close sans jeton.
+  (b) La déconnexion est un GET : le jeton y voyage en query string, donc dans les
+  journaux d'accès et les en-têtes `Referer` — une protection qui fuit là où elle
+  s'applique. (c) Ce qui reste — une navigation de premier niveau piégée qui ferme
+  une session — ne détruit rien, ne divulgue rien, et se répare en se reconnectant ;
+  en regard, une déconnexion qui répond 403 depuis un favori, une page servie par un
+  cache ou une session expirée échoue précisément quand on en a besoin.
+
+  Le ralentissement des échecs de connexion utilise le `login_throttling` natif du
+  SecurityBundle, adossé à `symfony/rate-limiter` ; la vérification du second facteur,
+  la demande de réinitialisation et l'acceptation d'invitation portent chacune leur
+  propre limiteur nommé. L'affichage rend les **secondes** restantes, que l'exception
+  native ne fournit pas : le délai restant est lu sur le limiteur, pas déduit du
+  message. Aucun blocage définitif.
 
 ### AD-19 — L'obligation de 2FA est un attribut du rôle
 
