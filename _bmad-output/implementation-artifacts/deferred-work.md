@@ -926,3 +926,41 @@ Entrees ajoutees par bmad-build. Append-only : ne pas modifier les entrees exist
     Déclencheur : la première autre place qui enchaîne migrations et écriture dans un même
     processus. Le déploiement de la story 3.1 est le candidat naturel — s'il lance `migrate`
     en processus séparé, il n'est pas concerné, et ce report peut rester ouvert.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-12-ecrire-le-guide-de-derivation.md`
+  summary: Refermer la surface de rebranding — favicon servi par AssetMapper sous `assets/brand/` avec `symfony/asset` ajouté en `require`, `h1` de l'accueil en `{{ app_name }}`, et `BaseTemplateTest` étendu aux deux.
+  evidence: |
+    Ce sont les reports 1.4 (favicon), 1.5 (`h1`) et 1.11 (attribution à la 1.12), plus haut
+    dans ce fichier. Fabrice a d'abord intégré ce travail à la 1.12 (2026-09-16), puis l'a
+    sorti au découpage de la spec, trop longue pour un seul objectif. Il a aussi tranché le
+    comment : l'icône vit sous `assets/brand/favicon.svg`, servie par `asset()`, ce qui
+    demande d'ajouter `symfony/asset` en `require` (aujourd'hui absent : la fonction Twig
+    `asset()` n'existe pas). Le contrat UX-DR-2 garde « deux choses » : les variables
+    `oklch`, et la marque graphique (logo de la sidebar et favicon) ; l'en-tête de
+    `assets/styles/brand.css` et `README.md:290` sont à aligner. Le guide de dérivation
+    liste ce reste en limite assumée jusqu'à cette story.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-12-ecrire-le-guide-de-derivation.md`
+  summary: La découverte des services des modules (`config/services.yaml:75`) n'exclut que `{Dto,Entity}`, alors que celle du socle (`:70`) exclut aussi `Contract`, `Enum`, `Exception` et `Message` — les enums, exceptions et messages d'un module sont proposés au conteneur.
+  evidence: |
+    Constaté en écrivant le guide de dérivation (revue 1, R12). Les raisons que
+    `config/services.yaml:57-67` donne pour exclure `Exception` et `Message` du socle
+    (objets de données construits par l'appelant, scalaires non autowirables) valent mot
+    pour mot dans un module ; `Enum` n'est pas instanciable. Aucun module réel n'existe,
+    donc rien n'échoue aujourd'hui : `lint:container` (dans ses deux environnements)
+    tranchera au premier module qui livre l'un de ces dossiers. Le correctif est une
+    ligne de `config/`, ce que la story 1.12 s'interdit ; il se fait sur le socle, et
+    le glob du miroir `when@test` doit suivre. Le guide nomme la limite en attendant.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-12-ecrire-le-guide-de-derivation.md`
+  summary: L'en-tête de `deptrac.yaml` (l. 36-39) et le commentaire de `UndeclaredModule` (l. 173-175) affirment qu'oublier une des quatre éditions ne rouvre pas la frontière ; c'est faux pour le bloc de couche quand l'exclusion du `must_not` est faite.
+  evidence: |
+    Revue 1 de la story 1.12 (R6), vérifié dans `vendor/deptrac/deptrac` :
+    `LayerProvider::getAllowedLayers()` ne valide pas qu'un nom de ruleset désigne une
+    couche déclarée. Un module exclu de `UndeclaredModule` sans bloc de couche n'a plus
+    de couche de racine ; sa couche technique hérite de `+AnyRoot` et atteint `Core`
+    sans violation. Le guide de dérivation le dit et impose l'ordre des éditions
+    (exclusion en dernier) ; les deux commentaires de `deptrac.yaml` sont à corriger,
+    et `tests/Core/BoundaryTest.php` pourrait tenir le cas (module exclu mais non
+    déclaré) comme il tient déjà le module non déclaré. La 1.12 s'interdit de toucher
+    `deptrac.yaml`.

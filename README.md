@@ -15,6 +15,10 @@ leur nom. Ce dépôt n'est plus un catalogue installable ailleurs — c'est l'es
 travail lui-même, qui embarque aussi [BMAD](https://bmadcode.com/) (`_bmad/`), dont les
 agents sont alignés sur cette suite via les overrides de `_bmad/custom/`.
 
+Pour construire sur le socle ERP de ce dépôt — où va une classe, comment ajouter un
+module, ce qu'un dérivé configure et sauvegarde —, lire
+[`docs/DERIVATION.md`](docs/DERIVATION.md).
+
 ## Porte de qualité
 
 Le socle ERP qui vit dans ce dépôt a une porte unique, en deux façades qui vérifient la
