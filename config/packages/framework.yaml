@@ -3,7 +3,13 @@ framework:
     secret: '%env(APP_SECRET)%'
 
     # Note that the session will be started ONLY if you read or write from it.
-    session: true
+    session:
+        # Le défaut du framework, écrit en toutes lettres parce que l'exception nommée
+        # d'AD-18 — la déconnexion sans jeton CSRF, `config/packages/security.yaml` — en
+        # dépend : c'est `Lax` qui fait qu'une requête de sous-ressource depuis un site
+        # tiers n'emporte pas ce cookie. Passer cette clé à `none` rouvre la décision
+        # d'architecture ; ce n'est pas un réglage de dérivé.
+        cookie_samesite: lax
 
     #esi: true
     #fragments: true

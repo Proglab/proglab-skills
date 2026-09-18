@@ -105,10 +105,12 @@
                         {% endif %}
                     </div>
 
-                    {# AD-18, sans exception. Jeton en session : le CSRF sans état exigerait
-                       son contrôleur Stimulus, ce qui contredit AD-17. L'identifiant est
-                       celui que `PasswordController` déclare — un couplage visible aux
-                       deux bouts. #}
+                    {# AD-18 : la seule écriture exemptée est la déconnexion, nommée dans
+                       `config/packages/security.yaml`. Une demande de réinitialisation
+                       n'en est pas une. Jeton en session : le CSRF sans état exigerait son
+                       contrôleur Stimulus, ce qui contredit AD-17. L'identifiant est celui
+                       que `PasswordController` déclare — un couplage visible aux deux
+                       bouts. #}
                     <input type="hidden" name="_csrf_token" value="{{ csrf_token(constant('App\\Core\\Controller\\PasswordController::CSRF_REQUEST')) }}">
 
                     <twig:Button type="submit">{{ 'password.request.submit'|trans }}</twig:Button>

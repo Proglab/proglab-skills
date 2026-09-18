@@ -50,8 +50,9 @@ security:
                 # Le formulaire est rendu et soumis à la même URL, et le pare-feu
                 # intercepte le POST avant tout contrôleur.
                 default_target_path: app_home
-                # AD-18 ne souffre aucune exception : jeton en session, vérifié par le
-                # badge CSRF du passport.
+                # AD-18 : la connexion n'est pas l'exception nommée — celle-ci est la
+                # déconnexion, plus bas, et elle est seule. Jeton en session, vérifié par
+                # le badge CSRF du passport.
                 enable_csrf: true
                 # Le défaut du framework, écrit en toutes lettres : c'est l'identifiant
                 # que `templates/security/login.html.twig` passe à `csrf_token()`, et un
@@ -85,14 +86,42 @@ security:
             # Aucun écran. La route est vide : le pare-feu intercepte la requête avant
             # qu'elle n'atteigne le contrôleur.
             #
-            # `enable_csrf` vaut `false` par défaut sur la déconnexion, et sans lui un
-            # `<img src="https://…/logout">` posé sur un site tiers ferme la session de qui
-            # visite ce site. AD-18 dit « toute écriture, sans exception », et fermer une
-            # session en est une. L'URL porteuse du jeton se construit avec `logout_path()`
-            # côté Twig — jamais `path('app_logout')`, qui rendrait un lien sans jeton.
+            # **L'exception nommée d'AD-18, et la seule.** La règle reste « CSRF obligatoire
+            # sur toute écriture » ; la déconnexion en sort, ici et nulle part ailleurs.
+            # L'analogie ne vaut pas argument : toute autre exemption — un module, un POST
+            # jugé anodin — exige une nouvelle décision d'architecture, pas un renvoi à
+            # cette ligne.
+            #
+            # **Ce que `SameSite=Lax` ferme déjà.** Le cookie de session porte
+            # `SameSite=Lax`, écrit en toutes lettres sous `framework.session` : une requête
+            # de sous-ressource depuis un site tiers — le `<img src="https://…/logout">` du
+            # manuel — n'emporte pas le cookie, donc ne trouve aucune session à fermer. Ce
+            # vecteur-là est clos sans jeton ; `Lax` atténue le reste du CSRF sans le
+            # remplacer, et c'est pourquoi l'exception s'arrête à la déconnexion.
+            #
+            # **Ce que le jeton coûtait.** La déconnexion est un GET ; le jeton y voyageait
+            # en query string, donc dans les journaux d'accès et les en-têtes `Referer` —
+            # une protection qui fuit exactement là où elle s'applique. Et elle ne
+            # s'appliquait qu'aux URLs fabriquées par `logout_path()` dans la session
+            # courante : un favori, un lien recopié, une page servie par un cache ou une
+            # session expirée recevaient un 403, précisément quand on veut se déconnecter.
+            #
+            # **Le résidu, assumé.** Deux choses restent. (1) Une navigation de premier
+            # niveau piégée qui ferme une session : elle ne détruit rien, ne divulgue rien,
+            # et se répare en se reconnectant. (2) Le prefetch au survol de Turbo 8
+            # (`importmap.php`), actif par défaut : le premier lien de déconnexion rendu —
+            # la coque de la story 2.3 — déconnecterait au survol de l'entrée de menu. Sa
+            # parade est sur le lien lui-même, `data-turbo-prefetch="false"`, et non ici.
+            # Dans les deux cas une session se ferme, et rien d'autre : c'est cette innocuité
+            # qui distingue cette écriture de toutes les autres, et qui interdit de
+            # transporter le raisonnement à une écriture qui modifie une donnée.
+            #
+            # Écrit en toutes lettres plutôt que la clé retirée : le défaut du framework est
+            # déjà « pas de jeton », donc la ligne ne change rien — elle rend l'exception
+            # greppable à son point de décision, comme `csrf_token_id` sur `form_login`.
             logout:
                 path: app_logout
-                enable_csrf: true
+                enable_csrf: false
 
     # Une seule règle, et elle est le filet de la seule page que cette story pose.
     # `PUBLIC_ACCESS` est explicite plutôt qu'implicite : le jour où l'Epic 2 ajoute un

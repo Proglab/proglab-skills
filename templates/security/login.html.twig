@@ -130,8 +130,10 @@
                         />
                     </div>
 
-                    {# AD-18, sans exception. Jeton en session : le CSRF sans état exigerait
-                       son contrôleur Stimulus, ce qui contredit AD-17. #}
+                    {# AD-18 : la seule écriture exemptée est la déconnexion, nommée dans
+                       `config/packages/security.yaml`. Une connexion n'en est pas une.
+                       Jeton en session : le CSRF sans état exigerait son contrôleur
+                       Stimulus, ce qui contredit AD-17. #}
                     <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
 
                     <twig:Button type="submit">{{ 'security.login.submit'|trans }}</twig:Button>

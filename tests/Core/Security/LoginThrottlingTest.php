@@ -381,7 +381,7 @@ final class LoginThrottlingTest extends WebTestCase
             'Le succès a rendu les tentatives déjà dépensées : trouver le mot de passe offrirait une nouvelle salve.',
         );
 
-        $client->request('GET', FirewallUrls::logoutPath($client, self::getContainer()));
+        $client->request('GET', '/logout');
 
         for ($attempt = 0; $attempt < 2; ++$attempt) {
             $client->submit(self::loginForm($client, self::EMAIL, self::WRONG_PASSWORD));
