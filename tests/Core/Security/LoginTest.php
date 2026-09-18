@@ -323,7 +323,7 @@ final class LoginTest extends WebTestCase
 
         self::assertSame(
             'lax',
-            $options['cookie_samesite'] ?? null,
+            $options['cookie_samesite'],
             'Le cookie de session ne porte plus `SameSite=Lax` : la déconnexion est exemptée de CSRF (AD-18, exception nommée dans `config/packages/security.yaml`) parce qu\'une requête de sous-ressource n\'emporte pas ce cookie. Sans cette politique, `/logout` redevient déclenchable depuis un site tiers.',
         );
     }
