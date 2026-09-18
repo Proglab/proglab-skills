@@ -715,6 +715,97 @@ So that je ne reste pas connecté parce qu'un jeton manque à l'URL.
 **When** elle est soumise
 **Then** elle porte toujours son jeton CSRF — l'exception ne s'étend à rien d'autre
 
+### Story 1.14 : Refermer la surface de rebranding
+
+As a développeur qui dérive le socle pour un client,
+I want que le nom et l'icône du dérivé viennent de sa configuration et de ses fichiers de marque,
+So that un rebranding complet ne laisse traîner nulle part le nom du socle.
+
+**Estimation :** ~45 min de travail agent (implémentation et tests).
+
+**Note.** Ce reste a été reporté trois fois — story 1.4 pour le favicon, story 1.5 pour le
+`h1`, story 1.11 pour l'attribution — puis sorti du découpage de la 1.12, trop longue pour
+un seul objectif. `deferred-work.md` en porte l'historique et le comment déjà tranché par
+Fabrice. Le **logo de la sidebar**, troisième pièce de UX-DR-2, n'est pas ici : il arrive
+avec la coque de l'application, story 2.3.
+
+**Acceptance Criteria:**
+
+**Given** un dérivé qui a renseigné `APP_NAME`
+**When** il ouvre la page d'accueil
+**Then** le `h1` porte le nom du dérivé et non « Socle ERP » en dur
+**And** la page n'affiche plus deux noms différents
+
+**Given** le gabarit de base
+**When** un navigateur charge n'importe quelle page
+**Then** il y trouve une icône déclarée, servie par AssetMapper depuis `assets/brand/`
+
+**Given** un dérivé qui remplace le fichier d'icône de `assets/brand/`
+**When** il recharge l'application
+**Then** l'icône change sans qu'aucun fichier de `src/Core/` ni de `config/` ait été édité
+
+**Given** `composer.json`
+**When** je cherche ce qui rend la fonction Twig `asset()` disponible
+**Then** `symfony/asset` est en `require` et non en `require-dev` — le gabarit l'appelle en production
+
+**Given** `BaseTemplateTest`
+**When** je cherche ce qui garde la surface de marque
+**Then** il tient l'icône déclarée et le `h1` en `app_name` au même titre que le `<title>`
+
+**Given** le contrat de rebranding (UX-DR-2)
+**When** je le lis dans `assets/styles/brand.css`, dans `README.md` et dans `docs/DERIVATION.md`
+**Then** les trois disent la même chose, et la limite « la surface de marque n'est pas encore complète » a disparu du guide
+
+**Given** la porte de qualité
+**When** `make qa` tourne
+**Then** les six catégories passent sans qu'aucune cible ni aucun job n'ait été ajouté
+
+### Story 1.15 : Corriger la découverte des services d'un module et le filet de la frontière
+
+As a développeur qui livre le premier module d'un dérivé,
+I want qu'un module se câble comme le socle et que le filet de la frontière tienne ce que ses commentaires promettent,
+So that ma première erreur soit signalée par un outil, et non découverte en production.
+
+**Estimation :** ~1 h de travail agent (implémentation et tests).
+
+**Note.** Les deux défauts ont été trouvés en écrivant le guide de dérivation (story 1.12,
+constats R12 et R6) et remontés dans `deferred-work.md` sans être corrigés : cette story
+s'interdisait de toucher `config/` et `deptrac.yaml`. Le guide les nomme aujourd'hui en
+« Limites assumées » ; cette story les y efface. Ils sont réunis parce qu'ils sont les deux
+mêmes oublis du même mécanisme — ce qu'un module apporte au conteneur, et ce que la
+frontière refuse — et parce que chacun se corrige par une ligne de configuration et un
+test. Ils restent séparables si l'implémentation préfère deux lots.
+
+**Acceptance Criteria:**
+
+**Given** un module qui livre `Enum/`, `Exception/` ou `Message/`
+**When** le conteneur se construit, dans les deux environnements de `lint:container`
+**Then** ces classes ne sont pas proposées comme services, exactement comme celles du socle
+
+**Given** le glob des modules et son miroir `when@test`
+**When** je les compare à celui du socle
+**Then** ils excluent la même liste de dossiers — au moins `Enum`, `Exception` et `Message` en plus de `Dto` et `Entity` — et tout écart qui subsiste est justifié sur place, là où le socle écrit déjà la raison de chacune de ses exclusions
+
+**Given** un module de fixture qui livre l'un de ces dossiers
+**When** la suite tourne
+**Then** un test le prouve, et la régression ne peut plus revenir en silence
+
+**Given** un module retiré du `must_not` d'`UndeclaredModule` sans son bloc de couche, sa ligne de ruleset ou son nom dans `AnyRoot`
+**When** la suite tourne
+**Then** un test rougit en nommant l'édition manquante — y compris pour les modules d'un dérivé, que rien ne vérifie aujourd'hui
+
+**Given** les commentaires de `deptrac.yaml` qui décrivent le coût d'un module et le filet `UndeclaredModule`
+**When** je les lis
+**Then** ils disent ce que le filet tient réellement : oublier l'exclusion du `must_not` ne rouvre rien, mais faire l'exclusion sans déclarer le bloc de couche laisse le module sans couche de racine, donc libre d'atteindre `Core`
+
+**Given** `docs/DERIVATION.md`
+**When** je cherche ces deux limites dans « Limites assumées »
+**Then** elles n'y sont plus, et la recette « ajouter un module » dit ce que le socle vérifie désormais à la place du lecteur
+
+**Given** la porte de qualité
+**When** `make qa` tourne
+**Then** les six catégories passent sans qu'aucune cible ni aucun job n'ait été ajouté
+
 ---
 
 ## Epic 2 : Administrer les comptes et les droits

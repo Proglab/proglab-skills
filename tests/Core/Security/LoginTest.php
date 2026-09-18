@@ -285,6 +285,12 @@ final class LoginTest extends WebTestCase
         self::assertResponseRedirects('/', null, 'Une session ouverte n\'a rien à faire sur la page de connexion.');
     }
 
+    /**
+     * `/logout` tout nu : aucun paramètre, et aucune page rendue au préalable qui aurait
+     * pu en fabriquer un. C'est l'exception nommée d'AD-18 — la déconnexion doit aboutir
+     * depuis un favori, un lien recopié, une page servie par un cache ou une session
+     * expirée, soit précisément les états où aucun jeton n'est disponible.
+     */
     #[Test]
     public function logging_out_closes_the_session(): void
     {
@@ -294,27 +300,61 @@ final class LoginTest extends WebTestCase
         $client->submit(self::loginForm($client, 'marc@example.test', self::PASSWORD));
         self::assertTrue(self::isSignedIn($client), 'La connexion n\'a pas ouvert de session.');
 
-        // L'URL que `logout_path()` rend, jeton CSRF compris. `/logout` tout nu est
-        // refusé — c'est le point d'AD-18 : fermer une session est une écriture, et un
-        // `<img src="…/logout">` posé sur un site tiers ne doit pas la déclencher.
-        $client->request('GET', FirewallUrls::logoutPath($client, self::getContainer()));
+        $client->request('GET', '/logout');
 
-        self::assertResponseRedirects();
+        self::assertResponseRedirects('/');
         self::assertFalse(self::isSignedIn($client), 'La déconnexion n\'a pas refermé la session.');
     }
 
+    /**
+     * Le porteur de la garantie, depuis que le jeton est parti.
+     *
+     * L'exception d'AD-18 tient tout entière sur `SameSite=Lax` : c'est lui, et lui seul,
+     * qui empêche un `<img src="…/logout">` posé sur un site tiers d'emporter le cookie de
+     * session. Sans ce test, un dérivé qui passe la clé à `none` rouvre le vecteur que la
+     * déconnexion sans jeton laisse ouvert, et rien ne rougit.
+     */
     #[Test]
-    public function logging_out_without_its_csrf_token_is_refused(): void
+    public function the_session_cookie_keeps_the_samesite_policy_the_logout_exception_rests_on(): void
     {
-        $client = self::createClient();
-        Accounts::create(self::getContainer(), 'marc@example.test', self::PASSWORD);
+        self::createClient();
 
-        $client->submit(self::loginForm($client, 'marc@example.test', self::PASSWORD));
+        $options = self::getContainer()->getParameter('session.storage.options');
 
-        $client->request('GET', '/logout');
+        self::assertSame(
+            'lax',
+            $options['cookie_samesite'],
+            'Le cookie de session ne porte plus `SameSite=Lax` : la déconnexion est exemptée de CSRF (AD-18, exception nommée dans `config/packages/security.yaml`) parce qu\'une requête de sous-ressource n\'emporte pas ce cookie. Sans cette politique, `/logout` redevient déclenchable depuis un site tiers.',
+        );
+    }
 
-        self::assertResponseStatusCodeSame(403, 'Une déconnexion sans jeton CSRF doit être refusée (AD-18).');
-        self::assertTrue(self::isSignedIn($client), 'La session a été fermée par une requête sans jeton : un site tiers peut déconnecter l\'utilisateur.');
+    /**
+     * L'autre moitié du renversement : l'URL que l'application fabrique elle-même ne
+     * transporte plus rien à fuir. Le jeton de déconnexion voyageait en query string d'un
+     * GET, donc dans les journaux d'accès et les en-têtes `Referer` — une protection qui
+     * fuit là où elle s'applique (AD-18, raison (b) de l'exception nommée).
+     *
+     * C'est le générateur de la sécurité qui répond, jamais un chemin recopié : c'est lui
+     * que `logout_path()` appelle côté Twig. Le pare-feu y est **nommé** plutôt que déduit
+     * du token courant, qui n'existe pas hors requête.
+     */
+    #[Test]
+    public function the_logout_link_the_application_renders_carries_no_token(): void
+    {
+        self::createClient();
+
+        $container = self::getContainer();
+        $path = $container->get('security.logout_url_generator')->getLogoutPath('main');
+
+        self::assertNull(
+            parse_url($path, \PHP_URL_QUERY),
+            'Le lien de déconnexion porte encore une query string : le jeton y fuirait dans les journaux d\'accès et les en-têtes `Referer`.',
+        );
+        self::assertSame(
+            $container->get('router')->generate('app_logout'),
+            $path,
+            'Le lien rendu n\'est pas l\'URL nue de la route : la sécurité y ajoute quelque chose que le routeur ne met pas.',
+        );
     }
 
     // -------------------------------------------------------------------------------

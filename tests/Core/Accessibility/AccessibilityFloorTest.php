@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Tests\Core\Accessibility;
 
 use App\Tests\Core\Quality\GateFiles;
-use App\Tests\Core\Security\FirewallUrls;
 use App\Tests\Core\Theme\ThemeSheet;
 use DOMElement;
 use PHPUnit\Framework\Attributes\Test;
@@ -854,16 +853,7 @@ final class AccessibilityFloorTest extends WebTestCase
             // déclarerait `: never` parce qu'elle lève toujours — une page 410, un
             // garde-fou — rendrait une page d'erreur et échouerait ici, au lieu de sortir
             // du plancher en silence.
-            //
-            // La déconnexion exige son jeton CSRF : sans lui elle répond 403, et le
-            // plancher mesurerait la protection CSRF au lieu de la route. `FirewallUrls`
-            // demande donc à la sécurité elle-même l'URL qu'elle attend, et la requête est
-            // rejouée.
             if (self::neverReturns($controller)) {
-                if (!$client->getResponse()->isRedirect()) {
-                    $client->request('GET', FirewallUrls::signed($client, self::getContainer(), $route->getPath()));
-                }
-
                 self::assertTrue(
                     $client->getResponse()->isRedirect(),
                     \sprintf(
