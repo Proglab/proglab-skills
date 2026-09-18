@@ -364,14 +364,31 @@ Un dérivé change **deux choses, et seulement deux** :
    sombres. **Remesurez le contraste** après chaque changement (4,5:1 sur le texte,
    3:1 sur les composants) avec le skill `symfony-proglab-accessibility`, car aucun
    test ne mesure des pixels rendus ;
-2. **la marque graphique** : le logo de la sidebar (un carré aux couleurs de
-   `--primary`, avec les initiales du dérivé, qui arrive avec la coque de
-   l'application, story 2.3) et le favicon, qui vivra sous `assets/brand/`. Ni l'un ni
-   l'autre n'existe encore : voir « Limites assumées ».
+2. **la marque graphique**, qui vit dans [`assets/brand/`](../assets/brand) : l'icône du
+   navigateur — `favicon.svg`, et son repli matriciel `favicon.png` que Safari prend
+   parce qu'il ne rend pas les favicons SVG — et le logo de la sidebar (un carré aux
+   couleurs de `--primary`, avec les initiales du dérivé), qui arrive avec la coque de
+   l'application, story 2.3. Le défaut du socle est un carré plein sans glyphe, qui
+   porte sa propre media query sombre pour rester visible dans un onglet sombre.
+
+**Ces fichiers se remplacent, ils ne s'éditent pas.** Le gabarit les désigne par leur
+chemin logique et les sert par AssetMapper : **aucun fichier de code n'est à modifier**,
+ni dans `src/`, ni dans `config/`. Deux points de vigilance, tous deux silencieux :
+
+- **Remplacez `favicon.svg` et `favicon.png` ensemble.** Les deux `<link rel="icon">`
+  sont indépendants : n'en remplacer qu'un donne votre marque sur certains navigateurs
+  et le carré du socle sur les autres, sans aucun message d'erreur.
+- **Rejouez `php bin/console asset-map:compile` après le remplacement.** Le chemin
+  public porte un condensat du contenu du fichier ; tant que les assets ne sont pas
+  recompilés, l'application continue de servir l'ancienne icône. Le déploiement
+  exécute cette commande (voir [`README.md`](../README.md)) ; en développement,
+  AssetMapper lit les fichiers sources et l'icône change au rechargement.
 
 Le nom du produit n'est pas une troisième chose à rebrander : c'est de la
-configuration (`APP_NAME`, voir ci-dessous). `assets/styles/theme.css` contient le
-thème du socle et n'est **jamais** modifié par un dérivé. Aucun réglage de marque
+configuration (`APP_NAME`, voir ci-dessous). Il alimente le `<title>` de chaque page et
+le pied des emails ; il ne va **pas** dans le `h1`, qui nomme la **page**.
+`assets/styles/theme.css` contient le thème du socle et n'est **jamais** modifié par un
+dérivé. Aucun réglage de marque
 n'existe dans l'administration, et aucun template ne code une couleur en dur. Deux
 valeurs du kit shadcn sont sous un seuil WCAG : la bordure de champ `--input` et
 l'anneau de focus `--ring`. Elles sont **conservées** comme choix assumé et ne sont
@@ -386,8 +403,8 @@ serveur.
 
 | Quoi | Où | À savoir |
 |---|---|---|
-| Nom du produit | `APP_NAME`, dans `.env.local` ou l'environnement du serveur | Il va dans le paramètre `app.name`, puis dans la variable globale Twig `app_name`. Le `<title>` de chaque page devient `<page> — <nom du dérivé>`, et les emails le reprennent. |
-| Marque | `assets/styles/brand.css`, puis la marque graphique | Voir « Rebranding ». |
+| Nom du produit | `APP_NAME`, dans `.env.local` ou l'environnement du serveur | Il va dans le paramètre `app.name`, puis dans la variable globale Twig `app_name`. Le `<title>` de chaque page devient `<page> — <nom du dérivé>` et les emails le reprennent. Le `h1` nomme la page, jamais le produit : un lecteur d'écran l'annonce après chaque navigation Turbo, il doit dire où l'on est. |
+| Marque | `assets/styles/brand.css`, puis les fichiers de `assets/brand/` | Voir « Rebranding ». Les fichiers d'icône se remplacent, ils ne s'éditent pas. |
 | SMTP | `MAILER_DSN` et `MAILER_SENDER` | En développement, `MAILER_DSN` vise Mailpit. En production, il vise le SMTP du serveur client. La valeur par défaut `no-reply@localhost` ne peut pas servir en production, et c'est voulu. |
 | Langues actives | Table `language`, colonne `enabled` | Les langues **supportées** (`fr`, `en`, `nl`) sont fixées dans le code (`App\Core\Enum\SupportedLocale`). Les langues **actives** sont des lignes en base, et toutes les trois sont actives à l'installation (migration `Version20260911074811`). **Jamais une variable d'environnement** (AD-14) : FR-22 exige un écran d'administration et une entrée d'audit. Cet écran arrive avec la story 2.9. |
 | `DEFAULT_URI` | `.env.local` ou l'environnement du serveur | C'est l'hôte des liens que le worker écrit dans les emails. `php bin/console app:deployment:check` échoue tant que `DEFAULT_URI` pointe sur un hôte local. |
@@ -569,13 +586,6 @@ ne fait que déconnecter les utilisateurs.
   sept jours.
 - **Les langues actives n'ont pas encore d'écran** (story 2.9). D'ici là, on les
   active ou désactive directement en base.
-- **La surface de marque n'est pas encore complète.** Le `<h1>` de
-  `templates/home/index.html.twig` affiche « Socle ERP » en dur au lieu de
-  `{{ app_name }}`, le gabarit ne déclare aucun favicon, `assets/brand/` n'existe pas
-  encore, et `BaseTemplateTest` ne vérifie ni l'un ni l'autre. Tant que ce n'est pas
-  corrigé, un dérivé renommé montre deux noms sur sa page d'accueil. Ce reste est
-  consigné dans
-  [`deferred-work.md`](../_bmad-output/implementation-artifacts/deferred-work.md).
 - **La découverte des services des modules exclut moins de dossiers que celle du
   socle.** Le glob des modules n'exclut que `Dto/` et `Entity/`. Celui du socle exclut
   aussi `Contract/`, `Enum/`, `Exception/` et `Message/`. Les classes des dossiers

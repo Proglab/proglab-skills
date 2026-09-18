@@ -9,8 +9,16 @@
  * Deux choses se rebrandent, et seulement deux (DESIGN.md l.398-409) :
  *
  *   1. les variables ci-dessous ;
- *   2. le logo de la sidebar — un carré `rounded-md` aux couleurs de `--primary`,
- *      portant les initiales du dérivé (il arrive avec la coque, story 2.3).
+ *   2. la marque graphique, qui vit dans `assets/brand/` — l'icône du navigateur
+ *      (`favicon.svg` et son repli matriciel `favicon.png`, pour Safari) et, à venir, le
+ *      logo de la sidebar, un carré `rounded-md` aux couleurs de `--primary` portant les
+ *      initiales du dérivé (il arrive avec la coque, story 2.3). Ces fichiers se
+ *      **remplacent**, ils ne s'éditent pas — les deux ensemble, et les assets sont à
+ *      recompiler ensuite (`asset-map:compile`, joué par le déploiement).
+ *
+ * Le nom du produit n'est pas une troisième chose : c'est de la configuration
+ * (`APP_NAME`), et il alimente le `<title>` de chaque page. Le `h1` nomme la page, pas
+ * le produit.
  *
  * Aucun réglage de marque n'existe dans l'administration : la marque est du code,
  * versionnée avec le dérivé.

@@ -283,16 +283,22 @@ lui, se télécharge au premier build — la chaîne est sans Node, elle n'est p
 Le thème est en deux feuilles. `assets/styles/theme.css` porte tout le socle — rôles de
 couleur en clair et en sombre, typographie, rayons, espacement, mouvement — et n'est
 jamais édité par un dérivé. `assets/styles/brand.css` est livré vide : c'est le seul
-fichier qu'un dérivé touche, et il ne contient que les variables qu'il a le droit de
-redéfinir. `tests/Core/Theme/` refuse un rôle sans variante sombre, une couleur codée en
+fichier de thème qu'un dérivé touche, et il ne contient que les variables qu'il a le
+droit de redéfinir. `tests/Core/Theme/` refuse un rôle sans variante sombre, une couleur codée en
 dur dans un template, un second kit de composants et un binaire Tailwind non épinglé.
 
 Toutes les pages passent par un gabarit unique, `templates/base.html.twig` : lien
 « Aller au contenu », repères, `<main id="contenu" tabindex="-1">`, région d'annonces
-persistante que les navigations Turbo ne recréent pas, et un `<title>` composé
-« <page> — <nom du dérivé> ». Le nom du dérivé vient de la variable d'environnement
-`APP_NAME` — c'est, avec `brand.css` et le logo, tout ce qu'un rebranding touche. Le `h1`
-appartient au template de page, jamais au gabarit.
+persistante que les navigations Turbo ne recréent pas, un `<title>` composé
+« <page> — <nom du dérivé> » et l'icône du navigateur. Le nom du dérivé vient de la
+variable d'environnement `APP_NAME` et alimente le `<title>` de chaque page ainsi que le
+pied des emails. Il ne va **pas** dans le `h1`, qui nomme la page : c'est ce titre-là
+qu'un lecteur d'écran annonce après chaque navigation Turbo, et il doit dire où l'on est. Un rebranding touche deux choses, et deux seulement — les variables de
+`brand.css` et la marque graphique de `assets/brand/`, dont les deux fichiers d'icône
+`favicon.svg` et `favicon.png` se remplacent **ensemble**, sans éditer un fichier de
+`src/Core/` ni de `config/` (leur URL portant un condensat du contenu, le déploiement les
+recompile avec `asset-map:compile`). Le `h1` appartient au template de page, jamais au
+gabarit.
 
 Les composants viennent du kit shadcn de Symfony UX Toolkit, **copiés** dans le dépôt :
 

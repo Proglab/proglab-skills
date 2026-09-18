@@ -964,3 +964,147 @@ Entrees ajoutees par bmad-build. Append-only : ne pas modifier les entrees exist
     et `tests/Core/BoundaryTest.php` pourrait tenir le cas (module exclu mais non
     déclaré) comme il tient déjà le module non déclaré. La 1.12 s'interdit de toucher
     `deptrac.yaml`.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-14-refermer-la-surface-de-rebranding.md`
+  status: CLOS — livré par la story 1.14 le 2026-09-18
+  summary: Clôture des quatre entrées de la surface de rebranding ci-dessus — le favicon absent (report de la 1.4), le « Socle ERP » codé en dur dans le `h1` (report de la 1.5), l'attribution à la seule 1.12 (report de la 1.11) et sa reprise au découpage de la 1.12.
+  evidence: |
+    Append-only : les quatre entrées restent en place au-dessus, cette entrée dit ce qui
+    les referme.
+
+    **Ce qui est livré.** `assets/brand/` existe et porte deux fichiers de marque —
+    `favicon.svg`, un carré plein sans glyphe avec sa propre
+    `@media (prefers-color-scheme: dark)`, et `favicon.png`, le repli matriciel que Safari
+    prend faute de rendre les SVG. `templates/base.html.twig` déclare les deux
+    `<link rel="icon">` dans son `<head>`, hors de tout bloc, servis par `asset()` —
+    `symfony/asset` est passé en `require`, la fonction Twig n'existait pas. Le `<h1>`
+    de l'accueil n'écrit plus « Socle ERP ». `BaseTemplateTest` tient la surface entière,
+    et les trois énoncés du contrat (`assets/styles/brand.css`, `README.md`,
+    `docs/DERIVATION.md`) sont réalignés ; la limite « la surface de marque n'est pas
+    encore complète » a disparu du guide, et un test en garde l'absence.
+
+    **Une divergence assumée avec l'AC d'origine.** Les reports de la 1.4 et de la 1.5
+    demandaient `<h1>{{ app_name }}</h1>`. La revue de la 1.14 a montré que cela contredit
+    le spine UX (DESIGN.md l. 515 : le `h1` nomme la page) et que
+    `page_focus_controller` place le focus sur ce `h1` après chaque navigation Turbo — un
+    lecteur d'écran aurait annoncé le nom du produit au lieu de la page atteinte
+    (WCAG 2.4.6). Fabrice a tranché le 2026-09-18 : le `h1` porte
+    `'home.index.title'|trans`, le nom du dérivé reste au `<title>` seul, et l'AC
+    correspondante d'`epics.md` est amendée. Le défaut que les reports visaient est réglé
+    à l'identique — plus de nom de socle en dur, plus deux noms sur la page.
+
+    **Ce qui reste ouvert, et qui n'appartient pas à ces reports.** L'ordre des deux
+    `<link rel="icon">` (SVG d'abord, `.png` ensuite) est celui du bloc gelé, et
+    **l'affichage effectif n'a pas pu être mesuré** — voir l'entrée dédiée en fin de
+    fichier. Le blocage technique, lui, est levé : le SVG livré en première intention ne
+    parsait pas, il parse depuis la boucle 1 de revue (`DOMDocument::loadXML()` rend `true`
+    sans erreur libxml, sur le fichier du dépôt comme sur le fichier servi). Le logo de la
+    sidebar, troisième pièce de UX-DR-2, reste à la story 2.3.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-14-refermer-la-surface-de-rebranding.md`
+  summary: Le repli matriciel `assets/brand/favicon.png` duplique le `--primary` du thème dans ses pixels et aucun test ne les lit — recolorer `--primary` laisse le favicon que Safari affiche sur l'ancienne teinte, sans que la porte rougisse.
+  evidence: |
+    Relevé en revue de la story 1.14 (boucle 2, constat M). Sondé : 932 pixels à
+    `0x171717`, la conversion sRGB d'`oklch(0.205 0 0)`.
+    `BaseTemplateTest::the_default_svg_icon_carries_the_two_primary_colours_of_the_theme()`
+    confronte le **SVG** aux deux `--primary` de `assets/styles/theme.css` ; le PNG est
+    hors de cette garde.
+
+    **Pourquoi l'écart est assumé plutôt que comblé.** Lire un pixel demande une extension
+    d'image, et la porte tourne sur un PHP qui n'en a aucune : `.github/workflows/ci.yml`
+    installe `ctype, iconv, intl, pdo_mysql`, et `composer.json` ne requiert que
+    `ext-ctype`, `ext-iconv` et `ext-intl`. Exiger `ext-gd` pour vérifier la couleur d'un
+    carré l'exigerait sur chaque serveur client. Un décodeur PNG écrit à la main dans le
+    test (chunks plus `zlib_decode`, dé-filtrage des scanlines) éviterait l'extension au
+    prix d'une cinquantaine de lignes de décodage d'image dans une suite de tests, et de
+    ses propres bugs.
+
+    **Ce qui tient l'écart en attendant** : le message d'échec du test du SVG nomme les
+    deux fichiers et demande de régénérer le PNG dans la même foulée — le seul instant où
+    l'oubli peut se produire est celui où ce test devient rouge. Le commentaire de
+    `assets/brand/favicon.svg` le dit aussi.
+
+    **Ce qui trancherait** : une décision sur `ext-gd`. La story 2.3 (coque, logo de
+    sidebar) ajoute une troisième pièce à la marque graphique et sera la première à payer
+    deux fois le même oubli ; c'est le moment naturel de rouvrir la question.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-14-refermer-la-surface-de-rebranding.md`
+  summary: Un `APP_NAME` vide traverse le pied des emails (`templates/emails/base.html.twig:50` et `:61`), où aucune garde ne le rattrape — `app.name` n'a pas de processeur `default:`.
+  evidence: |
+    Relevé en revue de la story 1.14 (boucle 2, constat N), mais **préexistant** : les
+    gabarits d'email datent des stories 1.8 et 1.9. Vérifié dans `config/services.yaml:17` :
+    `app.name: '%env(APP_NAME)%'`, sans `default:`. Un dérivé qui écrit `APP_NAME=` dans
+    son `.env.local` obtient donc la chaîne vide partout où la variable passe.
+
+    La story 1.14 a refermé les deux endroits qu'elle possédait : le `h1` de l'accueil ne
+    dépend plus du nom du produit, et le `<title>` ne compose son séparateur que s'il a
+    deux moitiés à séparer (`templates/base.html.twig`), la règle miroir du plancher
+    d'accessibilité refusant désormais un séparateur en tête **comme** en queue. Les deux
+    lignes du gabarit d'email restent : `:50` rend un `<p>` vide dans l'en-tête, `:61`
+    rend « … %app_name% » avec un trou.
+
+    Le correctif évident — un processeur `default:` sur le paramètre — est **interdit par
+    le bloc gelé de la story 1.14**, qui s'interdit de toucher `config/services.yaml`. Ce
+    qui trancherait : la première story qui possède les emails, ou une story de socle qui
+    reprend `config/services.yaml` (la 1.15 y touche déjà pour le glob des modules). Le
+    choix à faire y est nommé : soit un `default:` sur `app.name`, soit une garde dans le
+    gabarit d'email, soit `app:deployment:check` qui refuse un `APP_NAME` vide — la
+    troisième option est la seule qui dise au dérivé qu'il s'est trompé.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-14-refermer-la-surface-de-rebranding.md`
+  status: PARTIELLEMENT CLOS — tranché par Fabrice le 2026-09-18 (boucles 3 et 4 de revue)
+  summary: Sur l'entrée « le repli matriciel `favicon.png` est hors garde de couleur » ci-dessus. L'oubli n'est pas rendu impossible ; il est rendu visible, au moment exact où il se produirait.
+  evidence: |
+    Append-only : l'entrée d'origine reste en place au-dessus. Cette entrée a été rédigée
+    en boucle 3 et **corrigée en boucle 4** — elle sur-affirmait, la revue l'a relevé, et
+    la formulation ci-dessous est celle qui tient.
+
+    **Ce qui est en place.** `BaseTemplateTest::FALLBACK_DIGEST` épingle le condensat
+    SHA-256 du repli, `FALLBACK_PAINTED_FOR` la valeur de `--primary` pour laquelle il a
+    été peint. Recolorer `--primary` dans `theme.css` casse le couple et fait **échouer**
+    `the_default_raster_fallback_is_the_square_pinned_for_the_current_primary_colour()`
+    (échec, pas retrait : la borne de ce test est la présence de `_bmad-output/`, pas le
+    fichier lui-même).
+
+    **Ce que le couple prouve, exactement** : le repli n'a pas bougé depuis un épinglage
+    fait à la main, pour une valeur écrite à la main. Rien de plus. Il ne prouve pas la
+    couleur des pixels — mesurée une fois, 932 pixels à `0x171717`, et jamais relue depuis
+    par aucun test. Et il ne rend pas l'oubli impossible : quand `--primary` change, le
+    chemin le plus court vers le vert reste de recopier la nouvelle valeur dans la
+    constante, et la garde affirmerait alors une couleur que le fichier ne porte pas.
+
+    **Ce qui reste ouvert**, et pourquoi cette entrée n'est pas close : seul `ext-gd` — ou
+    un décodeur PNG écrit à la main — permettrait de lire la couleur réelle. Le
+    déclencheur reste celui de l'entrée d'origine : la story 2.3, qui ajoute une troisième
+    pièce à la marque graphique.
+
+    **Le prix, assumé** : régénérer légitimement le repli fait échouer sa garde tant que
+    `FALLBACK_DIGEST` n'est pas mis à jour. Le message d'échec le dit.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-14-refermer-la-surface-de-rebranding.md`
+  summary: Laquelle des deux icônes un navigateur affiche réellement n'a pas pu être mesurée ; l'ordre des deux `<link rel="icon">` reste celui du bloc gelé, sans observation pour l'appuyer.
+  evidence: |
+    Relevé en revue de la story 1.14, mesure tentée puis abandonnée en boucle 3 (décision de
+    Fabrice le 2026-09-18). Ce qui est écrit ici est la méthode et son échec, pas un
+    « non vérifié » : la prochaine tentative doit savoir ce qui a déjà été essayé.
+
+    **Ce qui a été tenté.** Le navigateur intégré à l'outillage ne demande jamais de
+    favicon — aucune observation possible de ce côté. Sur Chrome, en rechargement forcé, le
+    journal d'accès de Laragon montre **les deux** fichiers téléchargés ; un `GET` ne prouve
+    pas un affichage, et le journal ne porte pas de `User-Agent` permettant de départager
+    les moteurs.
+
+    **Le seul fait établi**, sur six chargements observés : le SVG est demandé à chaque
+    fois, il n'est jamais écarté.
+
+    **Conséquence tenue en attendant.** Aucune assertion ni aucun commentaire ne prétend
+    traduire une préférence de moteur : `BaseTemplateTest` vérifie ce que la page *déclare*
+    — deux icônes, le SVG d'abord, `sizes="any"` sur le SVG, aucun `sizes` sur le repli — et
+    le commentaire de `templates/base.html.twig` dit que l'ordre vient du spec, pas d'une
+    mesure, en demandant de ne pas le réécrire sur une intuition.
+
+    **Ce qui trancherait** : une **observation visuelle**, pas un journal d'accès — regarder
+    l'onglet dans Chrome, Firefox et Safari, dont au moins un en schéma sombre, puisque
+    c'est là que le choix entre les deux fichiers se voit (seul le SVG s'adapte). Le
+    déclencheur naturel est la story 2.3, qui pose le logo de la sidebar et remet la marque
+    graphique sur l'établi.

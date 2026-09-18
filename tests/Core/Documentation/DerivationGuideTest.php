@@ -17,7 +17,7 @@ use Symfony\Component\Yaml\Yaml;
  * que rien ne relit dérive au premier refactor ; ce test tient les faits que le guide
  * partage avec un fichier du dépôt, pas sa prose.
  *
- * **Quatre familles d'ancres, et elles seules :**
+ * **Cinq familles d'ancres, et elles seules :**
  *
  * - (a) les dossiers de couche réellement présents sous `src/Core/`, balayés ;
  * - (b) les quatre fichiers de `config/` qui portent un glob `src/Module/*`, dont le glob
@@ -28,7 +28,10 @@ use Symfony\Component\Yaml\Yaml;
  * - (d) les statuts de story du bloc `# Story Status:` de `sprint-status.yaml`, et les
  *   quatre champs d'en-tête que FR-14 lira. Cette famille se saute quand `_bmad-output/`
  *   est absent, comme chez un dérivé qui ne livre pas ses artefacts BMAD ; les statuts
- *   se sautent aussi quand seul `sprint-status.yaml` manque.
+ *   se sautent aussi quand seul `sprint-status.yaml` manque ;
+ * - (e) le répertoire de marque du contrat de rebranding (UX-DR-2), que le guide,
+ *   `assets/styles/brand.css` et `README.md` doivent nommer à l'identique — trois énoncés
+ *   du même contrat qui divergent, c'est un dérivé qui édite le mauvais fichier.
  *
  * **Toutes les ancres cherchées dans le guide le sont entre accents graves, sans
  * exception** — une sous-chaîne nue passe au vert pour une mauvaise raison (`review` est
@@ -40,7 +43,8 @@ use Symfony\Component\Yaml\Yaml;
  *   `` `Module<Nom>: ['+AnyLayer', 'Module<Nom>', 'CoreContract']` ``, `` `AnyRoot` ``,
  *   `` `UndeclaredModule` `` et `` `must_not` `` — avec `<Nom>` écrit tel quel, puisque le
  *   guide décrit la recette et non un module ;
- * - (d) `` `<statut>` `` et `` `<champ>` ``.
+ * - (d) `` `<statut>` `` et `` `<champ>` `` ;
+ * - (e) `` `assets/brand/` ``.
  *
  * Une ancre doit donc tenir sur une seule ligne du guide. Le guide reste libre de sa
  * forme — titres, tableaux, blocs de code —, pas de ses faits.
@@ -363,6 +367,73 @@ final class DerivationGuideTest extends TestCase
         foreach (self::STORY_HEADER_FIELDS as $field) {
             yield $field => [$field];
         }
+    }
+
+    // --- (e) Le répertoire de marque, énoncé trois fois ------------------------------
+
+    /**
+     * Ce que le contrat de rebranding (UX-DR-2) désigne : le répertoire de marque et les
+     * deux fichiers qu'un dérivé y écrase, sans éditer un fichier de `src/Core/` ni de
+     * `config/`.
+     *
+     * Les deux noms de fichier sont ancrés, pas seulement le répertoire : un énoncé qui
+     * ne nommerait que le SVG laisserait le dérivé n'en remplacer qu'un — son logo sur
+     * un moteur, le carré du socle sur l'autre, sans aucun signal.
+     *
+     * @var list<string>
+     */
+    private const array BRAND_ANCHORS = ['assets/brand/', 'favicon.svg', 'favicon.png'];
+
+    /**
+     * Les trois endroits où le contrat de rebranding est énoncé. Le dérivé lit celui
+     * qu'il croise en premier ; les trois doivent donc dire la même chose.
+     *
+     * @var list<string>
+     */
+    private const array REBRANDING_STATEMENTS = [self::GUIDE, 'assets/styles/brand.css', 'README.md'];
+
+    #[Test]
+    #[DataProvider('lesEnoncesDuContratDeRebranding')]
+    public function the_three_statements_of_the_rebranding_contract_name_the_same_brand_files(string $path, string $anchor): void
+    {
+        self::assertStringContainsString(
+            \sprintf('`%s`', $anchor),
+            GateFiles::read($path),
+            \sprintf(
+                '« %s » ne nomme pas `%s` : les trois énoncés du contrat de rebranding (UX-DR-2) ne disent plus la même chose, et un dérivé ira remplacer le mauvais fichier — ou n\'en remplacera qu\'un.',
+                $path,
+                $anchor,
+            ),
+        );
+    }
+
+    /**
+     * @return Generator<string, array{string, string}>
+     */
+    public static function lesEnoncesDuContratDeRebranding(): Generator
+    {
+        foreach (self::REBRANDING_STATEMENTS as $path) {
+            foreach (self::BRAND_ANCHORS as $anchor) {
+                yield $path.' — '.$anchor => [$path, $anchor];
+            }
+        }
+    }
+
+    /**
+     * La limite que la story 1.14 a refermée, et que le guide ne doit plus décrire.
+     *
+     * Le guide nomme ses limites assumées, ce qui est sa valeur ; une limite comblée qui
+     * y reste est pire qu'une limite non écrite, parce qu'elle envoie un dérivé chercher
+     * un contournement pour un problème qui n'existe plus.
+     */
+    #[Test]
+    public function the_guide_no_longer_calls_the_brand_surface_incomplete(): void
+    {
+        self::assertStringNotContainsString(
+            'La surface de marque n\'est pas encore complète',
+            GateFiles::read(self::GUIDE),
+            \sprintf('« %s » décrit encore la surface de marque comme incomplète, alors que le favicon et le `h1` sont livrés.', self::GUIDE),
+        );
     }
 
     // --- Lecture ---------------------------------------------------------------------

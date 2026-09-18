@@ -277,6 +277,42 @@ final class AssetPipelineTest extends TestCase
     }
 
     /**
+     * `asset()` est appelée par le gabarit — donc sur **chaque page**, en production.
+     *
+     * `symfony/asset-mapper` mappe et digère les fichiers ; c'est `symfony/asset` qui
+     * fournit la fonction Twig qui les nomme. Rangée en `require-dev`, elle disparaîtrait
+     * d'un `composer install --no-dev` : le premier déploiement d'un serveur client
+     * tomberait sur « Unknown "asset" function », sur toutes les pages à la fois, et
+     * aucun test de ce dépôt ne s'exécuterait jamais dans cette configuration.
+     *
+     * `BundleDependencyTest` ne couvre que les bundles : ce composant n'en est pas un.
+     */
+    #[Test]
+    public function the_asset_component_is_a_production_dependency(): void
+    {
+        $composer = json_decode(GateFiles::read('composer.json'), true, 512, \JSON_THROW_ON_ERROR);
+
+        self::assertIsArray($composer);
+
+        $require = $composer['require'] ?? null;
+        $requireDev = $composer['require-dev'] ?? null;
+
+        self::assertIsArray($require);
+        self::assertIsArray($requireDev);
+
+        self::assertArrayHasKey(
+            'symfony/asset',
+            $require,
+            '`symfony/asset` n\'est pas en `require` : la fonction Twig `asset()` n\'existe pas, et le gabarit l\'appelle sur chaque page.',
+        );
+        self::assertArrayNotHasKey(
+            'symfony/asset',
+            $requireDev,
+            '`symfony/asset` est en `require-dev` : sous `composer install --no-dev`, toute page du dérivé tomberait.',
+        );
+    }
+
+    /**
      * « Aucune étape Node » se vérifie par ce qui n'est pas là. Un `package.json` apparu
      * pour une seule dépendance, et le marché d'AD-1 est rompu : il faut alors un
      * runtime Node en CI, un second lockfile à tenir à jour et une seconde source de

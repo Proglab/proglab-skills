@@ -4,7 +4,11 @@
 {% block title %}{{ 'home.index.title'|trans }}{% endblock %}
 
 {% block body %}
-    <h1>Socle ERP</h1>
+    {# Le nom de la page, pas celui du produit (DESIGN.md l. 515). Le nom du dérivé vit
+       dans le `<title>` du gabarit — `page-focus` place le focus sur ce `h1` après chaque
+       navigation Turbo, donc c'est ce texte qu'un lecteur d'écran annonce en arrivant :
+       il doit dire où l'on est. Même clé que le bloc `title` ci-dessus. #}
+    <h1>{{ 'home.index.title'|trans }}</h1>
 
     {% if modules is not empty %}
         <ul data-modules>
