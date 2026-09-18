@@ -171,8 +171,13 @@ final class AccessibilityFloorTest extends WebTestCase
                 continue;
             }
 
-            if (str_starts_with($text, '—') || str_contains($text, '  —')) {
-                $offences[] = \sprintf('%s : le `<title>` vaut « %s » — le nom de la page manque, et le gabarit compose quand même son séparateur (WCAG 2.4.2).', $page, $text);
+            // Les deux bouts, pas seulement le premier. Le séparateur en tête dit que le
+            // nom de la page manque ; le séparateur en queue dit que le nom du dérivé
+            // manque — `APP_NAME` vidé n'a pas de valeur par défaut. Les deux formes
+            // annoncent la même chose à un lecteur d'écran : un titre qui promet une
+            // seconde moitié et ne la donne pas.
+            if (str_starts_with($text, '—') || str_ends_with($text, '—') || str_contains($text, '  —')) {
+                $offences[] = \sprintf('%s : le `<title>` vaut « %s » — une des deux moitiés manque, et le gabarit compose quand même son séparateur (WCAG 2.4.2).', $page, $text);
             }
         }
 
@@ -498,6 +503,15 @@ final class AccessibilityFloorTest extends WebTestCase
 
             foreach (self::elementsOf($crawler->filterXPath('//h1|//h2|//h3|//h4|//h5|//h6')) as $heading) {
                 $levels[] = (int) substr($heading->nodeName, 1);
+
+                // Un titre au texte vide compte comme un titre pour tout ce qui suit —
+                // il occupe le niveau, il apparaît dans la liste des titres d'un lecteur
+                // d'écran — et n'annonce rien. Le cas n'est pas théorique : un titre
+                // composé depuis la configuration (`{{ app_name }}`) devient vide dès
+                // qu'un dérivé vide la variable, et aucun test de niveau ne le verrait.
+                if ('' === trim($heading->textContent)) {
+                    $offences[] = \sprintf('%s : un `<%s>` sans texte — il occupe un niveau dans la structure et n\'annonce rien (règle 6, WCAG 1.3.1).', $page, $heading->nodeName);
+                }
             }
 
             $ones = \count(array_filter($levels, static fn (int $level): bool => 1 === $level));

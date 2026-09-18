@@ -733,8 +733,17 @@ avec la coque de l'application, story 2.3.
 
 **Given** un dérivé qui a renseigné `APP_NAME`
 **When** il ouvre la page d'accueil
-**Then** le `h1` porte le nom du dérivé et non « Socle ERP » en dur
+**Then** « Socle ERP » n'apparaît plus en dur : le `h1` nomme la page et le `<title>` nomme
+la page puis le dérivé
 **And** la page n'affiche plus deux noms différents
+
+> **Amendé le 2026-09-18, pendant l'implémentation de la 1.14.** Cette AC demandait
+> « le `h1` porte le nom du dérivé ». La revue a montré que cela contredit le spine UX
+> (DESIGN.md l. 515 réserve le `h1` au nom de la page, EXPERIENCE.md l. 183 donne
+> « Bonjour Marc… » à l'accueil) et l'ordre de focus Turbo, qui ferait annoncer le nom du
+> produit à la place de la page atteinte. Fabrice a tranché pour le nom de la page ; le
+> problème d'origine — deux noms sur la page, « Socle ERP » codé en dur — est résolu de
+> la même façon. Trace complète dans le bloc gelé du spec de la story.
 
 **Given** le gabarit de base
 **When** un navigateur charge n'importe quelle page

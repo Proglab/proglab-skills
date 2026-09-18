@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    L'icône du dérivé, l'un des deux fichiers de `assets/brand/` que le contrat de
+    rebranding (UX-DR-2) autorise à remplacer. On l'écrase, on ne l'édite pas : c'est ce
+    qui permet de changer de marque sans toucher un fichier de `src/Core/` ni de
+    `config/` (NFR-6). Son repli matriciel est `favicon.png`, pour Safari, qui ne rend
+    pas les favicons SVG. Remplacez les deux ensemble, sinon votre marque n'apparaît que
+    sur une partie des navigateurs.
+
+    Le défaut du socle est un carré plein, sans glyphe : le socle n'a pas de marque et ne
+    s'invente pas d'initiales. Des initiales obligeraient chaque dérivé à éditer ce
+    fichier au lieu de le remplacer. C'est le même carré que le logo de la sidebar que
+    posera la story 2.3.
+
+    Attention au format : ce fichier est du XML, et un commentaire XML ne peut pas
+    contenir deux tirets consécutifs (XML 1.0 §2.5). Y écrire un nom de variable CSS est
+    donc une erreur fatale, pas un avertissement : le fichier cesse d'être rendu, sans que
+    rien d'autre ne change. Les commentaires de la feuille ci-dessous, eux, sont du CSS et
+    n'ont pas cette contrainte.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+    <style>
+        /* La couleur est écrite en dur, et c'est le seul endroit du dépôt où cela se
+           fait : une image n'hérite d'aucune feuille de style, et un favicon est rendu
+           hors du document. Les deux valeurs sont les conversions en sRGB des deux
+           `--primary` de `assets/styles/theme.css` ; `BaseTemplateTest` refuse qu'elles
+           en divergent.
+
+           Si vous repeignez ce carré, **régénérez `favicon.png` dans la même foulée** :
+           il porte la même couleur dans ses pixels, et aucun test ne les lit — la porte
+           reste verte avec un repli resté sur l'ancienne teinte.
+
+           `--primary` clair : oklch(0.205 0 0). */
+        rect { fill: #171717; }
+
+        /* La media query est interne pour la même raison : sans elle, le carré noir du
+           socle disparaît dans un onglet sombre, et le défaut doit être présentable
+           avant d'avoir été remplacé.
+
+           `--primary` sombre : oklch(0.922 0 0). */
+        @media (prefers-color-scheme: dark) {
+            rect { fill: #e5e5e5; }
+        }
+    </style>
+
+    <!-- Le carré, aux coins arrondis du rayon moyen du thème : 8 px sur 32. -->
+    <rect width="32" height="32" rx="8"/>
+</svg>

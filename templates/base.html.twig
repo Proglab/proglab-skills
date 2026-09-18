@@ -2,9 +2,10 @@
 {# Le gabarit de base du socle — le contrat de UX-DR-6, à la lettre.
 
    Tout écran du socle et de ses dérivés passe par ici : lien d'évitement, repères de
-   page, `<main>` focalisable, région d'annonces persistante, `<title>` composé. Rien de
-   ce que ce fichier apporte n'a besoin de JavaScript ; les deux contrôleurs Stimulus
-   (`page-focus` et `announce`) n'ajoutent que le confort sous Turbo Drive.
+   page, `<main>` focalisable, région d'annonces persistante, `<title>` composé, icône du
+   dérivé. Rien de ce que ce fichier apporte n'a besoin de JavaScript ; les deux
+   contrôleurs Stimulus (`page-focus` et `announce`) n'ajoutent que le confort sous
+   Turbo Drive.
 
    Ce que ce gabarit ne porte **pas**, volontairement :
    - le `h1`, qui appartient au template de page (règle 6 — un seul par page) ;
@@ -34,14 +35,60 @@
            Sous Turbo Drive, c'est ce titre — fusionné dans le `<head>` à chaque
            navigation — qui dit à un lecteur d'écran qu'il a changé de page.
 
-           La garde n'est pas une politesse : une page qui n'écrit pas son bloc rendrait
-           « — Socle ERP », un titre qui commence par un séparateur et ne nomme pas la
-           page. Les pages d'erreur de la story 1.10 sont le cas concret — elles héritent
-           du gabarit sans toujours poser leur propre titre.
+           La garde n'est pas une politesse, et elle joue **des deux côtés** : une page
+           qui n'écrit pas son bloc rendrait « — Socle ERP », un titre qui commence par un
+           séparateur et ne nomme pas la page ; un dérivé qui vide `APP_NAME` rendrait
+           « Accueil — », un titre qui promet une seconde moitié et ne la donne pas.
+           `app.name` vaut `%env(APP_NAME)%` sans processeur `default:` : rien ne rattrape
+           la variable vidée, c'est donc ici que la forme se tient. Les pages d'erreur de
+           la story 1.10 sont le cas concret du premier côté — elles héritent du gabarit
+           sans toujours poser leur propre titre.
+
+           D'où le `join` plutôt qu'un `if` : le séparateur n'existe que s'il a deux
+           moitiés à séparer.
            `AccessibilityFloorTest::every_page_has_a_title_that_names_it()` exige la forme
            sur toute page rendue. #}
         {% set page_title %}{% block title %}{% endblock %}{% endset %}
-        <title>{% if page_title|trim is not empty %}{{ page_title|trim }} — {% endif %}{{ app_name }}</title>
+        <title>{{ [page_title|trim, app_name|trim]|filter(part => part is not empty)|join(' — ') }}</title>
+
+        {# L'icône du dérivé — la moitié graphique du contrat de rebranding (UX-DR-2).
+
+           **Ce qu'un dérivé édite ici : rien.** Il remplace les deux fichiers de
+           `assets/brand/`, qui sont désignés ci-dessous par leur chemin logique et servis
+           par AssetMapper ; aucun fichier de `src/Core/` ni de `config/` ne les nomme
+           (NFR-6). Le chemin public porte un condensat du contenu, donc l'URL suit le
+           fichier — à condition que les assets soient recompilés, ce que le déploiement
+           fait (`php bin/console asset-map:compile`). Les deux vont ensemble : ne
+           remplacer que l'un des deux donne une marque sur un moteur et le carré du socle
+           sur l'autre.
+
+           Deux déclarations, parce que Safari ne rend pas les favicons SVG : sans le
+           repli matriciel, il redemanderait `/favicon.ico` et recevrait le 404 que le
+           socle n'a pas à servir. Le SVG, lui, porte sa propre
+           `@media (prefers-color-scheme: dark)` — un favicon est rendu hors du document
+           et n'hérite d'aucune feuille de style, donc le carré ne peut adapter sa
+           couleur que lui-même.
+
+           `type` évite à un moteur de télécharger un fichier pour découvrir qu'il ne sait
+           pas le rendre. `sizes="any"` appartient au SVG, qui est sans dimension propre ;
+           le repli n'en porte aucun, et c'est délibéré — un `sizes` figé décrirait ici un
+           fichier que ce même commentaire invite à remplacer.
+
+           **L'ordre est celui que le spec fixe, pas celui d'une mesure.** Laquelle des
+           deux icônes un moteur affiche réellement n'a pas pu être établie (la tentative
+           et son échec sont consignés dans le spec de la story 1.14). Le seul fait
+           observé : le SVG est demandé à chaque chargement, il n'est jamais écarté. Ne
+           réécrivez pas ces deux lignes sur une intuition — ni le commentaire d'un moteur
+           d'IA, ni une recette copiée : il faut une observation.
+
+           Ces lignes vivent dans le `<head>` du gabarit et non dans un bloc : une page
+           qui ne redéfinit rien — les pages d'erreur de la story 1.10 — doit les porter
+           aussi. `tests/Core/Template/BaseTemplateTest.php` tient les deux, et vérifie
+           que chaque `href` rendu se déduit du contenu d'un fichier réel de
+           `assets/brand/`. #}
+        <link rel="icon" href="{{ asset('brand/favicon.svg') }}" type="image/svg+xml" sizes="any">
+        <link rel="icon" href="{{ asset('brand/favicon.png') }}" type="image/png">
+
         {# Ce bloc reste vide, et ce n'est pas un oubli : `assets/app.js` importe
            `styles/app.css`, donc `importmap()` génère lui-même le `<link rel="stylesheet">`
            du thème. Le CSS n'est pas injecté par du JavaScript — pas de flash de contenu
