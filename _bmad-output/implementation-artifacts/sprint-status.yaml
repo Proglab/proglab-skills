@@ -29,13 +29,13 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-10-2026 11:30
-last_updated: 09-19-2026 02:21
+last_updated: 09-19-2026 12:07
 project: proglab-skills
 project_key: NOKEY
 tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts
 development_status:
-  epic-1: in-progress
+  epic-1: done
   1-1-amorcer-le-dépôt-et-la-frontière-des-deux-racines: done
   1-2-bloquer-les-régressions-en-intégration-continue: done
   1-3-installer-le-kit-de-composants-et-poser-le-thème-du-socle: done
@@ -51,7 +51,7 @@ development_status:
   1-13-rendre-la-déconnexion-joignable-sans-jeton: done
   1-14-refermer-la-surface-de-rebranding: done
   1-15-corriger-la-découverte-des-services-d-un-module-et-le-filet: done
-  epic-1-retrospective: optional
+  epic-1-retrospective: done
 
   epic-2: backlog
   2-1-déclarer-les-ressources-et-projeter-le-catalogue-des-permiss: backlog
@@ -99,3 +99,114 @@ development_status:
   6-3-révoquer-un-jeton-d-accès: backlog
   6-4-vérifier-que-le-service-répond: backlog
   epic-6-retrospective: optional
+action_items:
+  - id: "epic-1-retro-item-1-decider-ce-que-la-reinitialisation-de-mo"
+    epic: 1
+    action: "Decider ce que la reinitialisation de mot de passe fait du ralentissement
+      de connexion, et cesser d'afficher « identifiants incorrects » a qui vient de
+      les redefinir (constat A1)"
+    owner: "Fabrice"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-09-19.md"
+  - id: "epic-1-retro-item-2-ne-pas-laisser-un-refus-de-statut-de-com"
+    epic: 1
+    action: "Ne pas laisser un refus de statut de compte depenser une tentative du
+      limiteur, ou faire gagner son message sur celui du ralentissement (constat A2)"
+    owner: "story-dev"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-09-19.md"
+  - id: "epic-1-retro-item-3-fermer-l-effet-de-bord-du-get-lang-prefe"
+    epic: 1
+    action: "Fermer l'effet de bord du GET ?lang=, prefetchable au survol par Turbo,
+      pour tous les liens de langue presents et futurs (constat A3)"
+    owner: "story-dev"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-09-19.md"
+  - id: "epic-1-retro-item-4-resoudre-la-locale-sur-un-point-qui-surv"
+    epic: 1
+    action: "Resoudre la locale sur un point qui survit a une exception du routeur,
+      et faire porter la langue au lien de l'email de reinitialisation (constats A4
+      et A5)"
+    owner: "story-dev"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-09-19.md"
+  - id: "epic-1-retro-item-5-re-ancrer-l-ac-1-1-et-le-guide-de-deriva"
+    epic: 1
+    action: "Re-ancrer l'AC 1.1 et le guide de derivation sur l'ordre reel : cloner,
+      app:init, ouvrir (constat B1)"
+    owner: "story-dev"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-09-19.md"
+  - id: "epic-1-retro-item-6-app-init-lire-l-etat-des-migrations-plut"
+    epic: 1
+    action: "app:init : lire l'etat des migrations plutot que l'existence d'une table,
+      et refuser en une phrase plutot qu'en trace DBAL (constat B2)"
+    owner: "story-dev"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-09-19.md"
+  - id: "epic-1-retro-item-7-donner-un-sujet-aux-regles-1-et-5-du-pla"
+    epic: 1
+    action: "Donner un sujet aux regles 1 et 5 du plancher d'accessibilite, ou les
+      faire echouer quand elles n'en rencontrent aucun, avant que l'Epic 2 s'appuie
+      dessus (constat C1)"
+    owner: "story-dev"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-09-19.md"
+  - id: "epic-1-retro-item-8-tenir-le-squelette-de-dossiers-de-couche"
+    epic: 1
+    action: "Tenir le squelette de dossiers de couche par une liste explicite, a cote
+      du balayage (constat C2)"
+    owner: "story-dev"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-09-19.md"
+  - id: "epic-1-retro-item-9-mutualiser-les-helpers-de-test-dupliques"
+    epic: 1
+    action: "Mutualiser les helpers de test dupliques et unifier les quatre patrons
+      de bac a sable, avant que l'Epic 2 les recopie (constat E2)"
+    owner: "story-dev"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-09-19.md"
+  - id: "epic-1-retro-item-10-trancher-elargir-le-contrat-de-couches-d"
+    epic: 1
+    action: "Trancher : elargir le contrat de couches deptrac a EventListener/, Command/
+      et Twig/, ou acter la zone sans couche technique et ce qu'elle autorise (constats
+      D1 et D2)"
+    owner: "Fabrice"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-09-19.md"
+  - id: "epic-1-retro-item-11-trancher-le-libelle-retour-a-la-roadmap"
+    epic: 1
+    action: "Trancher le libelle « Retour a la roadmap » ou « Retour a l'accueil »
+      des pages d'erreur : l'arbitrage remonte par la story 1.10 s'est perdu (constat
+      F4)"
+    owner: "Fabrice"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-09-19.md"
+  - id: "epic-1-retro-item-12-statuer-sur-app-deployment-check-livre-h"
+    epic: 1
+    action: "Statuer sur app:deployment:check, livre hors story et deja cite par le
+      guide de derivation (constat F2)"
+    owner: "Fabrice"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-09-19.md"
+  - id: "epic-1-retro-item-13-corriger-l-ac-5-de-la-story-1-14-epics-m"
+    epic: 1
+    action: "Corriger l'AC 5 de la story 1.14 (epics.md:762), qui contredit l'amendement
+      de la meme story (constat F5)"
+    owner: "story-dev"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-09-19.md"
+  - id: "epic-1-retro-item-14-documenter-et-controler-app_secret-dont"
+    epic: 1
+    action: "Documenter et controler APP_SECRET, dont la portee a grossi avec le CSRF
+      obligatoire et le sel du limiteur (constat F6)"
+    owner: "story-dev"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-09-19.md"
+  - id: "epic-1-retro-item-15-re-ancrer-le-report-trusted_proxies-sur"
+    epic: 1
+    action: "Re-ancrer le report trusted_proxies sur les trois limiteurs, password_request
+      compris (constat A7)"
+    owner: "story-dev"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-09-19.md"
