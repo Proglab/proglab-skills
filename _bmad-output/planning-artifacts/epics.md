@@ -815,6 +815,240 @@ test. Ils restent séparables si l'implémentation préfère deux lots.
 **When** `make qa` tourne
 **Then** les six catégories passent sans qu'aucune cible ni aucun job n'ait été ajouté
 
+**Note sur les stories 1.16 à 1.21.** Elles viennent de la rétrospective d'Epic 1
+(`_bmad-output/implementation-artifacts/epic-1-retro-2026-09-19.md`, verdict
+`accepted-with-open-items`) et des dix-neuf actions qu'elle a ouvertes. Aucune n'ajoute de
+fonctionnalité : elles referment des coutures entre stories déjà livrées, des garde-fous
+qui ne gardent rien, et des contrats écrits qui ont divergé du livré. Les arbitrages
+qu'elles appliquent sont datés du 2026-09-19 et consignés dans la section « Arbitrages »
+du rapport. **L'ordre compte** : la 1.16 décide où le code a le droit de vivre et peut
+déplacer des classes que la 1.17 modifie ; la 1.19 est bloquante pour l'Epic 2, qui
+s'appuie sur le plancher d'accessibilité à la story 2.3 et recopiera les patrons de test.
+Les 1.17, 1.18 et 1.20 sont indépendantes entre elles.
+
+### Story 1.16 : Élargir le contrat de couches aux trois dossiers sans couche
+
+As a développeur qui relit le socle ou qui le dérive,
+I want que tout `src/` soit jugé par le contrat de couches, et que le test qui le garde soit capable d'échouer,
+So that changer de dossier cesse d'être un moyen de sortir du contrat.
+
+**Estimation :** ~3 h de travail agent (implémentation et tests).
+
+**Note.** Constats D1, D2 et D4 de la rétrospective. La zone sans couche technique
+(`Command/`, `EventListener/`, `Twig/`) est passée de 0 à 21 % de `src/` en un epic, et
+`LoginFailureListener` y a été écrit **pour** échapper au contrat — son propre docblock le
+dit. Fabrice a tranché le 2026-09-19 : élargir plutôt qu'acter. La story vient en premier
+parce qu'elle peut déplacer des classes que les suivantes modifient.
+
+**Acceptance Criteria:**
+
+**Given** `deptrac.yaml`
+**When** je lis les couches
+**Then** `EventListener/`, `Command/` et `Twig/` en ont chacun une, avec les dépendances qui leur sont légitimes — `Service`, `Response`, `Twig` — et sans accès direct à Doctrine
+
+**Given** une classe d'`EventListener/` qui porte `EntityManagerInterface` ou `QueryBuilder`
+**When** deptrac tourne
+**Then** il rend au moins une violation, là où il en rendait zéro
+
+**Given** `BoundaryTest::no_class_of_ours_escapes_every_layer()`
+**When** une classe du socle n'est couverte par aucune couche technique
+**Then** le test rougit en la nommant : il lit le côté source du rapport, et non seulement le côté dépendance
+
+**Given** `LoginFailureListener`, qui importe l'environnement Twig, `DefaultLoginRateLimiter` et `Response`
+**When** le contrat élargi s'applique
+**Then** soit ces dépendances sont légitimes pour sa couche, soit la classe change de place — et son docblock ne peut plus invoquer « aucune couche technique »
+
+**Given** `DerivativeInitializer::createFirstSuperAdmin()`
+**When** `InitCommand` l'appelle
+**Then** il reçoit un DTO de `Dto/Output/` et non l'entité `User`, et le dossier cesse d'être vide après quinze stories
+
+**Given** les méthodes d'état du dérivé de `UserRepository`, qui vivent là parce que seule la couche `Repository` touche la couche DBAL de Doctrine
+**When** le contrat élargi s'applique
+**Then** soit elles y restent avec une raison écrite qui n'est plus « le contrat m'y oblige », soit elles rejoignent la couche qui leur revient
+
+**Given** la porte de qualité
+**When** `make qa` tourne
+**Then** les six catégories passent, deptrac à 0 violation, sans qu'aucune cible ni aucun job n'ait été ajouté
+
+### Story 1.17 : Recoudre le refus de connexion et son message
+
+As a utilisateur qui vient de redéfinir son mot de passe, ou dont le compte est désactivé,
+I want que l'application ne m'affirme jamais quelque chose de faux sur mon propre accès,
+So that je sache quoi faire au lieu de réessayer contre un message qui ment.
+
+**Estimation :** ~2 h 30 de travail agent (implémentation et tests).
+
+**Note.** Constats A1, A2, A8 et A7. Ils partagent une surface — le refus de connexion et
+le message qui l'accompagne — et un jeu de sondes HTTP. Arbitrage du 2026-09-19 sur A1 :
+la réinitialisation purge le limiteur du compte, pas celui de l'adresse. Attention :
+`LoginThrottlingTest` et `PasswordResetThrottlingTest` sont les deux tests intermittents
+connus du dépôt, leurs pistes sont dans `deferred-work.md`.
+
+**Acceptance Criteria:**
+
+**Given** six échecs de connexion puis une réinitialisation de mot de passe réussie
+**When** je me connecte avec le nouveau mot de passe
+**Then** je suis connecté : `login_attempt` a été remis à zéro par la réinitialisation
+
+**Given** la même séquence
+**When** je regarde `login_address`
+**Then** il n'a pas été remis à zéro, et la raison est écrite sur place — le palier d'adresse protège l'infrastructure, pas le compte
+
+**Given** un compte désactivé qui a déjà échoué cinq fois
+**When** il tente une fois de plus
+**Then** il lit toujours le message dédié au statut de son compte, et non « Email ou mot de passe incorrect. Réessayez dans N secondes »
+
+**Given** un refus fondé sur le statut du compte
+**When** il se produit
+**Then** il ne dépense pas une tentative du limiteur d'adresse, et un seul compte désactivé qui s'acharne ne dégrade plus la connexion de ses collègues
+
+**Given** le Flash « Mot de passe changé » posé par `PasswordController`
+**When** le visiteur est redirigé vers une page qui n'est pas `/login`
+**Then** il le lit quand même, parce que le gabarit de base rend les Flashes — et il ne ressurgit pas hors contexte trois pages plus loin
+
+**Given** le report `trusted_proxies` de `deferred-work.md`
+**When** je le lis
+**Then** il nomme les trois limiteurs, `password_request` compris, et dit lequel ferme un chemin de secours au lieu de le ralentir
+
+**Given** la porte de qualité
+**When** `make qa` tourne
+**Then** les six catégories passent sans qu'aucune cible ni aucun job n'ait été ajouté
+
+### Story 1.18 : Rendre la langue fiable de bout en bout
+
+As a utilisateur dont la langue n'est pas la langue de repli,
+I want que l'application me réponde dans ma langue partout, y compris quand elle échoue,
+So that je n'aie pas à deviner ce qu'elle me dit au moment où j'ai un problème.
+
+**Estimation :** ~3 h de travail agent (implémentation et tests).
+
+**Note.** Constats A3, A4, A5 et A6. Les quatre sont le même défaut vu de quatre côtés :
+la langue n'est fiable que là où `LocaleListener` a tourné. Les corriger séparément
+reviendrait à écrire quatre fois la même sonde. Arbitrage du 2026-09-19 sur A6 : l'email
+se replie comme l'interface.
+
+**Acceptance Criteria:**
+
+**Given** le sélecteur de langue et ses liens `?lang=`
+**When** Turbo prefetch un de ces liens au survol
+**Then** la langue de la session ne change pas — et la règle vaut pour les liens de langue futurs, pas seulement pour ceux de `/login`
+
+**Given** une session en néerlandais
+**When** je demande une URL qui n'existe pas
+**Then** la page 404 est en néerlandais, et un test l'exerce sur une route **inexistante**, et non sur `/demo/errors/*`
+
+**Given** un compte en néerlandais qui demande un lien de réinitialisation
+**When** il ouvre le lien reçu, sans session
+**Then** la page de réinitialisation est en néerlandais
+
+**Given** une langue désactivée dans `ActiveLocales`
+**When** un email part vers un compte qui la porte
+**Then** il se replie comme l'interface, et un test porte la langue désactivée jusqu'au message mis en file
+
+**Given** le docblock de `src/Core/Entity/User.php` qui promet le repli
+**When** je le lis
+**Then** il décrit ce que les deux canaux font réellement
+
+**Given** la porte de qualité
+**When** `make qa` tourne
+**Then** les six catégories passent sans qu'aucune cible ni aucun job n'ait été ajouté
+
+### Story 1.19 : Rendre les garde-fous capables d'échouer
+
+As a développeur qui construit l'Epic 2 sur le socle,
+I want que les tests qui promettent de me rattraper soient capables de rougir,
+So that je ne bâtisse pas sur un filet qui laisse tout passer.
+
+**Estimation :** ~3 h de travail agent (implémentation et tests).
+
+**Note.** Constats C1, C2, E2 et F1. **Bloquante pour l'Epic 2** : la story 2.3 s'appuie
+sur le plancher d'accessibilité, et l'Epic 2 recopiera les patrons de test avant qu'on les
+unifie. Arbitrage du 2026-09-19 sur F1 : l'absence de `<footer>` se trace comme celle de
+`<nav>`, plutôt que d'inventer un contenu que l'UX n'a pas spécifié.
+
+**Acceptance Criteria:**
+
+**Given** les règles 1 et 5 du plancher d'accessibilité
+**When** aucune page rendue ne leur donne de sujet
+**Then** elles rougissent au lieu de passer en silence
+
+**Given** le squelette de dossiers de couche
+**When** l'un d'eux disparaît
+**Then** une liste explicite le dit, à côté du balayage qui ne peut pas le voir
+
+**Given** les helpers de test dupliqués et les quatre patrons de bac à sable
+**When** j'écris un nouveau test d'infrastructure
+**Then** il y a un seul helper et un seul patron à recopier
+
+**Given** l'absence de `<footer>` sur toutes les pages
+**When** je cherche pourquoi, en grepant
+**Then** une constante `FOOTER_EXEMPTION` le dit et nomme son échéance — la story 2.3 — exactement comme `NAV_EXEMPTION` le fait pour l'autre moitié de la même décision
+
+**Given** la porte de qualité
+**When** `make qa` tourne
+**Then** les six catégories passent sans qu'aucune cible ni aucun job n'ait été ajouté
+
+### Story 1.20 : Dire la vérité sur la prise en main d'un dérivé
+
+As a développeur qui clone le socle pour la première fois,
+I want que le guide décrive l'ordre qui marche et que la commande d'initialisation refuse clairement,
+So that ma première heure ne se passe pas à comprendre une trace DBAL.
+
+**Estimation :** ~2 h 30 de travail agent (implémentation et tests).
+
+**Note.** Constats B1, B2, F2 et F6. Même surface : la commande d'initialisation, le guide
+de dérivation et le contrôle de déploiement. Arbitrage du 2026-09-19 sur F2 :
+`app:deployment:check` reste et reçoit une place, parce que `DERIVATION.md` s'appuie déjà
+dessus à deux endroits.
+
+**Acceptance Criteria:**
+
+**Given** un clone frais
+**When** je suis le guide de prise en main
+**Then** l'ordre écrit est celui qui fonctionne — cloner, `app:init`, ouvrir — et l'AC de la story 1.1 dit la même chose
+
+**Given** une base dont les migrations ne sont pas jouées
+**When** `app:init` tourne
+**Then** il lit l'état des migrations plutôt que l'existence d'une table, et refuse en une phrase plutôt qu'en trace DBAL
+
+**Given** `app:deployment:check`, livré hors story
+**When** je cherche d'où il vient
+**Then** `epics.md` lui donne une place et un FR ou un AD de rattachement, et son docblock ne promet plus que la story 3.1 lui en donnera une ; même traitement, plus léger, pour `symfony/apache-pack` et le profiler
+
+**Given** `APP_SECRET`, dont la portée a grossi avec le jeton CSRF obligatoire et le sel du limiteur
+**When** un dérivé se déploie sans l'avoir renseigné
+**Then** `DeploymentReadiness` le refuse, et la table « Ce qu'un dérivé configure » le nomme
+
+**Given** la porte de qualité
+**When** `make qa` tourne
+**Then** les six catégories passent sans qu'aucune cible ni aucun job n'ait été ajouté
+
+### Story 1.21 : Aligner les contrats écrits sur le livré
+
+As a lecteur des documents de planification,
+I want qu'ils décrivent ce qui est livré, et non ce qui a été envisagé puis abandonné,
+So that la prochaine story ne reparte pas d'une phrase fausse.
+
+**Estimation :** ~30 min de travail agent (documents seuls).
+
+**Note.** Constats F4 et F5. Zéro ligne de code : séparée pour qu'un amendement de contrat
+ne passe pas pour l'effet de bord d'une story de code. Arbitrage du 2026-09-19 sur F4 :
+« Retour à l'accueil » reste, l'UX est amendée.
+
+**Acceptance Criteria:**
+
+**Given** `EXPERIENCE.md`, où le libellé apparaît quatre fois, et UX-DR-12
+**When** je lis le libellé de retour des pages d'erreur
+**Then** ils écrivent « Retour à l'accueil » comme les quatre templates livrés, avec la raison : le libellé nomme le rôle de la destination et non son contenu, et un dérivé dont l'accueil n'est pas la roadmap garde une phrase vraie
+
+**Given** l'AC 5 de la story 1.14, dans ce fichier
+**When** je la lis
+**Then** elle ne demande plus « le `h1` en `app_name` », qui contredit l'amendement de la même story
+
+**Given** le dépôt
+**When** cette story est close
+**Then** aucun fichier de `src/`, `templates/`, `assets/` ni `config/` n'a changé
+
 ---
 
 ## Epic 2 : Administrer les comptes et les droits

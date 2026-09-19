@@ -29,13 +29,13 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-10-2026 11:30
-last_updated: 09-19-2026 12:40
+last_updated: 09-19-2026 13:10
 project: proglab-skills
 project_key: NOKEY
 tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts
 development_status:
-  epic-1: done
+  epic-1: in-progress
   1-1-amorcer-le-dépôt-et-la-frontière-des-deux-racines: done
   1-2-bloquer-les-régressions-en-intégration-continue: done
   1-3-installer-le-kit-de-composants-et-poser-le-thème-du-socle: done
@@ -51,6 +51,12 @@ development_status:
   1-13-rendre-la-déconnexion-joignable-sans-jeton: done
   1-14-refermer-la-surface-de-rebranding: done
   1-15-corriger-la-découverte-des-services-d-un-module-et-le-filet: done
+  1-16-élargir-le-contrat-de-couches-aux-trois-dossiers-sans-couche: backlog
+  1-17-recoudre-le-refus-de-connexion-et-son-message: backlog
+  1-18-rendre-la-langue-fiable-de-bout-en-bout: backlog
+  1-19-rendre-les-garde-fous-capables-d-échouer: backlog
+  1-20-dire-la-vérité-sur-la-prise-en-main-d-un-dérivé: backlog
+  1-21-aligner-les-contrats-écrits-sur-le-livré: backlog
   epic-1-retrospective: done
 
   epic-2: backlog
@@ -234,6 +240,15 @@ action_items:
     action: "Tracer l'absence de <footer> comme la moitie <nav> de la meme decision :
       constante FOOTER_EXEMPTION greppable et echeance a la story 2.3 (constat F1,
       arbitre le 2026-09-19)"
+    owner: "story-dev"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-09-19.md"
+  - id: "epic-1-retro-item-19-rendre-les-flashes-dans-le-gabarit-de-ba"
+    epic: 1
+    action: "Rendre les Flashes dans le gabarit de base plutot que dans deux pages
+      nommees : le Flash « Mot de passe change » est pose puis jamais lu, donc jamais
+      consomme, et ressurgit hors contexte (constat A8, marque corriger dans les
+      constats et absent de la table des actions du rapport)"
     owner: "story-dev"
     status: open
     ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-09-19.md"
