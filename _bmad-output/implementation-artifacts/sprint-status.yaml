@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-10-2026 11:30
-last_updated: 09-19-2026 12:07
+last_updated: 09-19-2026 12:40
 project: proglab-skills
 project_key: NOKEY
 tracking_system: file-system
@@ -102,10 +102,10 @@ development_status:
 action_items:
   - id: "epic-1-retro-item-1-decider-ce-que-la-reinitialisation-de-mo"
     epic: 1
-    action: "Decider ce que la reinitialisation de mot de passe fait du ralentissement
-      de connexion, et cesser d'afficher « identifiants incorrects » a qui vient de
-      les redefinir (constat A1)"
-    owner: "Fabrice"
+    action: "Purger le limiteur login_attempt a la reinitialisation reussie et laisser
+      login_address intact, puis cesser d'afficher « identifiants incorrects » a qui
+      vient de redefinir son mot de passe (constat A1, arbitre le 2026-09-19)"
+    owner: "story-dev"
     status: open
     ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-09-19.md"
   - id: "epic-1-retro-item-2-ne-pas-laisser-un-refus-de-statut-de-com"
@@ -168,25 +168,28 @@ action_items:
     ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-09-19.md"
   - id: "epic-1-retro-item-10-trancher-elargir-le-contrat-de-couches-d"
     epic: 1
-    action: "Trancher : elargir le contrat de couches deptrac a EventListener/, Command/
-      et Twig/, ou acter la zone sans couche technique et ce qu'elle autorise (constats
-      D1 et D2)"
-    owner: "Fabrice"
+    action: "Elargir le contrat de couches deptrac a EventListener/, Command/ et Twig/ avec
+      les dependances qui leur sont legitimes (Service, Response, Twig) et sans acces
+      direct a Doctrine, et corriger BoundaryTest qui promet de l'attraper sans le
+      pouvoir (constats D1 et D2, arbitre le 2026-09-19)"
+    owner: "story-dev"
     status: open
     ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-09-19.md"
   - id: "epic-1-retro-item-11-trancher-le-libelle-retour-a-la-roadmap"
     epic: 1
-    action: "Trancher le libelle « Retour a la roadmap » ou « Retour a l'accueil »
-      des pages d'erreur : l'arbitrage remonte par la story 1.10 s'est perdu (constat
-      F4)"
-    owner: "Fabrice"
+    action: "Garder « Retour a l'accueil » dans les quatre templates et amender EXPERIENCE.md
+      et UX-DR-12, qui ecrivent « Retour a la roadmap » : le libelle nomme le role de
+      la destination, pas son contenu (constat F4, arbitre le 2026-09-19)"
+    owner: "story-dev"
     status: open
     ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-09-19.md"
   - id: "epic-1-retro-item-12-statuer-sur-app-deployment-check-livre-h"
     epic: 1
-    action: "Statuer sur app:deployment:check, livre hors story et deja cite par le
-      guide de derivation (constat F2)"
-    owner: "Fabrice"
+    action: "Inscrire app:deployment:check dans epics.md avec son FR/AD de rattachement et
+      retirer de son docblock la promesse que la story 3.1 lui donnera sa place ;
+      meme traitement, plus leger, pour symfony/apache-pack et le profiler
+      (constat F2, arbitre le 2026-09-19)"
+    owner: "story-dev"
     status: open
     ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-09-19.md"
   - id: "epic-1-retro-item-13-corriger-l-ac-5-de-la-story-1-14-epics-m"
@@ -207,6 +210,30 @@ action_items:
     epic: 1
     action: "Re-ancrer le report trusted_proxies sur les trois limiteurs, password_request
       compris (constat A7)"
+    owner: "story-dev"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-09-19.md"
+  - id: "epic-1-retro-item-16-faire-consulter-activelocales-par-emails"
+    epic: 1
+    action: "Faire consulter ActiveLocales par EmailSender pour que l'email se replie comme
+      l'interface, avec un test qui porte la langue desactivee jusqu'au message en
+      file (constat A6, arbitre le 2026-09-19)"
+    owner: "story-dev"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-09-19.md"
+  - id: "epic-1-retro-item-17-faire-rendre-un-dto-output-a-derivativei"
+    epic: 1
+    action: "Faire rendre un DTO Output a DerivativeInitializer::createFirstSuperAdmin(),
+      premier exemple de Dto/Output/ avant que l'Epic 2 le recopie (constat D4,
+      arbitre le 2026-09-19)"
+    owner: "story-dev"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-09-19.md"
+  - id: "epic-1-retro-item-18-tracer-l-absence-de-footer-comme-la-moit"
+    epic: 1
+    action: "Tracer l'absence de <footer> comme la moitie <nav> de la meme decision :
+      constante FOOTER_EXEMPTION greppable et echeance a la story 2.3 (constat F1,
+      arbitre le 2026-09-19)"
     owner: "story-dev"
     status: open
     ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-09-19.md"
