@@ -1108,3 +1108,126 @@ Entrees ajoutees par bmad-build. Append-only : ne pas modifier les entrees exist
     c'est là que le choix entre les deux fichiers se voit (seul le SVG s'adapte). Le
     déclencheur naturel est la story 2.3, qui pose le logo de la sidebar et remet la marque
     graphique sur l'établi.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-15-corriger-la-decouverte-des-services-d-un-module-et-le-filet.md`
+  status: CLOS — livré par la story 1.15 le 2026-09-19
+  summary: Clôture des deux entrées de la story 1.12 ci-dessus — le glob des modules qui n'excluait que `{Dto,Entity}` (R12) et les deux commentaires de `deptrac.yaml` qui sur-affirmaient ce que le filet `UndeclaredModule` tient (R6).
+  evidence: |
+    Append-only : les deux entrées restent en place au-dessus, celle-ci dit ce qui les
+    referme.
+
+    **Le glob.** Les deux globs de modules de `config/services.yaml` — celui de production
+    et son miroir `when@test` — excluent désormais
+    `{Contract,Dto,Entity,Enum,Exception,Message}`, la liste du socle mot pour mot, chaque
+    exclusion portant sa raison sur place. Trois classes de fixture réelles
+    (`tests/Fixtures/Module/Demo/{Enum,Exception,Message}/`) prouvent la non-définition, et
+    un `MessageHandler/` prouve le contrôle positif. La preuve porte sur le dump de
+    débogage du conteneur et non sur `has()`, qui répond « non » aussi pour un service
+    supprimé comme inutilisé.
+
+    **Les commentaires.** L'en-tête de `deptrac.yaml` et le commentaire d'`UndeclaredModule`
+    disent maintenant ce que le filet tient réellement : oublier la ligne de ruleset, le nom
+    dans `AnyRoot` ou l'exclusion ne rouvre rien, mais l'exclusion **sans** bloc de couche
+    laisse le module sans couche de racine, donc libre d'atteindre `Core`, et deptrac sort
+    en 0. Cet état n'est pas exprimable dans deptrac ; il est rendu visible par
+    `every_exclusion_of_the_undeclared_module_net_carries_its_three_other_editions()`
+    (`tests/Core/Documentation/DerivationGuideTest.php`), qui part de chaque exclusion du
+    `must_not` et nomme l'édition manquante — y compris pour les modules d'un dérivé, la
+    famille (c) balayant désormais `src/Module/` en plus de `tests/Fixtures/Module/`.
+
+    **Ce qui reste ouvert et ne l'est pas par oubli** : le trou `APP_NAME` vide de
+    `config/services.yaml` (report du 2026-09-18). Tranché par Fabrice au checkpoint de la
+    1.15 : ce fichier se rouvrait pour les globs, pas pour ce paramètre. Un repli `default:`
+    masquerait l'erreur au dérivé mal configuré, et le dire dans `app:deployment:check`
+    ouvrirait une commande hors sujet. Le report tient jusqu'à la story qui possède les
+    emails.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-15-corriger-la-decouverte-des-services-d-un-module-et-le-filet.md`
+  summary: Les fichiers livrés au dérivé (`config/services.yaml`, `deptrac.yaml`, `docs/DERIVATION.md`) promettent des contrôles automatiques en citant des noms de méthodes de test ; aucun de ces noms n'est tenu au renommage.
+  evidence: |
+    La surface est une **règle**, pas une liste de coordonnées : tout nom de méthode cité
+    entre accents graves dans un fichier livré, aux côtés de la classe de test qui le
+    porte. Les coordonnées bougent à chaque édition — les patchs de revue de la 1.15 ont
+    déjà déplacé les citations de `deptrac.yaml` deux fois.
+
+    **Preuve que rien ne les tient.** La story 1.15 renomme elle-même cinq méthodes
+    (`..._fixture_module_...` -> `..._declared_module_...`) et le fournisseur
+    `lesModulesDeDemonstration()` -> `lesModulesDeclares()` sans qu'aucun test ne rougisse.
+
+    **Ce qui le rouvre.** Une assertion qui, pour chaque nom ainsi cité, exige qu'une
+    méthode publique de ce nom existe dans la classe de test nommée à côté. Non fait dans
+    la 1.15 : c'est une surface de vérification nouvelle, pas la plus petite correction
+    d'un défaut de cette story.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-15-corriger-la-decouverte-des-services-d-un-module-et-le-filet.md`
+  summary: Les trois comportements de deptrac énoncés par l'en-tête de `deptrac.yaml`, le commentaire d'`UndeclaredModule` et l'étape 6 du guide sont vrais mais exercés nulle part ; la suite ne lit que la structure du YAML.
+  evidence: |
+    Les trois énoncés ont été vérifiés en bac à sable pendant la revue de la 1.15, sur une
+    copie de `deptrac.yaml` portant un module `Stock` complet puis privé d'une édition à la
+    fois : sans exclusion -> `EXIT=1` (`UndeclaredModule on CoreContract`) ; sans ligne de
+    ruleset -> `EXIT=1` (`ModuleStock on CoreContract`) ; sans nom dans `AnyRoot` -> `EXIT=1`
+    (`Controller on ModuleStock`), seulement quand un contrôleur du module appelle son
+    propre service ; sans bloc de couche -> `Violations: 0`, `EXIT=0`.
+
+    Le test qui ferme l'état (`every_exclusion_of_the_undeclared_module_net_carries_its_three_other_editions()`)
+    ne lit que le YAML : le jour où deptrac refusera un ruleset nommant une couche non
+    déclarée, ou changera l'héritage `+AnyRoot`, les trois commentaires deviendront faux en
+    silence et la porte restera verte. `BoundaryTest::a_module_nobody_declared_is_refused_everything()`
+    ne couvre pas ces cas : son module de bac à sable n'a **aucune** des quatre éditions.
+
+    **Ce qui le rouvre.** Trois cas de `BoundaryTest` sur le patron de `sandboxWith()`, qui
+    mutent une copie de `deptrac.yaml` une édition à la fois. Non fait dans la 1.15 : les
+    Design Notes du spec ont tranché que ce contrôle-ci s'observe en lisant le fichier, et
+    l'ajouter dépasse le périmètre approuvé.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-15-corriger-la-decouverte-des-services-d-un-module-et-le-filet.md`
+  summary: Deux erreurs de `LoginThrottlingTest` / `PasswordResetThrottlingTest` observées en réexécution de la suite, sans cause établie. Préexistant — non causé par la story 1.15.
+  evidence: |
+    **Observation brute, sans diagnostic.** Suite complète relancée pendant la revue de la
+    1.15 : `Tests: 532, Errors: 2`, puis 5 problèmes en rejouant seules les deux classes,
+    le nombre croissant à chaque exécution. Non reproduit par la porte : `make qa` est sorti
+    en 0 trois fois de suite (534 tests), dont une fois à cache froid dans l'ordre de la CI.
+
+    **Une hypothèse à écarter d'emblée** : ce n'est pas l'absence de purge du pool. Les deux
+    classes purgent déjà `cache.rate_limiter` en `setUp()` (`LoginThrottlingTest:80-83` ->
+    `LoginThrottling::forget()`, `PasswordResetThrottlingTest:47-50` ->
+    `PasswordThrottling::forget()`, et `LoginThrottling:71-87` fait `$pool->clear()`). Une
+    purge supplémentaire serait un correctif no-op.
+
+    **Piste non explorée**, relevée pendant la revue : `LoginThrottlingTest:445-451`
+    documente un pool réellement hors de portée du `forget()` — client `debug => false`,
+    donc conteneur compilé différent, donc autre instance de pool.
+
+    **Deux causes identifiées à la troisième boucle de revue**, qui expliquent probablement
+    tout ce qui a été observé, et qui n'ont rien à voir avec le pool :
+    `LoginThrottlingTest:208` et `:378` basculent de fenêtre fixe (60 s / 900 s, lues par
+    `microtime()`) quand le process est ralenti par une recompilation du conteneur, malgré
+    le `CLOCK_SLACK = 3` de la classe ; et les « The current node list is empty » de
+    `PasswordResetTest` viennent d'un `Twig\Error\RuntimeError: Unable to find asset
+    "tailwindcss"` rendu dans la page d'erreur, c'est-à-dire de la feuille compilée absente
+    — exactement ce que le `tailwind:build` de `make test` et `make a11y` évite. Les deux ne
+    se produisent que sur un `phpunit` nu lancé sans le préambule du Makefile.
+
+    **Ce qui le rouvre.** Adosser le limiteur à une horloge mockable fermerait le premier
+    pour de bon. Le second n'est pas un défaut : c'est le prix d'un `phpunit` lancé hors
+    de sa cible. `config/packages/rate_limiter.yaml` date de la story 1.9 (`ef315f5`) et
+    n'est pas touché par la 1.15.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-15-corriger-la-decouverte-des-services-d-un-module-et-le-filet.md`
+  summary: Le guide de dérivation érige `#[AsMessage('async')]` en règle pour les messages d'un module, et aucune assertion ne la tient ; la fixture désignée comme « la forme à recopier » en est le contre-exemple.
+  evidence: |
+    La story 1.15 écrit la règle dans `docs/DERIVATION.md` (le routage vit sur la classe,
+    sans lui le handler s'exécute en synchrone dans la requête — ce que la story 1.8 existe
+    pour supprimer) et livre dans `tests/Fixtures/Module/Demo/Message/RefreshDemoWidget.php`
+    la seule classe du dépôt qui ne la suit pas. L'omission est légitime et écrite dans son
+    docbloc — la fixture n'est jamais dispatchée — mais un dérivé qui recopie la forme
+    obtient un handler synchrone et `make qa` sort en 0.
+
+    **Preuve.** `grep -rn "AsMessage" tests/ --include=*.php` ne rend que le docbloc de la
+    fixture, aucune assertion. Côté socle l'asymétrie est nette : `App\Core\Message\SendEmail`
+    porte l'attribut (`src/Core/Message/SendEmail.php:37`) et son acheminement est couvert
+    par `EmailQueueTest` et `EmailFailurePolicyTest:363`.
+
+    **Ce qui le rouvre.** Une assertion qui exige `#[AsMessage]` sur toute classe des
+    `Message/` des deux racines, `RefreshDemoWidget` nommé comme l'unique exception assumée.
+    Non fait dans la 1.15 : surface de vérification nouvelle, hors du périmètre approuvé.

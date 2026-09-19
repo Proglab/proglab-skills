@@ -82,9 +82,9 @@ racine et `CoreContract`, et rien d'autre.
 | `Repository/` | Le seul endroit où écrire du DQL, du QueryBuilder ou du SQL. Il appelle `persist()` et `remove()`, jamais `flush()`. Chaque méthode porte le nom de l'intention de l'appelant. **Il n'est pas `final`.** | Repository, Entity, Dto, Doctrine, DoctrineMapping, EntityManager, Enum. |
 | `Entity/` | Format maker : données et mapping, sans règle ni méthode de comportement. Seule exception nommée : `isEqualTo()` de `User` (AD-9). | Entity, DoctrineMapping, Enum. |
 | `Dto/` | `Dto/Input/` porte la validation, `Dto/Read/` les projections `SELECT NEW`, `Dto/Output/` le contrat qui sort de la couche service. Un DTO ne connaît pas les entités. | Dto, Enum. **Pas Entity.** |
-| `Message/` | Les messages Messenger. Un message ne porte que des scalaires et une locale explicite, jamais une entité. | Message, Service, Repository, Dto, Entity, Exception, Enum. |
+| `Message/` | Les messages Messenger. Un message ne porte que des scalaires et une locale explicite, jamais une entité, et **son routage vit sur la classe** : `#[AsMessage('async')]`. Sans lui, le handler s'exécute en synchrone dans la requête. `config/packages/messenger.yaml` n'écrit **aucun** `routing:` : un bloc de routage n'y serait justifié que pour un message **tiers**, sur lequel on ne peut pas poser d'attribut. | Message, Service, Repository, Dto, Entity, Exception, Enum. |
 | `MessageHandler/` | Traduit un message en appel de service, comme un contrôleur traduit une requête. Même couche deptrac que `Message/`. | Mêmes couches que `Message/`. |
-| `Exception/` | Les exceptions métier. Chacune porte son statut HTTP (`#[WithHttpStatus]`) et son niveau de log (`#[WithLogLevel]`). Elles n'existent que pour un échec qu'un appelant peut réellement rencontrer. | Exception. |
+| `Exception/` | Les exceptions métier. Chacune porte son statut HTTP (`#[WithHttpStatus]`) et son niveau de log (`#[WithLogLevel]`), **le statut écrit en littéral** : la couche ne voit pas `HttpFoundation`, donc `Response::HTTP_NOT_FOUND` fait échouer deptrac. Seule exception à la règle des deux attributs, un échec qui ne franchit jamais HTTP — il écrit alors son absence (`App\Core\Exception\InitializationFailed`). Elles n'existent que pour un échec qu'un appelant peut réellement rencontrer. | Exception. |
 | `Security/` | Plie l'authentification et l'autorisation au métier : `UserChecker` et `LoginFailureMessage` aujourd'hui, les voters à l'Epic 2. Un voter décide sur une entité ou un DTO. | Security, Entity, Dto, Enum. |
 | `Enum/` | Les enums natifs, mappés avec `enumType:`. | Enum. |
 | `Command/` | Les commandes console : une couche fine de traduction au-dessus d'un service. Voir `App\Core\Command\DeploymentCheckCommand` pour la forme invocable. | Aucune couche technique : seule la règle de racine s'applique. |
@@ -121,13 +121,30 @@ Il contient :
   prouver les pages d'erreur) ;
 - `Dto/Input/`, `Dto/Output/`, `Dto/Read/` (vides) ;
 - `Entity/DemoWidget.php` ;
+- `Enum/DemoWidgetStatus.php` ;
+- `Exception/DemoWidgetNotFound.php` ;
+- `Message/RefreshDemoWidget.php` et
+  `MessageHandler/RefreshDemoWidgetHandler.php` ;
 - `Service/DemoDescriptor.php` ;
-- `Command/`, `EventListener/`, `Exception/`, `Repository/`, `Security/`, `Twig/`
-  (vides) ;
-- `translations/demo.{fr,en,nl}.yaml`.
+- `Command/`, `EventListener/`, `Repository/`, `Security/`, `Twig/` (vides) ;
+- `translations/` : `translations/demo.{fr,en,nl}.yaml`.
 
-Il n'a **ni `Enum/`, ni `Message/`, ni `MessageHandler/`** : pour ces trois dossiers,
-la forme est celle de `src/Core/`. Ses fichiers `translations/emails.{fr,en,nl}.yaml`
+Les quatre classes des dossiers `Enum/`, `Exception/`, `Message/` et
+`MessageHandler/` **sont la forme à recopier pour un module**, et elles ne sont pas
+là pour décorer : les trois premières prouvent que la découverte des services les
+exclut (étape 4), la quatrième qu'un handler, lui, reste un service.
+`tests/Core/ModuleWiringTest.php` les lit. Deux détails s'y lisent et ne se
+devinent pas :
+
+- `DemoWidgetNotFound` porte ses deux attributs avec **un statut en littéral**
+  (`#[WithHttpStatus(404)]`) : la couche `Exception/` ne voit pas `HttpFoundation`,
+  donc `Response::HTTP_NOT_FOUND` fait échouer deptrac ;
+- `RefreshDemoWidget` **n'a pas** de `#[AsMessage('async')]`, et c'est la seule
+  chose à ne pas recopier : il n'est jamais dispatché. Un message réel le porte,
+  sans quoi son handler s'exécute en synchrone dans la requête.
+
+Ses fichiers
+`translations/emails.{fr,en,nl}.yaml`
 ajoutent volontairement une clé au domaine `emails` du socle, pour prouver un
 mécanisme de test. Un vrai module ne fait jamais cela (voir l'étape 5 de la recette).
 [`tests/Fixtures/Module/Billing/`](../tests/Fixtures/Module/Billing/) est un second
@@ -228,10 +245,20 @@ n'appartient à aucun des deux, `tests/Core/ModuleWiringTest.php`, une seule foi
 
    | Fichier | Glob de production | Ce qu'il câble déjà pour tout module |
    |---|---|---|
-   | `config/services.yaml` | `../src/Module/*/` | Découverte des services (clé `resource`), sauf `Dto/` et `Entity/` |
+   | `config/services.yaml` | `../src/Module/*/` | Découverte des services (clé `resource`), sauf `Contract/`, `Dto/`, `Entity/`, `Enum/`, `Exception/` et `Message/` |
    | `config/routes.yaml` | `../src/Module/*/Controller/**/*.php` | Routes par attribut (entrée `module_controllers`) |
    | `config/packages/doctrine.yaml` | `%kernel.project_dir%/src/Module` | Mapping des entités (mapping `Module`, préfixe `App\Module`) |
    | `config/packages/translation.yaml` | `%kernel.project_dir%/src/Module` | Chemins du translator, parcourus récursivement |
+
+   La clé `exclude` du premier vaut exactement
+   `../src/Module/*/{Contract,Dto,Entity,Enum,Exception,Message}` — **la liste du socle,
+   mot pour mot** : un module ne propose jamais comme service ce que le socle exclut.
+   Les six dossiers portent des données, pas des services ; une classe que vous y
+   déposez ne sera donc pas autowirable, et c'est voulu. `MessageHandler/` n'en fait pas
+   partie : un handler *est* un service. `tests/Core/ModuleWiringTest.php` refuse que
+   cette liste diverge de celle du socle, sur le glob de production comme sur son miroir
+   `when@test`, et `tests/Core/Documentation/DerivationGuideTest.php` refuse que la
+   ligne ci-dessus cesse d'être celle du fichier.
 
 5. **Livrez les catalogues du module** sous
    `src/Module/<Nom>/translations/<domaine>.{fr,en,nl}.yaml`, avec **les trois langues
@@ -295,10 +322,14 @@ n'appartient à aucun des deux, `tests/Core/ModuleWiringTest.php`, une seule foi
    l'exclusion sans le bloc de couche ouvre la
    frontière en silence** : le module n'a plus aucune couche de racine, sa couche
    technique hérite de `+AnyRoot`, et il atteint `Core` sans violation. deptrac ne
-   signale pas qu'un ruleset nomme une couche jamais déclarée. Pour le vérifier,
-   faites dépendre une classe du module d'une classe de `App\Core\Service\`, lancez
-   `make deptrac`, constatez l'échec qui nomme `Module<Nom>`, puis retirez la
-   dépendance.
+   signale pas qu'un ruleset nomme une couche jamais déclarée, et sort en 0.
+
+   **Vous n'avez rien à vérifier à la main.** La suite le fait, sur les modules de
+   `src/Module/` comme sur ceux de `tests/Fixtures/Module/` :
+   `every_exclusion_of_the_undeclared_module_net_carries_its_three_other_editions()`
+   (`tests/Core/Documentation/DerivationGuideTest.php`) part de chaque exclusion du
+   `must_not` et exige ses trois autres éditions, en nommant celle qui manque. Il suffit
+   donc de lancer `make test` — ou `make qa` à l'étape 8.
 7. **Donnez son échantillon à chaque route GET à paramètre.** Le plancher
    d'accessibilité (`tests/Core/Accessibility/AccessibilityFloorTest.php`) rend
    **toutes** les routes GET de l'application, celles des modules comprises. Une route
@@ -586,14 +617,6 @@ ne fait que déconnecter les utilisateurs.
   sept jours.
 - **Les langues actives n'ont pas encore d'écran** (story 2.9). D'ici là, on les
   active ou désactive directement en base.
-- **La découverte des services des modules exclut moins de dossiers que celle du
-  socle.** Le glob des modules n'exclut que `Dto/` et `Entity/`. Celui du socle exclut
-  aussi `Contract/`, `Enum/`, `Exception/` et `Message/`. Les classes des dossiers
-  `Enum/`, `Exception/` et `Message/` d'un module sont donc proposées au conteneur.
-  `make qa` (`lint:container`, dans ses deux environnements) décide si cela pose
-  problème. Cette limite ne peut pas être corrigée sans modifier `config/`, et elle
-  est consignée dans
-  [`deferred-work.md`](../_bmad-output/implementation-artifacts/deferred-work.md).
 - **Aucun vrai module métier n'a encore suivi la recette « ajouter un module ».** La
   première story d'un module métier (Epic 2) le fera de bout en bout. Si une étape
   manque, corrigez ce guide dans la même story.
