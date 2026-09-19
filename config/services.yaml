@@ -70,9 +70,32 @@ services:
         exclude: '../src/Core/{Contract,Dto,Entity,Enum,Exception,Message}'
 
     # Les modules du client. Ajouter un module ne modifie pas ce fichier.
+    #
+    # **La liste d'exclusion est celle du socle, mot pour mot** (story 1.15). Un module
+    # ne doit jamais proposer comme service ce que le socle exclut : il n'y a qu'une
+    # notion d'« objet de données » dans ce dépôt, et elle ne change pas de définition
+    # selon la racine. Les deux globs sont écrits l'un sous l'autre, et
+    # `ModuleWiringTest::every_module_glob_excludes_what_the_core_excludes()` refuse
+    # qu'ils divergent — y compris avec le miroir `when@test` en bas de ce fichier.
+    #
+    # Ce que chaque exclusion coûte à un module, dans l'ordre :
+    #
+    # - `Contract` : un module ne livre **jamais** ce dossier. `Core/Contract/` est
+    #   l'unique porte publique du socle, et un module n'en ouvre pas une deuxième
+    #   (guide de dérivation, étape 2). L'exclure n'autorise donc rien — elle empêche
+    #   l'erreur de devenir un service en silence.
+    # - `Dto` et `Entity` : les deux seules de la liste d'origine. Des données, jamais
+    #   un service ; une entité est de surcroît construite par Doctrine.
+    # - `Enum` : un enum n'est pas instanciable, donc un conteneur qui prétend le
+    #   construire ne peut qu'échouer.
+    # - `Exception` : un objet que l'appelant construit avec ses valeurs, comme
+    #   `App\Core\Exception\InitializationFailed`.
+    # - `Message` : idem, et ses scalaires ne sont pas autowirables.
+    #   `MessageHandler` reste dans le glob, des deux côtés : un handler *est* un
+    #   service, tagué par `#[AsMessageHandler]`.
     App\Module\:
         resource: '../src/Module/*/'
-        exclude: '../src/Module/*/{Dto,Entity}'
+        exclude: '../src/Module/*/{Contract,Dto,Entity,Enum,Exception,Message}'
 
     # Le limiteur du ralentissement de connexion (story 1.7).
     #
@@ -175,9 +198,16 @@ when@test:
             public: true
 
         # Miroir du glob des modules ci-dessus, sur les modules de démonstration.
+        #
+        # **Même liste d'exclusion, à la virgule près**, et pour la raison qui fait
+        # exister ce miroir : `src/Module/` est livré vide, donc c'est ici — et nulle
+        # part ailleurs — qu'une classe réelle traverse le glob des modules. Un miroir
+        # qui excluerait moins que le glob de production ne verrait pas la régression
+        # qu'il est censé voir ; un qui excluerait plus la verrait là où elle n'est pas.
+        # Les raisons des six dossiers sont écrites une fois, sur le glob de production.
         App\Tests\Fixtures\Module\:
             resource: '../tests/Fixtures/Module/*/'
-            exclude: '../tests/Fixtures/Module/*/{Dto,Entity}'
+            exclude: '../tests/Fixtures/Module/*/{Contract,Dto,Entity,Enum,Exception,Message}'
 
         # Le seul consommateur de `App\Core\Message\SendEmail` livré par la story 1.8.
         #

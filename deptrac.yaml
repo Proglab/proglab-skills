@@ -33,10 +33,35 @@
 # **quatre éditions** dans ce seul fichier — son bloc de couche, sa ligne de ruleset, son
 # nom dans `AnyRoot`, et son exclusion dans `UndeclaredModule`.
 #
-# En oublier une ne rouvre pas la frontière : le module reste attrapé par la couche
-# `UndeclaredModule`, dont le ruleset n'autorise rien, et la première dépendance qu'il
-# porte échoue en le nommant. C'est le filet, et il est vérifié par
-# `tests/Core/BoundaryTest.php`.
+# Oublier la ligne de ruleset, le nom dans `AnyRoot` ou l'exclusion ne rouvre rien — mais
+# pas pour la même raison dans les trois cas, et confondre les trois fait chercher
+# l'erreur au mauvais endroit :
+#
+# - sans **l'exclusion**, le module reste attrapé par la couche `UndeclaredModule`, dont
+#   le ruleset n'autorise rien — et la classe tombe alors dans deux couches de racine à
+#   la fois, la sienne et le filet. `tests/Core/BoundaryTest.php` ne monte pas cette
+#   configuration-là : son `a_module_nobody_declared_is_refused_everything()` exerce le
+#   module qui n'a **aucune** des quatre éditions, c'est-à-dire la couche elle-même.
+#   L'oubli de la seule exclusion n'est exercé par aucun test ;
+# - sans **la ligne de ruleset**, le module est bien sorti du filet, mais sa propre couche
+#   de racine n'autorise plus rien : la dépendance de son descripteur vers `CoreContract`
+#   suffit à la faire échouer ;
+# - sans **le nom dans `AnyRoot`**, aucune couche technique ne voit sa racine : un
+#   contrôleur qui appelle son propre service suffit.
+#
+# Dans les trois cas deptrac échoue dès la première dépendance concernée, en nommant la
+# classe — mais seul le premier cas est une violation d'`UndeclaredModule`.
+#
+# **Il reste un oubli qu'aucune règle d'ici ne rattrape, parce qu'il les contourne toutes :
+# écrire l'exclusion sans le bloc de couche.** Le module sort alors du filet sans entrer
+# dans aucune couche de racine ; sa couche technique hérite de `+AnyRoot`, il atteint
+# `Core`, et deptrac — qui ne vérifie pas qu'un ruleset nomme une couche déclarée — sort
+# en 0. Cet état n'est pas exprimable ici, il est tenu par la suite, en deux temps :
+# `the_layer_block_of_every_declared_module_is_the_one_the_guide_prescribes()` le voit dès
+# que le répertoire du module existe dans l'une des deux racines, et
+# `every_exclusion_of_the_undeclared_module_net_carries_its_three_other_editions()` ferme
+# le reste — l'exclusion orpheline, restée après un module renommé ou supprimé. Les deux
+# sont dans `tests/Core/Documentation/DerivationGuideTest.php`.
 #
 # Ce que ce fichier ne collecte pas dans une couche technique : `Command/`,
 # `EventListener/` et `Twig/`, exactement comme le fichier du skill les laisse de côté.
@@ -173,6 +198,21 @@ deptrac:
         # **Ajouter un module ajoute donc une quatrième édition : son `must_not` ici.**
         # L'oublier ne rouvre rien — le module reste dans cette couche, et ses propres
         # dépendances internes le signalent bruyamment.
+        #
+        # **L'inverse, en revanche, rouvre la frontière sans un mot** : une exclusion
+        # écrite ici sans le bloc de couche du même module le fait sortir du filet sans
+        # le faire entrer nulle part. Il n'a plus aucune couche de racine, sa couche
+        # technique hérite de `+AnyRoot`, il atteint `Core` — et deptrac sort en 0, parce
+        # qu'il ne vérifie pas qu'un ruleset nomme une couche déclarée.
+        #
+        # Deux tests de `tests/Core/Documentation/DerivationGuideTest.php` tiennent cet
+        # état, et il faut savoir lequel dit quoi :
+        # `the_layer_block_of_every_declared_module_is_the_one_the_guide_prescribes()`
+        # balaie les deux racines, donc il le voit dès que le répertoire du module existe ;
+        # `every_exclusion_of_the_undeclared_module_net_carries_its_three_other_editions()`
+        # part de cette liste-ci et ferme l'exclusion orpheline — celle d'un module renommé
+        # ou supprimé, qu'aucun répertoire ne fait plus apparaître. L'étape 6 du guide de
+        # dérivation en fait une règle d'état.
         - name: UndeclaredModule
           collectors:
               - type: bool
