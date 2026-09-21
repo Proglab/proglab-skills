@@ -78,7 +78,7 @@ racine et `CoreContract`, et rien d'autre.
 | Dossier | Ce qu'il contient | Peut dépendre de (couches) |
 |---|---|---|
 | `Controller/` | Traduit HTTP : lit la requête, appelle un service, rend une réponse. Ne contient ni règle métier ni persistance. Une classe par ressource. | Controller, Http, Service, Dto, Entity, Form, Message, Exception, Security, Enum. Ni Repository ni Doctrine. |
-| `Service/` | Toutes les règles métier. Chaque service est `final readonly` et appelle `flush()` une fois par cas d'usage. Il prend des identifiants et renvoie des DTO Output, jamais une entité. Le passage d'une entité à son DTO Output se fait ici (voir l'exemple ci-dessous). | Service, Repository, Dto, Entity, Message, EntityManager (`flush()`), Exception, Enum. Ni Http ni QueryBuilder. |
+| `Service/` | Toutes les règles métier. Chaque service est `final readonly` et appelle `flush()` une fois par cas d'usage. Il prend des identifiants et renvoie des DTO Output, jamais une entité — y compris vers une commande console : `App\Core\Service\DerivativeInitializer::createFirstSuperAdmin()` rend `App\Core\Dto\Output\AccountOutput`, et c'est ici que le passage de l'entité à son DTO Output se fait. | Service, Repository, Dto, Entity, Message, EntityManager (`flush()`), Exception, Enum, Twig (le moteur) — pour composer un email à partir d'un gabarit, et pour cela seulement. Ni Http ni QueryBuilder. |
 | `Repository/` | Le seul endroit où écrire du DQL, du QueryBuilder ou du SQL. Il appelle `persist()` et `remove()`, jamais `flush()`. Chaque méthode porte le nom de l'intention de l'appelant. **Il n'est pas `final`.** | Repository, Entity, Dto, Doctrine, DoctrineMapping, EntityManager, Enum. |
 | `Entity/` | Format maker : données et mapping, sans règle ni méthode de comportement. Seule exception nommée : `isEqualTo()` de `User` (AD-9). | Entity, DoctrineMapping, Enum. |
 | `Dto/` | `Dto/Input/` porte la validation, `Dto/Read/` les projections `SELECT NEW`, `Dto/Output/` le contrat qui sort de la couche service. Un DTO ne connaît pas les entités. | Dto, Enum. **Pas Entity.** |
@@ -87,9 +87,9 @@ racine et `CoreContract`, et rien d'autre.
 | `Exception/` | Les exceptions métier. Chacune porte son statut HTTP (`#[WithHttpStatus]`) et son niveau de log (`#[WithLogLevel]`), **le statut écrit en littéral** : la couche ne voit pas `HttpFoundation`, donc `Response::HTTP_NOT_FOUND` fait échouer deptrac. Seule exception à la règle des deux attributs, un échec qui ne franchit jamais HTTP — il écrit alors son absence (`App\Core\Exception\InitializationFailed`). Elles n'existent que pour un échec qu'un appelant peut réellement rencontrer. | Exception. |
 | `Security/` | Plie l'authentification et l'autorisation au métier : `UserChecker` et `LoginFailureMessage` aujourd'hui, les voters à l'Epic 2. Un voter décide sur une entité ou un DTO. | Security, Entity, Dto, Enum. |
 | `Enum/` | Les enums natifs, mappés avec `enumType:`. | Enum. |
-| `Command/` | Les commandes console : une couche fine de traduction au-dessus d'un service. Voir `App\Core\Command\DeploymentCheckCommand` pour la forme invocable. | Aucune couche technique : seule la règle de racine s'applique. |
-| `EventListener/` | Écoute des événements **du framework** (locale, échec de connexion). Le métier s'appelle directement, pas par événement. | Aucune couche technique : seule la règle de racine s'applique. |
-| `Twig/` | Les extensions et runtimes Twig. Le dossier est vide dans le socle aujourd'hui. | Aucune couche technique : seule la règle de racine s'applique. |
+| `Command/` | Les commandes console : une couche fine de traduction au-dessus d'un service. Voir `App\Core\Command\DeploymentCheckCommand` pour la forme invocable. | Command, Service, Dto, Enum, Exception. **Ni Entity, ni Http, ni Message** : une commande qui tient une entité l'a reçue d'un service qui aurait dû rendre un DTO Output, une commande n'a pas de requête, et mettre un travail en file passe par le service qui porte la règle. |
+| `EventListener/` | Écoute des événements **du framework** (locale, échec de connexion). Le métier s'appelle directement, pas par événement. | EventListener, Service, Dto, Entity, Enum, Exception, Security, Http, Twig (le moteur). Rendre une réponse sur un événement de sécurité est prévu ; interroger la base ne l'est pas, et mettre un travail en file non plus — pas de Message, c'est le service appelé qui le fait. |
+| `Twig/` | Les extensions et runtimes Twig. Le dossier est vide dans le socle aujourd'hui : la couche est écrite pour le premier arrivant. Elle s'appelle `TwigExtension` dans `deptrac.yaml`, parce que `Twig` y désigne le moteur. | TwigExtension, Service, Dto, Enum, Exception, Twig (le moteur). **Ni Entity, ni Http, ni Message** : une entité qui atteint une extension atteint le gabarit, la requête courante n'est pas une donnée de gabarit, et une extension ne met rien en file. |
 | `Contract/` | La porte publique : interfaces et DTO seulement, sans Doctrine ni HTTP. **Elle existe seulement dans `src/Core/`.** | Rien (`CoreContract: ~`). |
 
 `deptrac.yaml` connaît aussi une couche `Form/`. Aucun dossier `Form/` n'existe
@@ -359,7 +359,10 @@ d'architecture. Elles suffisent pour écrire du code conforme.
 - **Entités** : format maker, `id` entier auto-incrémenté, `\DateTimeImmutable`,
   enums natifs. Aucune méthode de comportement, sauf `isEqualTo()` (AD-9).
 - **DTO** : `Dto/Input/`, `Dto/Read/`, `Dto/Output/`. Un DTO Output par *forme* de
-  données, pas par endpoint.
+  données, pas par endpoint, **nommé d'après cette forme et suffixé `Output`** :
+  `App\Core\Dto\Output\AccountOutput` porte un compte réduit à son identifiant et à son
+  adresse, et non `FirstSuperAdminOutput` qui aurait nommé l'appelant. Un compte avec son
+  rôle et son état serait une autre forme, donc une autre classe.
 - **Routes** : nom `app_<ressource>_<action>`, préfixe de chemin et de nom posé sur la
   classe (`#[Route('/demo/widgets', name: 'app_demo_widget_')]`). Les chemins sont en
   anglais, invariables, sans préfixe de langue.

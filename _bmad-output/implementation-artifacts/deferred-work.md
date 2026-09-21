@@ -1231,3 +1231,84 @@ Entrees ajoutees par bmad-build. Append-only : ne pas modifier les entrees exist
     **Ce qui le rouvre.** Une assertion qui exige `#[AsMessage]` sur toute classe des
     `Message/` des deux racines, `RefreshDemoWidget` nommé comme l'unique exception assumée.
     Non fait dans la 1.15 : surface de vérification nouvelle, hors du périmètre approuvé.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-16-elargir-le-contrat-de-couches-aux-trois-dossiers-sans-couche.md`
+  summary: Le côté « dépendance » de `BoundaryTest::no_class_of_ours_escapes_every_layer()` n'a aucune sonde capable de le faire rougir, alors que le côté source en a une.
+  evidence: |
+    La story 1.16 ajoute un bac à sable qui prouve la redness du côté source
+    (`tests/Core/BoundaryTest.php`) et laisse `uncoveredDependenciesOfOurs()` sans
+    équivalent. Aucun test de la suite ne produit jamais un message
+    `has uncovered dependency on App\…` : la sonde du bac à sable dépend de
+    `Psr\Log\LoggerInterface`, donc elle n'exerce que le côté source. Les deux branches
+    partagent `messagesOf()`, ce qui rend la lecture du rapport commune sans rendre sa
+    vérification commune.
+
+    **Preuve** (revue verification-gap du 2026-09-21) : sortie du bac à sable pendant la
+    mutation « couche `Serializer` » — le seul message émis est
+    `App\Core\Serializer\Probe has uncovered dependency on Psr\Log\LoggerInterface (Core)`,
+    aucune dépendance `App\…`. Le provider `forbiddenDependencies()` n'utilise jamais
+    `reportUncovered: true`.
+
+    **Ce qui le rouvre.** La story 1.19 mutualise justement les patrons de bac à sable de
+    `BoundaryTest` : si la regex casse à cette occasion, cette moitié du test devient
+    muette en silence. Le correctif est un second fichier dans le bac à sable existant,
+    atteignant la classe posée dans le dossier sans couche, et une assertion sur la liste
+    rendue. Non fait dans la 1.16 : hors du périmètre approuvé.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-16-elargir-le-contrat-de-couches-aux-trois-dossiers-sans-couche.md`
+  summary: `no_class_of_ours_escapes_every_layer()` ne distingue pas « rien n'échappe » de « rien n'a été analysé » — ni plancher sur le nombre de classes vues, ni contrôle du code de sortie de deptrac.
+  evidence: |
+    Le test n'assied que deux listes vides. Un rapport vide, ou amputé, le laisse vert :
+    c'est le mode de panne « le test ne regarde pas » que le bac à sable écarte côté
+    parseur, mais pas côté périmètre.
+
+    **Preuve** (revue edge-cases du 2026-09-21) : (a) bac à sable sans aucun fichier PHP →
+    `{"Report":{…"Errors":0},"files":[]}`, les deux helpers rendent `[]` ; (b) `deptrac.yaml`
+    dont `paths` est réduit à `src/Core/Controller` → le détecteur rejoué à l'identique passe
+    de 27 à 3 classes dans le rapport, `OUTSIDE: []` dans les deux cas, exit 0.
+
+    **Ce qui le rouvre.** Un dérivé qui retire `./tests/Fixtures/Module` de `deptrac.paths`,
+    ou qui ajoute une racine `src/Derivative/` sans la déclarer : les classes concernées
+    disparaissent du rapport et le test reste vert en affirmant que personne n'échappe à une
+    couche. Le correctif est un plancher lu et non recopié — exiger que le rapport annote au
+    moins une classe pour chaque entrée de `deptrac.paths`.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-16-elargir-le-contrat-de-couches-aux-trois-dossiers-sans-couche.md`
+  summary: Les trois rulesets ajoutés par la story revendiquent douze refus ; quatre seulement sont mécanisés, les huit autres ne sont tenus que par la prose du commentaire.
+  evidence: |
+    L'en-tête de `deptrac.yaml` promet « aucune des trois ne voit `Doctrine`,
+    `DoctrineMapping`, `EntityManager` ni `Repository` », plus « ni `Http` » pour `Command`
+    et `TwigExtension`. Le provider `forbiddenDependencies()` ne prouve que
+    `EventListener→Doctrine`, `EventListener→EntityManager`, `Command→Entity` et
+    `Controller→Twig` — auxquels la boucle de revue a ajouté un cas `TwigExtension`.
+    `Command→Doctrine`, `Command→Repository`, `Command→Http` et `EventListener→Repository`
+    restent sans filet.
+
+    **Preuve** (revue verification-gap du 2026-09-21) : lecture intégrale de
+    `forbiddenDependencies()` ; aucun autre test du dépôt ne monte de bac à sable deptrac.
+
+    **Ce qui le rouvre.** Une story qui ajoute `Repository` au ruleset `Command` pour
+    débloquer une commande d'export : rien ne rougit, et la règle « une commande traduit,
+    elle ne persiste pas » disparaît sans laisser de trace exécutable.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-16-elargir-le-contrat-de-couches-aux-trois-dossiers-sans-couche.md`
+  summary: La colonne « Peut dépendre de » de `docs/DERIVATION.md` n'est confrontée à aucun ruleset par un test, alors que le guide déclare qu'elle les reprend.
+  evidence: |
+    `docs/DERIVATION.md` annonce que la colonne reprend le ruleset de `deptrac.yaml`.
+    `DerivationGuideTest` ne relit que les faits **module** (bloc de couche, ligne de
+    ruleset, `AnyRoot`, `must_not`) — jamais les rulesets des couches techniques. Le guide,
+    dont la raison d'être est de répondre seul à « où va cette classe », peut donc mentir
+    dès le premier changement de ruleset. La story 1.16 en a fourni l'exemple : `Twig` a été
+    ajouté au ruleset `Service` sans que la ligne `Service/` du tableau bouge, et aucun test
+    ne l'a signalé — c'est une revue humaine qui l'a trouvé.
+
+    **Preuve** (revues standards et verification-gap du 2026-09-21) :
+    `grep -n "ruleset" tests/Core/Documentation/DerivationGuideTest.php` → toutes les
+    occurrences sont dans les familles module ; aucune n'atteint
+    `deptrac.ruleset.Command|EventListener|TwigExtension|Service`.
+
+    **Ce qui le rouvre.** Le même mode de panne que la story 1.15 a déjà trouvé dans le bloc
+    d'inventaire du module de démonstration. Le correctif est d'étendre la famille (a) pour
+    comparer dossier par dossier la colonne au ruleset parsé — ou de retirer les listes de
+    couches du tableau et d'y renvoyer à `deptrac.yaml`, seul énoncé exécutable. Reporté à
+    la story 1.21, qui aligne les contrats écrits sur le livré.

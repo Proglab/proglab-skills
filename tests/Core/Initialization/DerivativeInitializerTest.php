@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Core\Initialization;
 
 use App\Core\Dto\Input\FirstSuperAdminInput;
+use App\Core\Entity\User;
 use App\Core\Enum\CoreRole;
 use App\Core\Enum\DerivativeState;
 use App\Core\Enum\SupportedLocale;
@@ -146,16 +147,50 @@ final class DerivativeInitializerTest extends KernelTestCase
     // La création du premier Super admin
     // ---------------------------------------------------------------------------------
 
+    /**
+     * L'état écrit est relu **par le repository**, jamais sur l'objet que le service rend.
+     *
+     * Ce n'est pas un détail de style : depuis la story 1.16, le service ne rend plus
+     * l'entité mais un DTO à deux champs, qui ne peut rien dire du rôle, de l'activation ni
+     * de la langue. Relire la ligne prouve d'ailleurs davantage : `persisted()` vide le
+     * contexte Doctrine avant de chercher, donc ces trois assertions portent sur les
+     * colonnes et non sur l'objet que le service vient de construire.
+     */
     #[Test]
     public function it_creates_an_enabled_french_super_admin(): void
     {
-        $user = self::initializer()->createFirstSuperAdmin(new FirstSuperAdminInput('fabrice@example.test', self::PASSWORD));
+        self::initializer()->createFirstSuperAdmin(new FirstSuperAdminInput('fabrice@example.test', self::PASSWORD));
 
-        self::assertSame('fabrice@example.test', $user->getEmail());
+        $user = self::persisted('fabrice@example.test');
+
         self::assertSame(CoreRole::SuperAdmin, $user->getRole()->getCode(), 'Le premier compte doit porter le rôle Super admin du socle.');
         self::assertTrue($user->isEnabled(), 'Un compte créé désactivé ne pourrait pas se connecter : la commande n\'aurait servi à rien.');
         self::assertSame(SupportedLocale::Fr, $user->getLanguage());
-        self::assertNotNull($user->getId(), 'Le compte doit être écrit, pas seulement construit.');
+    }
+
+    /**
+     * Ce que l'appelant reçoit : un contrat, pas une entité.
+     *
+     * `Dto/Output/` est resté vide quinze stories pendant que ce service rendait un `User`
+     * à `InitCommand` — c'est-à-dire une entité franchissant la frontière de la couche
+     * service, et une commande capable de la muter. Le DTO porte `id` et `email`, exactement
+     * ce que les deux appelants consomment : le message de succès lit l'adresse, la suite
+     * prouve l'écriture par l'identifiant.
+     */
+    #[Test]
+    public function it_returns_the_contract_of_the_account_it_wrote_and_never_the_entity(): void
+    {
+        $created = self::initializer()->createFirstSuperAdmin(new FirstSuperAdminInput('fabrice@example.test', self::PASSWORD));
+
+        // Que ce soit un `AccountOutput` et non un `User` est tenu par le type de
+        // retour, et PHPStan au niveau max le prouve statiquement : l'affirmer ici serait
+        // une assertion toujours vraie. Ce qui reste à vérifier, c'est ce que le DTO *dit*.
+        self::assertSame('fabrice@example.test', $created->email);
+        self::assertSame(
+            self::persisted('fabrice@example.test')->getId(),
+            $created->id,
+            'L\'identifiant rendu doit être celui de la ligne écrite : c\'est lui qui prouve le `flush()`.',
+        );
     }
 
     /**
@@ -166,7 +201,9 @@ final class DerivativeInitializerTest extends KernelTestCase
     #[Test]
     public function the_password_is_really_hashed_by_the_project_hasher(): void
     {
-        $user = self::initializer()->createFirstSuperAdmin(new FirstSuperAdminInput('fabrice@example.test', self::PASSWORD));
+        self::initializer()->createFirstSuperAdmin(new FirstSuperAdminInput('fabrice@example.test', self::PASSWORD));
+
+        $user = self::persisted('fabrice@example.test');
 
         self::assertNotSame(self::PASSWORD, $user->getPassword(), 'Le mot de passe est stocké en clair.');
         self::assertTrue(
@@ -213,6 +250,31 @@ final class DerivativeInitializerTest extends KernelTestCase
     // ---------------------------------------------------------------------------------
     // Helpers
     // ---------------------------------------------------------------------------------
+
+    /**
+     * La ligne réellement écrite, relue **depuis les colonnes**.
+     *
+     * Le `clear()` n'est pas décoratif, et c'est le seul détail qui rend ce helper honnête.
+     * `findOneBy()` émet bien une requête à chaque appel, mais l'hydrateur retrouve
+     * l'entité dans l'identity map et rend **la même instance** que celle que le service
+     * vient de construire (`UnitOfWork::createEntity()` sort tôt sans `HINT_REFRESH`) :
+     * sans vider le contexte, `isEnabled()` ou `getLanguage()` reliraient l'objet en
+     * mémoire, et une colonne oubliée dans le mapping passerait inaperçue. Vidé, l'objet
+     * rendu est hydraté depuis la base, et les assertions portent sur ce qui y est écrit.
+     *
+     * DAMA annule la transaction en fin de test ; `clear()` ne fait que détacher, il ne la
+     * touche pas.
+     */
+    private static function persisted(string $email): User
+    {
+        self::getContainer()->get(EntityManagerInterface::class)->clear();
+
+        $user = self::getContainer()->get(UserRepository::class)->findOneByEmail($email);
+
+        self::assertNotNull($user, \sprintf('Aucun compte « %s » n\'a été écrit.', $email));
+
+        return $user;
+    }
 
     private static function initializer(): DerivativeInitializer
     {

@@ -139,16 +139,22 @@ final readonly class InitCommand
         );
 
         try {
-            $user = $this->initializer->createFirstSuperAdmin($credentials);
+            // Un DTO, pas l'entité : la couche `Command` de `deptrac.yaml` ne voit pas
+            // `Entity`, et c'est ce qui empêche la prochaine commande de refaire ce que
+            // celle-ci faisait — tenir un `User` qu'elle aurait pu muter hors de tout service.
+            $created = $this->initializer->createFirstSuperAdmin($credentials);
         } catch (InitializationFailed $failure) {
             $io->getErrorStyle()->error($failure->getMessage());
 
             return Command::FAILURE;
         }
 
+        // Le message ne cite que l'adresse : c'est avec elle qu'on se connecte. L'autre champ
+        // du DTO, l'identifiant, est ce par quoi la suite prouve l'écriture — pas une donnée
+        // à montrer à l'opérateur.
         $io->success(\sprintf(
             'Super admin « %s » créé. Connecte-toi sur la page de connexion du dérivé.',
-            $user->getEmail(),
+            $created->email,
         ));
 
         return Command::SUCCESS;

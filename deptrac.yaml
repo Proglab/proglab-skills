@@ -63,11 +63,44 @@
 # le reste — l'exclusion orpheline, restée après un module renommé ou supprimé. Les deux
 # sont dans `tests/Core/Documentation/DerivationGuideTest.php`.
 #
-# Ce que ce fichier ne collecte pas dans une couche technique : `Command/`,
-# `EventListener/` et `Twig/`, exactement comme le fichier du skill les laisse de côté.
-# Ils restent couverts par leur couche de racine, donc ils n'apparaissent pas dans
-# `--report-uncovered`, mais aucune règle de couche ne s'y applique. Leur donner une
-# couche le jour où l'un d'eux en a besoin.
+# **Trois couches que le fichier du skill n'a pas, et pourquoi elles sont ici.** Le skill
+# laisse `Command/`, `EventListener/` et `Serializer/` hors de toute couche technique. Sur
+# ce socle, `Command/`, `EventListener/` et `Twig/` ont atteint 21 % de `src/Core/` en un
+# epic, et l'absence de règle y était devenue un argument : un docblock justifiait un
+# emplacement par « cette couche ne juge rien ». Elles sont donc collectées, avec ce que
+# l'inventaire réel de leurs classes demande et rien de plus :
+#
+# - `Command` — une commande traduit : elle voit `Service`, `Dto`, `Enum` et `Exception`.
+#   **Ni `Entity`, ni `Http`, ni `Message`** : une commande qui tiendrait une entité en a
+#   reçu une d'un service, une commande n'a pas de requête à lire, et mettre un travail en
+#   file est une décision qui vit dans le service qu'elle appelle. C'est ce qui empêche la
+#   prochaine commande de refaire ce que la 1.11 avait fait.
+# - `EventListener` — le point d'extension du framework. Il voit `Service`, `Dto`,
+#   `Entity`, `Enum`, `Exception`, `Security`, plus `Http` et `Twig`, parce que rendre une
+#   réponse sur un événement de sécurité est exactement ce que Symfony y prévoit. **Pas
+#   `Message`** non plus, pour la même raison que `Command`.
+# - `TwigExtension` (`Twig/`) — extensions et runtimes. Il voit `Service`, `Dto`, `Enum`,
+#   `Exception` et `Twig`. **Ni `Entity`, ni `Http`, ni `Message`** : une entité qui
+#   atteint une extension Twig atteint le gabarit, ce que la règle 4 du socle interdit, et
+#   le dossier est vide — aucun inventaire ne justifierait l'exception. La couche s'écrit
+#   pour le premier arrivant, et non après lui.
+#
+# Aucune des trois ne voit `Doctrine`, `DoctrineMapping`, `EntityManager` ni `Repository` :
+# elles traduisent, elles ne persistent pas.
+#
+# **La couche vendor `Twig`** rend greppable qui **injecte le moteur de gabarits**. Elle
+# est accordée à `EventListener`, `TwigExtension` et `Service` — ce dernier parce que
+# `App\Core\Service\EmailSender` injecte `Twig\Environment` pour composer un email. Elle
+# n'est **pas** accordée à `Controller` : un contrôleur rend par `#[Template]`. Elle n'est
+# pas accordée à `Message` non plus — un handler traduit un message en appel de service,
+# et c'est le service qui compose l'email, exactement comme `SendEmailHandler` le fait.
+#
+# **Ce que cette couche ne tient pas, et qu'il ne faut pas lui prêter.** Elle voit
+# l'injection de `Twig\*`, pas le rendu : `AbstractController::render()` n'est collecté par
+# aucune couche — `AbstractController` est une classe vendor hors de tout collecteur —,
+# donc les trois `render()` d'`App\Core\Controller\PasswordController` passent sans un mot,
+# et c'est normal : c'est la voie du framework. Le jour où il faudrait les tenir aussi, ce
+# serait une règle de contrôleur, pas un collecteur de plus ici.
 #
 # `--fail-on-uncovered` n'est pas utilisé : il échouerait sur la première classe vendor
 # qu'un contrôleur étend.
@@ -131,6 +164,26 @@ deptrac:
               - type: directory
                 value: (src|tests/Fixtures)/(Core|Module/[^/]+)/Enum/.*
 
+        # Les commandes console : une couche fine de traduction au-dessus d'un service.
+        - name: Command
+          collectors:
+              - type: directory
+                value: (src|tests/Fixtures)/(Core|Module/[^/]+)/Command/.*
+
+        # Les écouteurs d'événements *du framework*. Le métier s'appelle directement.
+        - name: EventListener
+          collectors:
+              - type: directory
+                value: (src|tests/Fixtures)/(Core|Module/[^/]+)/EventListener/.*
+
+        # Les extensions et runtimes Twig. La couche porte le nom du rôle, pas du dossier :
+        # `Twig` est déjà pris par la couche vendor ci-dessous, et deux couches ne peuvent
+        # pas porter le même nom.
+        - name: TwigExtension
+          collectors:
+              - type: directory
+                value: (src|tests/Fixtures)/(Core|Module/[^/]+)/Twig/.*
+
         # Tout ce qui est de Doctrine *sauf* les deux dérogations ci-dessous.
         - name: Doctrine
           collectors:
@@ -154,6 +207,16 @@ deptrac:
           collectors:
               - type: classNameRegex
                 value: '/^Symfony\\Component\\HttpFoundation\\.*/'
+
+        # Le moteur de gabarits. Collecté pour que « qui **injecte** le moteur » soit une
+        # règle et non un commentaire — voir l'en-tête, et notamment ce que cette couche ne
+        # tient pas (`AbstractController::render()`). `Symfony\Bridge\Twig\*` n'est pas
+        # visé : ce sont les ponts du framework (`#[Template]`, `TemplatedEmail`), pas le
+        # moteur.
+        - name: Twig
+          collectors:
+              - type: classNameRegex
+                value: '/^Twig\\.*/'
 
         # --- La frontière des deux racines (AD-2) -------------------------------
         # Le socle, moins sa porte publique.
@@ -252,7 +315,11 @@ deptrac:
             - Exception
             - Security
             - Enum
+            - Command
+            - EventListener
+            - TwigExtension
             - Http
+            - Twig
             - Doctrine
             - DoctrineMapping
             - EntityManager
@@ -290,6 +357,11 @@ deptrac:
         # appelle flush() une fois par cas d'utilisation, mais il ne peut pas construire
         # de requêtes (Doctrine) et il ne peut pas connaître HTTP — noter l'absence
         # de Http.
+        #
+        # `Twig` y est, pour une seule raison nommée : `App\Core\Service\EmailSender`
+        # compose un email à partir d'un gabarit, et le moteur est ce qui le lui rend.
+        # Ce n'est pas une porte vers HTTP — rendre une page reste le travail d'un
+        # contrôleur, qui, lui, n'a pas cette ligne.
         Service:
             - Service
             - Repository
@@ -299,6 +371,57 @@ deptrac:
             - EntityManager
             - Exception
             - Enum
+            - Twig
+            - '+AnyRoot'
+
+        # Une commande traduit une ligne de commande en appel de service, exactement comme
+        # un contrôleur traduit une requête. Noter les trois absences : `Entity`, parce
+        # qu'une commande qui tient une entité l'a reçue d'un service qui aurait dû rendre
+        # un DTO Output ; `Http`, parce qu'une commande n'a pas de requête ; et `Message`,
+        # parce qu'une commande qui met un travail en file le fait par le service qui
+        # possède la règle — un contrôleur a `Message`, une commande ne l'a pas, et c'est
+        # une décision, pas un oubli.
+        Command:
+            - Command
+            - Service
+            - Dto
+            - Enum
+            - Exception
+            - '+AnyRoot'
+
+        # Un écouteur d'événements du framework. `Http` et `Twig` lui sont accordés parce
+        # que rendre une réponse sur un événement de sécurité est le point d'extension que
+        # Symfony prévoit — un `AuthenticationFailureHandlerInterface` vivrait dans
+        # `Security/`, à qui `Http` est fermé. Ni `Repository` ni `Doctrine` : un écouteur
+        # qui interroge la base porte une règle qui appartient à un service. Ni `Message`,
+        # pour la même raison que `Command` : mettre un travail en file est une décision,
+        # donc elle vit dans le service que l'écouteur appelle.
+        EventListener:
+            - EventListener
+            - Service
+            - Dto
+            - Entity
+            - Enum
+            - Exception
+            - Security
+            - Http
+            - Twig
+            - '+AnyRoot'
+
+        # Une extension Twig expose au gabarit ce qu'un service lui rend. Trois absences,
+        # et chacune est une décision : `Http`, parce que la requête courante n'est pas une
+        # donnée de gabarit ; `Message`, comme pour `Command` et `EventListener` ; et
+        # **`Entity`**, parce qu'une entité qui atteint une extension Twig atteint le
+        # gabarit — c'est-à-dire la règle 4 du socle prise à revers. L'argument qui a
+        # refusé `Entity` à `Command` vaut identiquement ici, et le dossier est vide : il
+        # n'existe aucun inventaire pour justifier l'exception.
+        TwigExtension:
+            - TwigExtension
+            - Service
+            - Dto
+            - Enum
+            - Exception
+            - Twig
             - '+AnyRoot'
 
         # Un repository est le seul endroit autorisé à toucher Doctrine.
