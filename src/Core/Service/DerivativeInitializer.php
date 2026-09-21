@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Core\Service;
 
 use App\Core\Dto\Input\FirstSuperAdminInput;
+use App\Core\Dto\Output\AccountOutput;
 use App\Core\Entity\User;
 use App\Core\Enum\CoreRole;
 use App\Core\Enum\DerivativeState;
@@ -13,6 +14,7 @@ use App\Core\Exception\InitializationFailed;
 use App\Core\Repository\RoleRepository;
 use App\Core\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use LogicException;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 /**
@@ -161,9 +163,15 @@ final readonly class DerivativeInitializer
      * mais le français en est la langue source, et le premier compte d'un dérivé qu'on
      * installe n'a personne pour lui en demander une autre.
      *
+     * **Elle rend un DTO, jamais l'entité** (story 1.16). Une entité qui sort de la couche
+     * service est une commande — ou demain un contrôleur — capable de la muter sans passer
+     * par une règle, et c'est exactement ce que la règle 4 du socle interdit.
+     * `AccountOutput` porte l'adresse que le message de succès relit et
+     * l'identifiant qui prouve l'écriture ; le reste de la ligne se relit par le repository.
+     *
      * @throws InitializationFailed quand le rôle du socle manque, ou que l'adresse est déjà prise
      */
-    public function createFirstSuperAdmin(FirstSuperAdminInput $input): User
+    public function createFirstSuperAdmin(FirstSuperAdminInput $input): AccountOutput
     {
         $role = $this->roles->findOneByCode(CoreRole::SuperAdmin);
 
@@ -194,6 +202,13 @@ final readonly class DerivativeInitializer
         $this->entityManager->persist($user);
         $this->entityManager->flush();
 
-        return $user;
+        // `getId()` reste `?int` tant que la ligne n'est pas écrite ; le `flush()` ci-dessus
+        // vient de l'écrire, donc la stratégie d'identité a rempli la propriété. Le `throw`
+        // n'est pas défensif au sens habituel — il est **inatteignable**, et il est écrit
+        // plutôt qu'un `?? 0` parce qu'un identifiant nul rendu en silence ferait annoncer
+        // un compte créé que la suite ne retrouverait jamais.
+        $id = $user->getId() ?? throw new LogicException('Un compte flushé porte son identifiant.');
+
+        return new AccountOutput($id, $email);
     }
 }

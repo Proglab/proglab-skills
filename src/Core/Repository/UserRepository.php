@@ -19,11 +19,16 @@ use Doctrine\Persistence\ManagerRegistry;
  * c'est cette question qui vit ci-dessous.
  *
  * La story 1.11 en ajoute deux autres, et elles sont d'une autre nature : elles ne
- * cherchent pas un compte, elles répondent à « dans quel état est ce dérivé ? ».
- * `App\Core\Service\DerivativeInitializer` les compose en un `DerivativeState`. **Elles
- * vivent ici parce que la couche `Repository` est la seule que `deptrac.yaml` autorise à
- * toucher `Doctrine\DBAL\*`** — le ruleset `Service` ne porte pas `Doctrine`, et
- * l'introspection de schéma n'existe qu'à ce niveau.
+ * cherchent pas un compte, elles interrogent **la base sur elle-même** — la table des
+ * comptes existe-t-elle, la connexion est-elle utilisable. **Elles vivent ici parce que le
+ * repository est le seul adaptateur du socle vers la base, et cela resterait vrai sans
+ * deptrac** : l'introspection de schéma et l'état d'une connexion sont de la mécanique de
+ * persistance, pas des faits métier. La lecture métier, elle, est déjà ailleurs —
+ * `App\Core\Service\DerivativeInitializer::state()` compose les deux faits en un
+ * `DerivativeState`, et c'est lui qui décide ce qu'ils veulent dire.
+ *
+ * Les déplacer vers `Service/` exigerait d'ouvrir `Doctrine` à la couche `Service`,
+ * c'est-à-dire la régression exacte que le contrat existe pour empêcher.
  *
  * @extends ServiceEntityRepository<User>
  */

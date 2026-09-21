@@ -28,12 +28,28 @@ use Twig\Environment;
  * **Pourquoi un écouteur et non un `failure_handler`.** Un
  * `AuthenticationFailureHandlerInterface` reçoit une `Request` et rend une `Response` —
  * donc il vit dans `src/Core/Security/`, dont le ruleset de `deptrac.yaml` n'autorise que
- * `Security, Entity, Dto, Enum` : la couche `Http` lui est fermée. `src/Core/EventListener/`
- * n'a **aucune** couche technique dans ce fichier, c'est la porte que `LocaleListener`
- * emprunte déjà, et le contrat de couches l'emporte sur la forme idiomatique — comme il
- * l'a emporté sur `repositoryClass:` à la story 1.5. C'est la même raison qui met ici, et
- * pas dans `LoginFailureMessage`, la lecture du limiteur : `peek()` prend une `Request` et
- * rend un objet du composant RateLimiter.
+ * `Security, Entity, Dto, Enum` : la couche `Http` lui est fermée. La couche
+ * `EventListener`, elle, porte `Http`, `Twig` et `Security` **explicitement** depuis la
+ * story 1.16. Rendre une réponse sur un échec d'authentification est le point d'extension
+ * que Symfony prévoit, pas un contournement du contrat. C'est la même raison qui met ici,
+ * et pas dans `LoginFailureMessage`, la lecture du limiteur : `peek()` prend une `Request`
+ * et rend un objet du composant RateLimiter.
+ *
+ * **Ce que le contrat juge réellement de cette classe, à connaître avant de la réécrire.**
+ * La plupart de ce qu'elle importe n'est collecté par aucune couche. **Trois** couches
+ * seulement la jugent, et ce sont exactement les trois lignes que son ruleset lui accorde :
+ *
+ * - `Twig\Environment` → couche vendor `Twig` ;
+ * - `Symfony\Component\HttpFoundation\{Request,Response}` → couche `Http` ;
+ * - `App\Core\Security\LoginFailureMessage` → couche `Security`.
+ *
+ * **La couche `Security` de `deptrac.yaml` collecte notre `src/Core/Security/`, et rien
+ * du composant Symfony du même nom.** `DefaultLoginRateLimiter`, `LoginFailureEvent`,
+ * `SecurityRequestAttributes`, `AuthenticationServiceException` et
+ * `TooManyLoginAttemptsAuthenticationException` vivent sous
+ * `Symfony\Component\Security\*` : aucun collecteur ne les vise, ils restent donc
+ * « tolérés par l'absence de règle », exactement comme avant la story. L'homonymie est le
+ * piège — lire « la couche Security les autorise » serait faux.
  *
  * L'ordre d'exécution compte et n'est pas évident : `AuthenticatorManager` appelle d'abord
  * `onAuthenticationFailure()` de l'authenticator — qui stocke l'exception en session et
